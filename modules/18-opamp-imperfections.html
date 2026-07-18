@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>18 · Op-Amp Imperfections &amp; Precision Design — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part III · Module 18</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Op-Amp Imperfections &amp; Precision Design</h1>
+  <p class="subtitle">The golden rules are a beautiful lie. Here is the itemized bill for believing
+  them — offset, bias current, gain-bandwidth, slew rate — and how to design so the bill stays
+  small. <em>AoE 3rd ed. §4.4 &amp; Ch. 5.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>The golden rules — <em>the inputs draw no current, the output does whatever keeps the inputs
+equal</em> — are a beautiful lie. At a gain of 5, amplifying volts, nobody ever catches the lie:
+the errors hide three decimal places down and the circuit on your bench matches the circuit in
+your head. But raise the gain to 1000, or shrink the signal to microvolts, or push the frequency
+up, and every broken promise sends an invoice. The inputs <em>do</em> draw current, and it makes
+voltage across every resistor it touches. The inputs are <em>not</em> equal even when the loop is
+happy — they disagree by a millivolt or so, and your circuit amplifies the disagreement along with
+the signal. The gain is <em>not</em> infinite, and above a few tens of hertz it isn't even large.
+This module is the bill, itemized. The good news — and it is genuinely good — is that every line
+item is specified on the datasheet, so you can total the bill <em>before</em> building anything.
+That habit, the <strong>error budget</strong>, is what separates precision design from hopeful
+soldering, and it's the skill Chapter 5 of H&amp;H exists to teach.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — where each imperfection comes from</span>
+  <p><strong>Offset voltage</strong> is Module 11's differential pair failing to be perfectly
+  symmetric. The op-amp's front end is two transistors that are supposed to be identical twins;
+  same-die fabrication makes them astonishingly alike — but not <em>exactly</em> alike. A fraction
+  of a percent of mismatch in V<sub>BE</sub> or V<sub>th</sub> means the pair balances with its
+  inputs a millivolt or so apart instead of exactly together. From outside, the amp behaves as if a
+  tiny battery were hidden in series with one input. Precision parts get there by laser-trimming
+  the mismatch at the factory; chopper amps measure and subtract it continuously.</p>
+  <p><strong>Bias current</strong> exists because the diff pair's transistors must be <em>biased
+  on</em>, and that current has to come from somewhere — namely, out of (or into) your circuit
+  through the input pins. BJT inputs need base current: nanoamps to microamps (Module 11's
+  I<sub>C</sub>/β). FET inputs (Module 12) need only gate leakage: picoamps or less. The golden
+  rule "inputs draw no current" is really "inputs draw I<sub>bias</sub>, which you may or may not
+  be able to ignore."</p>
+  <p><strong>Finite gain-bandwidth</strong> is deliberate. A raw multi-stage amplifier with gain of
+  a million would oscillate the instant you closed feedback around it, so designers add an internal
+  <em>compensation capacitor</em> that rolls the open-loop gain off at 6&nbsp;dB/octave — Module
+  05's single-RC slope — starting from just a few hertz. The gain is a million at DC and falls all
+  the way to 1 at a megahertz or so. Stability is bought with bandwidth, on purpose.</p>
+  <p><strong>Slew rate</strong> is that same compensation capacitor's other tax. To move the
+  output, the input stage must charge the capacitor, and the most current it can supply is Module
+  11's tail current. Maximum dV/dt = I<sub>tail</sub>/C<sub>comp</sub> — a hard speed limit on the
+  output, no matter how loudly the input demands more.</p>
+</div>
+
+<h2>Offset voltage V<sub>os</sub> — the inputs that don't quite agree</h2>
+<p>Model it as a tiny battery in series with one input: the op-amp servos its inputs to be equal
+<em>plus V<sub>os</sub></em>. The feedback network can't tell that battery from signal, so it gets
+amplified by the full <strong>noise gain</strong> of the circuit:</p>
+<div class="formula">
+  V<sub>out,error</sub> = V<sub>os</sub> × (1 + R<sub>f</sub>/R<sub>g</sub>)
+  <small>the noise gain — equal to the closed-loop gain of a non-inverting amp; note an inverting
+  amp of gain −10 still has a noise gain of 11</small>
+</div>
+<p>Magnitudes to memorize: a jellybean op-amp has V<sub>os</sub> of <strong>1–5&nbsp;mV</strong>; a
+trimmed precision part like the OP07, <strong>~25&nbsp;µV</strong>; an auto-zero (chopper) amp,
+<strong>~1&nbsp;µV</strong>. At gain 5, even 5&nbsp;mV of offset makes 25&nbsp;mV of output error —
+who cares. At gain 1000 it makes 5&nbsp;<em>volts</em>, which may be the entire output range.
+And offset isn't a constant you can trim once and forget: it <strong>drifts with
+temperature</strong> — a few µV/°C for ordinary parts, ~0.5&nbsp;µV/°C for precision ones —
+so a pot that nulls the offset at 25&nbsp;°C is wrong again by lunchtime. For serious DC work,
+drift is the spec that matters more than the offset itself.</p>
+
+<h2>Bias &amp; offset current — the inputs that do draw current</h2>
+<p>Each input sources or sinks I<sub>bias</sub> continuously. That current flows through whatever
+resistance the input sees — your source resistance, your feedback network — and by Module 01's
+oldest law it makes a voltage: <strong>V<sub>error</sub> = I<sub>bias</sub> ×
+R<sub>source</sub></strong>, indistinguishable from signal and amplified by the noise gain like
+everything else. At microscale the arithmetic is merciless: 80&nbsp;nA (a classic BJT input)
+through a 10&nbsp;MΩ pH electrode is 0.8&nbsp;V of phantom "signal" before you've measured
+anything.</p>
+<p>Two defenses. The classic trick: put a resistor equal to R<sub>f</sub>∥R<sub>g</sub> in series
+with the + input, so <em>both</em> inputs see the same resistance. The two bias currents then
+generate equal common-mode voltages that cancel, leaving only the error from the
+<strong>offset current</strong> I<sub>os</sub> — the <em>mismatch</em> between the two bias
+currents, typically 5–10× smaller. The modern defense: when source impedances are high, stop
+fighting and use a FET-input part (Module 12) whose picoamp bias currents make the whole error
+budget line vanish. A 50&nbsp;pA TL072 on that same pH electrode: 0.5&nbsp;mV. Rule of thumb —
+above ~100&nbsp;kΩ of source impedance, BJT inputs start needing excuses; above 1&nbsp;MΩ, just
+use the FET.</p>
+
+<h2>Gain-bandwidth product — the eternal surprise</h2>
+<p>Open the datasheet's open-loop gain plot: a flat shelf of ~120&nbsp;dB below about 10&nbsp;Hz,
+then a straight 6&nbsp;dB/octave descent (Module 05's slope, drawn by the compensation cap) all
+the way down to gain 1. On that slope, <strong>gain × frequency is constant</strong> — that
+constant is the gain-bandwidth product, GBW. Close feedback around the amp and your closed-loop
+gain holds only as long as the open-loop gain has excess to spare; the closed-loop response
+corners exactly where your gain line intersects the open-loop rolloff:</p>
+<div class="formula">
+  f<sub>closed</sub> = GBW / G<sub>noise</sub>
+  <small>closed-loop −3 dB bandwidth; G × f = GBW is conserved — you trade one for the other,
+  linearly</small>
+</div>
+<p>So a gain-100 amplifier built on a 1&nbsp;MHz op-amp has <strong>10&nbsp;kHz</strong> of
+bandwidth. Not 1&nbsp;MHz — 10&nbsp;kHz. This ambushes everyone once: the part is "a megahertz
+op-amp," the signal is 40&nbsp;kHz, the gain is 100, and the bench stubbornly shows a rolled-off,
+phase-shifted mess. Need gain 100 <em>and</em> 100&nbsp;kHz? You need 10&nbsp;MHz of GBW, or two
+gain-of-10 stages (each needing only 1&nbsp;MHz — cascading is cheaper than heroism).</p>
+
+<h2>Slew rate — the output can only walk so fast</h2>
+<p>Bandwidth limiting is a <em>linear</em>, small-signal effect: the output is still a sine, just
+smaller and later. Slew limiting is different in kind — a hard ceiling on
+<strong>dV/dt</strong> of the output, set by the tail current charging the compensation cap. Ask
+for an output steeper than SR and the amp simply ramps at SR, turning your sine into a triangle.
+The steepest slope of a sine A·sin(2πft) is 2πfA, so the amp stays honest only while
+2πfA&nbsp;&lt;&nbsp;SR:</p>
+<div class="formula">
+  f<sub>max</sub> = SR / (2πA)
+  <small>full-power bandwidth for output amplitude A (half the peak-to-peak swing)</small>
+</div>
+<p>Keep the two limits distinct, because they scale differently. Small-signal bandwidth
+(GBW/G) doesn't care about amplitude; slew limiting doesn't care about gain. A 741
+(0.5&nbsp;V/µs) at unity gain has ~1&nbsp;MHz of small-signal bandwidth, yet a 10&nbsp;Vpp sine
+starts triangulating at just <strong>16&nbsp;kHz</strong> — barely past the audio band. Millivolt
+signals sail through at frequencies where full-swing signals shatter. When a big output looks
+distorted but a small one doesn't, at the same frequency, that's slew limiting's signature —
+and it's <em>distortion</em>, not attenuation, so you can't fix it downstream.</p>
+
+<h2>Output &amp; supply realities</h2>
+<p>The golden-rule output drives any load to any voltage; the real one does neither. Classic
+bipolar output stages stop <strong>1.5–2&nbsp;V short of each rail</strong> — a 741 on ±15&nbsp;V
+swings about ±13&nbsp;V, and on a single 5&nbsp;V supply it is nearly useless. Modern
+<strong>rail-to-rail</strong> CMOS outputs get within millivolts of the rails (at light load),
+which is why they own the low-voltage world. Output <em>current</em> is limited too — typically
+±10–40&nbsp;mA, often by deliberate short-circuit protection — so heavy loads (headphones,
+cables, LEDs) need a buffer stage, however perfect the voltage looks unloaded.</p>
+<p>Two more specs in one paragraph: <strong>PSRR</strong> (power-supply rejection) says how much
+of the supply's noise leaks in, disguised as input signal — great at DC, but it degrades with
+frequency along the same 6&nbsp;dB/octave slope, which is why switching-supply hash at
+100&nbsp;kHz walks straight through an amp that rejects ripple at 100&nbsp;Hz.
+<strong>CMRR</strong> (common-mode rejection) says how well the amp ignores voltage common to both
+inputs; finite CMRR turns a swinging common-mode level into a small phantom differential input —
+it behaves like an offset that depends on where your signal sits. Both are quoted in dB; both
+deserve a glance whenever supplies are dirty or signals ride on a moving pedestal.</p>
+
+<h2>Choosing an op-amp — what actually matters for your job</h2>
+<p>There are thousands of op-amps, but only a handful of <em>reasons</em> to pick one. Identify
+which imperfection dominates your error budget, and the field collapses:</p>
+<table>
+  <thead><tr><th>Your job</th><th>Dominant spec</th><th>Reach for</th></tr></thead>
+  <tbody>
+    <tr><td>Precision DC — thermocouples, bridges, strain gauges</td>
+        <td>V<sub>os</sub> and its drift</td>
+        <td>Trimmed precision (OP07-class) or auto-zero chopper</td></tr>
+    <tr><td>Photodiode, electrometer, pH — very high source Z</td>
+        <td>I<sub>bias</sub></td>
+        <td>FET/CMOS input, pA or fA class</td></tr>
+    <tr><td>Audio — moderate gain, low-Z sources</td>
+        <td>Voltage noise (and enough slew)</td>
+        <td>Low-noise bipolar (NE5532/OPA2134-class)</td></tr>
+    <tr><td>High speed — video, fast pulses</td>
+        <td>GBW and slew rate</td>
+        <td>Fast part; accept worse DC specs</td></tr>
+    <tr><td>Battery / portable</td>
+        <td>Supply current &amp; single-supply swing</td>
+        <td>Micropower rail-to-rail CMOS</td></tr>
+  </tbody>
+</table>
+<p>Four archetypes recur through this module's widgets and bench — learn these and you can place
+almost any datasheet on the map:</p>
+<table>
+  <thead><tr><th>Archetype</th><th>V<sub>os</sub></th><th>I<sub>bias</sub></th><th>GBW</th><th>Slew</th><th>Personality</th></tr></thead>
+  <tbody>
+    <tr><td><strong>741</strong> (classic BJT, 1968)</td><td>2 mV</td><td>80 nA</td><td>1 MHz</td><td>0.5 V/µs</td>
+        <td>The historical baseline — mediocre at everything, the yardstick everything else is sold against</td></tr>
+    <tr><td><strong>TL072-class</strong> (JFET input)</td><td>3 mV</td><td>50 pA</td><td>3 MHz</td><td>13 V/µs</td>
+        <td>Worse offset, 1000× less bias current, fast — the high-impedance workhorse</td></tr>
+    <tr><td><strong>OP07-class</strong> (precision BJT)</td><td>25 µV</td><td>1 nA</td><td>0.6 MHz</td><td>0.3 V/µs</td>
+        <td>Laser-trimmed offset and low drift; slow, and doesn't care — DC is its job</td></tr>
+    <tr><td><strong>Modern RRIO CMOS</strong></td><td>1 mV</td><td>1 pA</td><td>1 MHz</td><td>0.5 V/µs</td>
+        <td>Swings rail to rail on 3 V, femtoamp-to-picoamp inputs — the single-supply default</td></tr>
+  </tbody>
+</table>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>Error budget before breadboard.</strong> Total the DC bill:
+        V<sub>os</sub>&nbsp;×&nbsp;noise gain, plus I<sub>bias</sub>&nbsp;×&nbsp;(each resistance
+        it flows through)&nbsp;×&nbsp;noise gain. Compare against your signal at the output.
+        If the errors aren't comfortably smaller, change the part or the topology — solder fixes
+        neither.</li>
+    <li><strong>Bandwidth = GBW / noise gain.</strong> Every time. Gain 100 on a 1&nbsp;MHz part
+        is a 10&nbsp;kHz amplifier. Need both gain and bandwidth? Cascade stages.</li>
+    <li><strong>Check slew at full amplitude:</strong> the output is honest only while
+        2πfA&nbsp;&lt;&nbsp;SR. Big signals hit the wall long before small ones.</li>
+    <li><strong>The "typical" column is marketing. Design to "max."</strong> Typical describes the
+        parts the fab is proud of; max is the only number the manufacturer promises. A design that
+        needs typical luck fails in production, one unit at a time.</li>
+    <li><strong>When in doubt: chopper for DC, FET for high impedance.</strong> Microvolt offsets
+        and picoamp inputs are cheap now — buying the right silicon beats trimming the wrong
+        silicon.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">The employee analogy</span>
+  <p>The golden-rules op-amp is a perfect employee: infinitely diligent, works for free, instantly
+  does whatever keeps the two inputs matched. The real op-amp is a <em>good</em> employee with
+  quirks you learn to manage:</p>
+  <ul>
+    <li><strong>Offset voltage — a systematic bias in their judgment.</strong> They consistently
+    report every comparison a millivolt off, the same direction every time. Manageable: calibrate
+    it out, hire a pre-calibrated specialist (precision part), or hire one who re-checks their own
+    bias every millisecond (chopper). But beware — the bias shifts with the office temperature.</li>
+    <li><strong>Bias current — they need a small retainer just to listen.</strong> Every
+    consultation costs a trickle of current, and if your question comes through a long thin channel
+    (high source impedance) the retainer distorts the question itself. Keep the channels
+    low-impedance, or engage the FET consultant, who works for picoamps.</li>
+    <li><strong>Gain-bandwidth — brilliant on slow tasks, thinly spread on fast ones.</strong>
+    They have a fixed pool of attention: gain × speed = constant. Ask for 1000× scrutiny and
+    you'll get it — on anything slower than a kilohertz. Ask for speed, and accept 10× scrutiny.</li>
+    <li><strong>Slew rate — they can only walk so fast, however urgent the memo.</strong> Big
+    changes take proportionally long to deliver, and during the sprint they ignore everything else
+    — including feedback.</li>
+  </ul>
+  <p>Where the analogy fails, delightfully: unlike human quirks, op-amp errors are beautifully
+  specified and repeatable. The datasheet is an honest HR file — every flaw quantified, bounded,
+  and guaranteed. No employee comes with one; every op-amp does. Precision design is just reading
+  it before you delegate.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the error-budget calculator</div>
+  <div class="widget-hint">A non-inverting stage with source resistance R<sub>s</sub>, drawn with
+  its imperfections made visible: the V<sub>os</sub> battery and the I<sub>b</sub> retainer.
+  Pick an op-amp, drag the gain and R<sub>s</sub>, and read the DC bill. The verdict line scores a
+  fixed reference job — amplify a 1&nbsp;mV thermocouple ×1000 into a clean 1&nbsp;V — with your
+  chosen part and R<sub>s</sub>. Watch the 741 fail it and the OP07 pass; then raise R<sub>s</sub>
+  and watch even the OP07 lose to its own bias current.</div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:10px; margin:0 0 14px">
+    <button class="btn" id="amp-741">741</button>
+    <button class="btn ghost" id="amp-tl072">FET (TL072)</button>
+    <button class="btn ghost" id="amp-op07">Precision (OP07)</button>
+    <button class="btn ghost" id="amp-rrio">RRIO CMOS</button>
+  </div>
+  <p class="widget-hint" id="amp-specs" style="margin-top:-6px"></p>
+
+  <div class="viz-row">
+    <svg id="budget-sch" class="schematic" viewBox="0 0 460 280" width="460" height="280" role="img"
+         aria-label="Non-inverting amplifier with source resistance, offset-voltage battery and bias-current arrow shown">
+      <!-- signal source -->
+      <circle cx="38" cy="170" r="15" class="comp"/>
+      <path class="comp" d="M 29 170 q 4.5 -8 9 0 q 4.5 8 9 0"/>
+      <text x="14" y="144" class="lbl big">V<tspan baseline-shift="sub" font-size="10">sig</tspan></text>
+      <!-- Rs -->
+      <path class="wire" d="M 53 170 L 66 170"/>
+      <path class="comp" d="M 66 170 l 3 0 l 4 -8 l 7 16 l 7 -16 l 7 16 l 7 -16 l 7 16 l 4 -8 l 3 0"/>
+      <text x="72" y="150" class="lbl big" id="rs-lbl">10 kΩ</text>
+      <text x="72" y="196" class="lbl">R<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+      <!-- Vos battery in series with + input -->
+      <path class="wire" d="M 115 170 L 142 170"/>
+      <line x1="142" y1="156" x2="142" y2="184" class="comp"/>
+      <line x1="150" y1="163" x2="150" y2="177" class="comp" stroke-width="3"/>
+      <text x="124" y="136" class="lbl" fill="var(--series-8)" id="vos-lbl">V₀ₛ = 2 mV</text>
+      <path class="wire" d="M 150 170 L 196 170"/>
+      <!-- bias current arrow into + input -->
+      <path class="comp" d="M 168 212 L 184 196 m 0 0 l -8 1 m 8 -1 l -1 8" stroke="var(--series-6)"/>
+      <text x="140" y="230" class="lbl" fill="var(--series-6)" id="ib-lbl">I_b = 80 nA</text>
+      <!-- op-amp triangle -->
+      <path class="comp" d="M 196 110 L 196 230 L 300 170 Z"/>
+      <text x="204" y="176" class="lbl big">+</text>
+      <text x="204" y="140" class="lbl big">−</text>
+      <!-- inverting input, feedback network -->
+      <path class="wire" d="M 196 134 L 170 134 L 170 250"/>
+      <circle cx="170" cy="250" r="3.5" class="node"/>
+      <!-- Rg to ground (horizontal, left) -->
+      <path class="comp" d="M 170 250 l -4 0 l -4 -8 l -8 16 l -8 -16 l -8 16 l -8 -16 l -8 16 l -4 -8 l -4 0"/>
+      <path class="wire" d="M 114 250 L 96 250"/>
+      <path class="gnd" d="M 96 250 L 88 250 M 88 240 L 88 260 M 83 244 L 83 256 M 79 248 L 79 252"/>
+      <text x="122" y="238" class="lbl">R<tspan baseline-shift="sub" font-size="10">g</tspan></text>
+      <!-- Rf from node to output -->
+      <path class="comp" d="M 170 250 l 24 0 l 4 -8 l 8 16 l -0 0 l 8 -16 l 8 16 l 8 -16 l 8 16 l 4 -8 l 24 0"/>
+      <text x="212" y="238" class="lbl">R<tspan baseline-shift="sub" font-size="10">f</tspan></text>
+      <path class="wire" d="M 266 250 L 336 250 L 336 170"/>
+      <!-- output -->
+      <path class="wire" d="M 300 170 L 388 170"/>
+      <circle cx="336" cy="170" r="3.5" class="node"/>
+      <text x="396" y="174" class="lbl big">V<tspan baseline-shift="sub" font-size="10">out</tspan></text>
+      <text x="290" y="272" class="lbl big" id="gain-lbl">G = 1 + Rf/Rg = 100</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="bud-gain">Closed-loop gain G <span class="val"></span></label>
+          <!-- log: 10^0 .. 10^3  (1 .. 1000) -->
+          <input type="range" id="bud-gain" min="0" max="3" step="0.01" value="2">
+        </div>
+        <div class="control">
+          <label for="bud-rs">Source resistance R<sub>s</sub> <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^6  (100 Ω .. 1 MΩ) -->
+          <input type="range" id="bud-rs" min="2" max="6" step="0.01" value="4">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Offset error = V₀ₛ·G</div><div class="v" id="bud-vos-err">—</div></div>
+        <div class="readout"><div class="k">Bias error = I_b·R_s·G</div><div class="v" id="bud-ib-err">—</div></div>
+        <div class="readout"><div class="k">Total DC error at output</div><div class="v" id="bud-total">—</div></div>
+        <div class="readout"><div class="k">Bandwidth = GBW/G</div><div class="v" id="bud-bw">—</div></div>
+      </div>
+    </div>
+  </div>
+  <p id="bud-verdict" style="margin:12px 0 0; font-weight:600"></p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: slew vs bandwidth — watch the sine break</div>
+  <div class="widget-hint">The op-amp and gain selected above, asked to deliver a sine at the
+  output. Dashed grey: what you asked for. Blue: what the amp delivers, computed honestly — the
+  small-signal lowpass at f<sub>c</sub>&nbsp;=&nbsp;GBW/G is applied first, then a per-sample rate
+  limiter clamps dV/dt to ±SR. Two different failures live here: bandwidth limiting shrinks and
+  delays the sine (still a sine); slew limiting <em>breaks</em> it into triangles. Try the 741 at
+  10&nbsp;V amplitude and watch it give up at 16&nbsp;kHz; then drop the amplitude and watch the
+  same frequency come back clean.</div>
+  <div class="controls">
+    <div class="control">
+      <label for="slew-f">Frequency f <span class="val"></span></label>
+      <!-- log: 10^3 .. 10^6  (1 kHz .. 1 MHz) -->
+      <input type="range" id="slew-f" min="3" max="6" step="0.01" value="4">
+    </div>
+    <div class="control">
+      <label for="slew-a">Requested output amplitude A <span class="val"></span></label>
+      <input type="range" id="slew-a" min="0.1" max="10" step="0.1" value="5">
+    </div>
+  </div>
+  <canvas id="slew-plot" class="hh-plot" data-height="300"></canvas>
+  <div class="readouts">
+    <div class="readout"><div class="k">f_c = GBW/G</div><div class="v" id="slew-fc">—</div></div>
+    <div class="readout"><div class="k">f_max = SR/(2πA)</div><div class="v" id="slew-fmax">—</div></div>
+    <div class="readout"><div class="k">Delivered amplitude</div><div class="v" id="slew-amp">—</div></div>
+  </div>
+  <p class="widget-hint" id="slew-caption" style="margin-top:10px; font-weight:600"></p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and a datasheet's worth of numbers. Total the error budget <em>first</em>, then
+check the box when you've verified against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — a thermocouple amplifier that tells the truth</label>
+  </div>
+  <p>A type-K thermocouple produces about 40&nbsp;µV/°C, and its wire resistance is a comfortable
+  ~50&nbsp;Ω. You want 10&nbsp;mV/°C at the output — gain 250 — with total errors below
+  ±1&nbsp;°C. Translate the spec into an input-referred error budget, then audit three candidates:
+  the 741, the OP07, and a 1&nbsp;µV auto-zero chopper. Who passes? Don't forget drift.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The budget.</strong> ±1&nbsp;°C × 40&nbsp;µV/°C = the total input-referred error
+      must stay under <strong>40&nbsp;µV</strong>. Bias current barely matters here — 50&nbsp;Ω of
+      source resistance turns even 80&nbsp;nA into only 4&nbsp;µV — so this budget is a pure
+      V<sub>os</sub> shootout:</p>
+      <table>
+        <thead><tr><th>Part</th><th>V<sub>os</sub></th><th>I_b·R_s</th><th>As temperature</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>741</td><td>2 mV</td><td>4 µV</td><td>≈ 50 °C</td><td>Fails by ~50×</td></tr>
+          <tr><td>OP07</td><td>25 µV</td><td>0.05 µV</td><td>≈ 0.6 °C</td><td>Marginal pass</td></tr>
+          <tr><td>Chopper</td><td>1 µV</td><td>~0</td><td>≈ 0.03 °C</td><td>Comfortable win</td></tr>
+        </tbody>
+      </table>
+      <p><strong>The 741's 2&nbsp;mV offset reads as a fifty-degree fever</strong> on a sensor that
+      speaks in microvolts — no amount of gain accuracy rescues it. The OP07's 25&nbsp;µV ≈
+      0.6&nbsp;°C squeaks under the 40&nbsp;µV line, but check drift: at ~0.5&nbsp;µV/°C of
+      <em>ambient</em> drift, a 20&nbsp;°C room-temperature swing adds another 10&nbsp;µV
+      (0.25&nbsp;°C) — still passing, with little margin. The chopper's ~1&nbsp;µV offset and
+      ~0.02&nbsp;µV/°C drift make the error budget a rounding error, which is exactly why
+      auto-zero amps own thermocouple front ends.</p>
+      <p>Bandwidth sanity check: gain 250 on the OP07's 0.6&nbsp;MHz leaves 2.4&nbsp;kHz —
+      luxurious for a sensor that changes over seconds. DC precision and speed are separate
+      purchases, and here you only need one.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — photodiode transimpedance, picoamp edition</label>
+  </div>
+  <p>Module 15's transimpedance amplifier, pushed to the extreme: a photodiode delivering
+  single-picoamp currents into a 1&nbsp;GΩ feedback resistor (1&nbsp;pA → 1&nbsp;mV out). Audit
+  the same op-amp archetypes for the one spec that now dominates everything — and then explain
+  why the circuit board itself joins the error budget.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Bias current is the whole story.</strong> The amp's inverting input sits directly
+      on the summing node, so every ampere of I<sub>bias</sub> flows through the 1&nbsp;GΩ feedback
+      resistor exactly like signal: V<sub>error</sub> = I<sub>bias</sub> × 1&nbsp;GΩ. The 741's
+      80&nbsp;nA "wants" to be <strong>80&nbsp;volts</strong> — the output slams into the rail
+      before any light arrives. Even the precision OP07 at 1&nbsp;nA makes 1&nbsp;V of error —
+      a thousand times the 1&nbsp;mV signal; its heroic 25&nbsp;µV offset is utterly irrelevant
+      here. The TL072's 50&nbsp;pA still makes 50&nbsp;mV, fifty signals' worth. You need the
+      pA-or-below CMOS/electrometer class (1&nbsp;pA → 1&nbsp;mV, and femtoamp parts exist for
+      exactly this job). <strong>Different job, different dominant spec</strong> — the best op-amp
+      of Task 1 is among the worst here.</p>
+      <p><strong>The board is a component now.</strong> A trace at 15&nbsp;V sitting near the
+      summing node, across even a teraohm of flux residue and fiberglass leakage, injects
+      15&nbsp;pA — more error than the op-amp you so carefully chose. Hence the classic defenses:
+      clean the flux, and surround the summing node with a driven <strong>guard ring</strong> — a
+      trace held at the same potential, so the leakage path sees zero volts and therefore carries
+      zero current. At gigohm impedances, layout is not packaging; it's circuit design.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — audio line driver (and the headphone twist)</label>
+  </div>
+  <p>Gain of 2, flat to 20&nbsp;kHz, 6&nbsp;Vpp output into a 10&nbsp;kΩ line input. Compute the
+  GBW and slew rate actually required, and judge how exotic a part you need. Then the twist:
+  the same signal into 32&nbsp;Ω headphones — which spec suddenly rules?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>GBW:</strong> gain 2 to 20&nbsp;kHz needs 40&nbsp;kHz of raw GBW; take 10× margin
+      for flatness and low distortion and you want ~0.4–2&nbsp;MHz — the 1970s already delivered
+      this. <strong>Slew:</strong> 6&nbsp;Vpp is A&nbsp;=&nbsp;3&nbsp;V, so SR&nbsp;&gt;
+      2π·20&nbsp;kHz·3&nbsp;V ≈ <strong>0.38&nbsp;V/µs</strong>. A TL072 (13&nbsp;V/µs) has 34×
+      margin; even the ancient 741 technically clears it (0.5&nbsp;V/µs, uncomfortably close —
+      "typ," remember, so a real design says no). The lesson: <strong>audio is easy.</strong> Line
+      level into 10&nbsp;kΩ stresses no modern spec — don't pay for a chopper's offset or a
+      video part's GBW to move 3&nbsp;V at 20&nbsp;kHz. Spend the budget on noise, the one spec
+      audio actually taxes.</p>
+      <p><strong>The twist:</strong> 6&nbsp;Vpp into 32&nbsp;Ω demands a peak current of
+      3&nbsp;V&nbsp;/&nbsp;32&nbsp;Ω ≈ <strong>94&nbsp;mA</strong> — several times the ±20–40&nbsp;mA
+      short-circuit limit of a garden-variety op-amp. The voltage specs all still pass; the part
+      simply cannot push the amperes, and the output clips against its own current limiter. The
+      dominant spec flipped again, this time to <em>output current</em>: use a headphone-driver
+      part, parallel buffers, or an op-amp + push-pull booster inside the loop (Module 09's
+      follower, promoted to power duty). Every load re-asks the question "which imperfection
+      dominates?" — precision design is just never assuming the answer.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="17-active-filters.html"><span class="dir">Previous</span><span class="name">17 · Active Filters</span></a>
+  <a href="../index.html"><span class="dir">Next</span><span class="name">Curriculum hub — Part IV coming soon</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("18");
+
+  /* ---------- op-amp archetypes (SR stored in V/s) ---------- */
+  var AMPS = {
+    "741":   { btn: "amp-741",   label: "741 — classic BJT",        Vos: 2e-3,  Ib: 80e-9,  GBW: 1e6,   SR: 0.5e6 },
+    "tl072": { btn: "amp-tl072", label: "TL072-class — JFET input", Vos: 3e-3,  Ib: 50e-12, GBW: 3e6,   SR: 13e6  },
+    "op07":  { btn: "amp-op07",  label: "OP07-class — precision",   Vos: 25e-6, Ib: 1e-9,   GBW: 0.6e6, SR: 0.3e6 },
+    "rrio":  { btn: "amp-rrio",  label: "Modern RRIO CMOS",         Vos: 1e-3,  Ib: 1e-12,  GBW: 1e6,   SR: 0.5e6 }
+  };
+  var state = { amp: AMPS["741"], G: 100, Rs: 1e4 };
+
+  function fmtSR(srVs) { return (srVs / 1e6) + " V/µs"; }
+
+  /* ================= Widget 1: error-budget calculator ================= */
+
+  var vosErrRead = document.getElementById("bud-vos-err");
+  var ibErrRead  = document.getElementById("bud-ib-err");
+  var totalRead  = document.getElementById("bud-total");
+  var bwRead     = document.getElementById("bud-bw");
+  var verdictEl  = document.getElementById("bud-verdict");
+  var specsEl    = document.getElementById("amp-specs");
+  var rsLbl   = document.getElementById("rs-lbl");
+  var vosLbl  = document.getElementById("vos-lbl");
+  var ibLbl   = document.getElementById("ib-lbl");
+  var gainLbl = document.getElementById("gain-lbl");
+
+  function selectAmp(key) {
+    state.amp = AMPS[key];
+    Object.keys(AMPS).forEach(function (k) {
+      document.getElementById(AMPS[k].btn).className = (k === key) ? "btn" : "btn ghost";
+    });
+    updateBudget();
+    drawSlew();
+  }
+  Object.keys(AMPS).forEach(function (k) {
+    document.getElementById(AMPS[k].btn).addEventListener("click", function () { selectAmp(k); });
+  });
+
+  HH.slider("bud-gain", {
+    log: true,
+    format: function (g) { return "×" + (g >= 100 ? Math.round(g) : g.toFixed(1)); },
+    onchange: function (g) { state.G = g; updateBudget(); drawSlew(); }
+  });
+  HH.slider("bud-rs", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.Rs = r; updateBudget(); }
+  });
+
+  function updateBudget() {
+    var a = state.amp, G = state.G, Rs = state.Rs;
+    var vosErr = a.Vos * G;          // offset error at output
+    var ibErr  = a.Ib * Rs * G;      // bias-current error at output
+    var total  = vosErr + ibErr;
+    var bw     = a.GBW / G;
+
+    vosErrRead.innerHTML = HH.fmt(vosErr, "V");
+    ibErrRead.innerHTML  = HH.fmt(ibErr, "V");
+    totalRead.innerHTML  = HH.fmt(total, "V");
+    bwRead.innerHTML     = HH.fmt(bw, "Hz");
+
+    specsEl.innerHTML = "<strong>" + a.label + "</strong> — V<sub>os</sub> " + HH.fmt(a.Vos, "V") +
+      " · I<sub>bias</sub> " + HH.fmt(a.Ib, "A") + " · GBW " + HH.fmt(a.GBW, "Hz") +
+      " · slew " + fmtSR(a.SR);
+
+    /* schematic labels */
+    rsLbl.textContent  = HH.fmt(Rs, "Ω");
+    vosLbl.textContent = "V₀ₛ = " + HH.fmt(a.Vos, "V");
+    ibLbl.textContent  = "I_b = " + HH.fmt(a.Ib, "A");
+    gainLbl.textContent = "G = 1 + Rf/Rg = " + (G >= 100 ? Math.round(G) : G.toFixed(1));
+
+    /* Reference job: amplify 1 mV thermocouple ×1000 → 1 V out.
+       Pass if this part's DC error at G = 1000, with the Rs set above,
+       stays under 10% of the 1 V output (100 mV). */
+    var jobErr = a.Vos * 1000 + a.Ib * Rs * 1000;
+    var pass = jobErr < 0.1;
+    verdictEl.innerHTML =
+      "Reference job — 1 mV thermocouple ×1000 (want 1 V ± 10%), with R<sub>s</sub> = " +
+      HH.fmt(Rs, "Ω") + ": DC error = " + HH.fmt(jobErr, "V") + " → " +
+      (pass ? "PASSES (error &lt; 100 mV — the reading means something)"
+            : "FAILS (error ≥ 100 mV — the “signal” is mostly the op-amp)");
+    verdictEl.style.color = pass ? "var(--good-text)" : "var(--critical)";
+  }
+
+  /* ================= Widget 2: slew vs bandwidth ================= */
+
+  var slew = { f: 1e4, A: 5 };
+  var fcRead   = document.getElementById("slew-fc");
+  var fmaxRead = document.getElementById("slew-fmax");
+  var ampRead  = document.getElementById("slew-amp");
+  var slewCaption = document.getElementById("slew-caption");
+
+  var lastSim = { t: [], vin: [], vout: [] };   // for hover, indexed by cycle fraction
+
+  var slewPlot = HH.plot(document.getElementById("slew-plot"), {
+    xlabel: "time (cycles of the requested sine)",
+    ylabel: "output voltage (V)",
+    xmin: 0, xmax: 3, ymin: -11, ymax: 11,
+    xticks: [0, 0.5, 1, 1.5, 2, 2.5, 3],
+    yticks: [-10, -5, 0, 5, 10],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var n = lastSim.vin.length;
+      if (!n) return [{ text: "—" }];
+      var i = Math.max(0, Math.min(n - 1, Math.round((x / 3) * (n - 1))));
+      var tUs = (x / slew.f) * 1e6;
+      return [
+        { text: "t = " + (tUs >= 100 ? tUs.toFixed(0) : tUs.toFixed(1)) + " µs" },
+        { color: "--muted", text: "asked: " + lastSim.vin[i].toFixed(2) + " V" },
+        { color: "--series-1", text: "delivered: " + lastSim.vout[i].toFixed(2) + " V" }
+      ];
+    }
+  });
+
+  function drawSlew() {
+    var a = state.amp;
+    var f = slew.f, A = slew.A;
+    var fc = a.GBW / state.G;            // small-signal corner from widget 1's gain
+    var SR = a.SR;                        // V/s
+
+    /* Stage 1 — linear bandwidth limit (single pole at fc), exact steady state */
+    var x = f / fc;
+    var aBW = A / Math.sqrt(1 + x * x);
+    var ph  = -Math.atan(x);
+
+    /* Stage 2 — per-sample rate limiter: dv/dt clamped to ±SR.
+       4 warm-up cycles reach steady state before the 3 displayed cycles. */
+    var N = 1200, CYCLES = 3, WARM = 4;
+    var T = 1 / f, dt = (CYCLES * T) / N;
+    var maxStep = SR * dt;
+    var v = 0;
+    var inPts = [], outPts = [], vin = [], vout = [];
+    var totalSteps = Math.round((WARM + CYCLES) * T / dt);
+    var warmSteps = Math.round(WARM * T / dt);
+    for (var i = 0; i <= totalSteps; i++) {
+      var t = i * dt;
+      var target = aBW * Math.sin(2 * Math.PI * f * t + ph);
+      var dv = target - v;
+      if (dv > maxStep) dv = maxStep;
+      if (dv < -maxStep) dv = -maxStep;
+      v += dv;
+      if (i >= warmSteps) {
+        var cyc = (t - WARM * T) / T;
+        var asked = A * Math.sin(2 * Math.PI * f * t);
+        inPts.push([cyc, asked]);
+        outPts.push([cyc, v]);
+        vin.push(asked);
+        vout.push(v);
+      }
+    }
+    lastSim = { vin: vin, vout: vout };
+
+    slewPlot.draw([
+      { pts: inPts, color: "--muted", width: 1.2, dash: [4, 4] },
+      { pts: outPts, color: "--series-1", width: 2.4 }
+    ]);
+
+    var peak = 0;
+    for (var j = 0; j < vout.length; j++) peak = Math.max(peak, Math.abs(vout[j]));
+    var fmax = SR / (2 * Math.PI * A);
+
+    fcRead.innerHTML   = HH.fmt(fc, "Hz");
+    fmaxRead.innerHTML = HH.fmt(fmax, "Hz");
+    ampRead.innerHTML  = HH.fmt(peak, "V") + "<small> of " + HH.fmt(A, "V") + " asked</small>";
+
+    /* Which limit is active? Slew wins if even the bandwidth-limited sine
+       demands more than SR at its steepest point (2πf·aBW > SR). */
+    var slewLimited = 2 * Math.PI * f * aBW > SR;
+    var bwLimited = aBW < 0.95 * A;
+    var msg, color;
+    if (slewLimited) {
+      msg = "SLEW-LIMITED (triangles!) — the output ramps at ±" + fmtSR(SR) +
+        " no matter what the input does. This is distortion, not attenuation: harmonics are " +
+        "being created. Reduce amplitude or frequency, or pick a faster part.";
+      color = "var(--critical)";
+    } else if (bwLimited) {
+      msg = "Bandwidth-limited — still a clean sine, but smaller and phase-lagged: f is near or " +
+        "past f_c = GBW/G = " + HH.fmt(fc, "Hz") + ". Lower the gain in the widget above (watch " +
+        "f_c climb) or choose a higher-GBW part.";
+      color = "var(--series-6)";
+    } else {
+      msg = "Clean — f is well below both f_c (" + HH.fmt(fc, "Hz") + ") and f_max (" +
+        HH.fmt(fmax, "Hz") + "); the delivered sine overlays the request. The golden rules hold " +
+        "here… until you push either slider.";
+      color = "var(--good-text)";
+    }
+    slewCaption.textContent = msg;
+    slewCaption.style.color = color;
+  }
+
+  HH.slider("slew-f", {
+    log: true,
+    format: function (f) { return HH.fmt(f, "Hz"); },
+    onchange: function (f) { slew.f = f; drawSlew(); }
+  });
+  HH.slider("slew-a", {
+    format: function (a) { return a.toFixed(1) + " V"; },
+    onchange: function (a) { slew.A = a; drawSlew(); }
+  });
+
+  updateBudget();
+  drawSlew();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "An op-amp with V<sub>os</sub> = 2 mV is wired for a noise gain of 100, inputs grounded. What DC voltage appears at the output?",
+      opts: ["2 mV", "20 mV", "0.2 V", "Zero — feedback servos it out"],
+      answer: 2,
+      expl: "The offset battery sits in series with an input, so the feedback loop amplifies it like any input signal: 2 mV × 100 = 0.2 V of output, with nothing connected. Feedback cannot remove it — the loop can't distinguish V<sub>os</sub> from signal. This is why gain-of-5 circuits never notice offset and gain-of-1000 circuits are ruled by it."
+    },
+    {
+      q: "You're amplifying a pH probe with 10 MΩ of source resistance. Why insist on a FET-input op-amp?",
+      opts: [
+        "FET inputs have lower offset voltage",
+        "A BJT's ~80 nA bias through 10 MΩ makes ~0.8 V of phantom input; a FET's picoamps make microvolts",
+        "FET inputs have higher gain-bandwidth product",
+        "BJT inputs would load the probe's AC impedance"
+      ],
+      answer: 1,
+      expl: "I·R at the input: 80 nA × 10 MΩ = 0.8 V of error before any signal arrives — hopeless, since the whole pH scale spans a few hundred millivolts. A 50 pA JFET input makes 0.5 mV; a 1 pA CMOS input, 10 µV. FET inputs usually have <em>worse</em> V<sub>os</sub> than precision bipolars — you trade offset for bias current, and at 10 MΩ of source impedance bias current is the only line item that matters."
+    },
+    {
+      q: "A gain-of-50 non-inverting amplifier is built on an op-amp with 1 MHz GBW. Its −3 dB bandwidth is about:",
+      opts: ["1 MHz", "50 kHz", "20 kHz", "500 kHz"],
+      answer: 2,
+      expl: "GBW / noise gain = 1 MHz / 50 = 20 kHz. On the 6 dB/octave open-loop slope, gain × frequency is constant, and your closed-loop response corners where your gain line meets that slope. The part is 'a 1 MHz op-amp' only at gain 1 — the eternal surprise, now un-surprising."
+    },
+    {
+      q: "At roughly what frequency does a 0.5 V/µs op-amp start slew-distorting a 10 Vpp sine?",
+      opts: ["159 kHz", "1 MHz", "16 kHz", "80 kHz"],
+      answer: 2,
+      expl: "f<sub>max</sub> = SR/(2πA) with A = 5 V (amplitude, half of 10 Vpp): 0.5×10⁶ / (2π×5) ≈ 15.9 kHz. The steepest slope of the sine, 2πfA, exceeds 0.5 V/µs beyond that, and the tops of the wave shear off into ramps — inside the audio band! At 1 Vpp the same part is clean to ~160 kHz: slew limiting is an amplitude-dependent failure, unlike small-signal bandwidth."
+    },
+    {
+      q: "For a DC bridge amplifier (strain gauge, millivolt output, readings taken over hours), which spec matters most?",
+      opts: [
+        "Gain-bandwidth product",
+        "Slew rate",
+        "V<sub>os</sub> and its temperature drift",
+        "Output current capability"
+      ],
+      answer: 2,
+      expl: "The signal is DC millivolts, so offset adds to it one-for-one — and worse, offset <em>drift</em> masquerades as slow changes in the measurand, exactly what you're trying to observe over hours. Bandwidth and slew are irrelevant at DC; a bridge's source resistance is low (kΩ), taming bias current. This is OP07/chopper territory: each job has one dominant spec, and here it's V<sub>os</sub> and drift."
+    },
+    {
+      q: "The classic resistor from the + input to ground, equal to R<sub>f</sub>∥R<sub>g</sub> — what error does it cancel?",
+      opts: [
+        "Offset voltage",
+        "The error from bias current — leaving only the smaller offset-current error",
+        "Offset current",
+        "Common-mode error from finite CMRR"
+      ],
+      answer: 1,
+      expl: "With equal resistance at both inputs, the two (nearly equal) bias currents drop nearly equal voltages, which the amp sees as common-mode and ignores. What survives is the <em>mismatch</em> between the two bias currents — the offset current I<sub>os</sub>, typically 5–10× smaller. It does nothing for V<sub>os</sub>, which is a voltage mismatch, not a current. (And with pA FET inputs the trick is pointless — the resistor mostly adds noise.)"
+    },
+    {
+      q: "Why do H&amp;H warn against designing to the datasheet's “typical” column?",
+      opts: [
+        "Typical values are measured at an unrealistic temperature",
+        "Typical describes the average part; only “max” is guaranteed — a design needing typical luck fails unit by unit in production",
+        "Typical values are only valid at unity gain",
+        "The typical column ignores supply-voltage effects"
+      ],
+      answer: 1,
+      expl: "“Typical” is a statistical brag — the center of the distribution, promised to no one. “Max” (or min) is the number the manufacturer will stand behind for every unit shipped. Your prototype may draw a typical part; the production run will draw the whole distribution, and the worst-case units define your yield. Error-budget to max, and treat typ as marketing — because it is."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

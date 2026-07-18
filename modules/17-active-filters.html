@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>17 · Active Filters — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part III · Module 17</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Active Filters</h1>
+  <p class="subtitle">One op-amp, two resistors and two capacitors buy you what no RC ladder can:
+  a filter with a genuinely sharp corner — and a new personality knob called Q that decides
+  whether it settles politely or rings like a struck bell. <em>AoE 3rd ed. Ch. 6.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Module&nbsp;05's RC filter is a lovely thing, but it rolls off at a polite
+6&nbsp;dB/octave and it sags near the corner — at f<sub>3dB</sub> the signal you meant to keep
+is already down 30%. Need a steeper skirt? Your first instinct — stack several RC sections in a
+row — runs straight into Module&nbsp;02: each stage <em>loads</em> the one before it, dragging
+corners around and blunting the very knee you were trying to sharpen. An op-amp fixes both
+problems at once. Its buffering makes cascaded stages truly independent, so their dB simply add;
+and — the deeper trick — a little positive feedback lets two capacitors conspire to produce a
+response no passive RC network can make at all: flat right up to the corner, then down like a
+cliff. No inductors, no loading, stages that snap together like bricks. This is how every
+anti-aliasing filter in front of an ADC and every serious audio filter is actually built.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p><strong>Why second order changes the game.</strong> One energy-storage element (one
+  capacitor) gives a first-order response: a single real pole, a gentle exponential personality,
+  6&nbsp;dB/octave, no drama possible. Add a <em>second</em> storage element and energy can now
+  slosh back and forth between the two — the circuit acquires a natural frequency and, with it,
+  the possibility of <em>resonance</em>. Mathematically the two poles can leave the real axis and
+  become a <strong>complex pair</strong>; physically, the circuit can overshoot and oscillate on
+  its way to equilibrium, like a mass bouncing on a spring.</p>
+  <p><strong>Q is the knob that sets how much slosh.</strong> Low Q means heavy damping: energy
+  transferred between the caps is mostly lost each cycle and the response droops early. High Q
+  means the exchange is efficient: the filter <em>peaks</em> near the corner — gain above unity
+  from a passive-looking network! — before falling. Tuned just right
+  (Q&nbsp;=&nbsp;0.707), the peak exactly cancels the droop and the passband comes out maximally
+  flat.</p>
+  <p><strong>The op-amp's role is subtle and beautiful.</strong> Two RC sections in a passive
+  ladder always give two boring real poles — the resistors damp everything and the response is
+  mushier than even a single RC near its corner. The op-amp <em>bootstraps</em> one capacitor:
+  instead of tying it to ground, the amplifier drives its far end with a copy of the output, so
+  the cap feeds energy back into the network at just the right phase to imitate an inductor's
+  resonance. That positive feedback is what pushes the poles off the real axis and makes them
+  complex. Its second job is mundane but essential: the low-impedance output buffers each stage
+  from the next, so sections cascade without loading (Module&nbsp;02's ten-to-one rule becomes
+  irrelevant — the op-amp gives you ten-thousand-to-one for free).</p>
+</div>
+
+<h2>Reviewing the slope zoo</h2>
+<p>Vocabulary first. A filter's <strong>order</strong> is the number of poles — loosely, the
+number of energy-storage elements doing real work. Each pole contributes 6&nbsp;dB/octave
+(20&nbsp;dB/decade) of ultimate rolloff:</p>
+<div class="formula">
+  ultimate slope = N × 6 dB/octave = N × 20 dB/decade
+  <small>N poles; a 4th-order filter falls 24 dB/octave far past the corner</small>
+</div>
+<p>So why not just chain four passive RCs and call it fourth order? You can — the ultimate slope
+really is 24&nbsp;dB/octave — but the knee is a disaster. Each section's R loads the previous
+section's C (the divider isn't driving an open circuit anymore), the corners smear apart, and the
+region near f<sub>3dB</sub> becomes a long, droopy shoulder: at the nominal corner a chain of
+four identical RCs is down about 10&nbsp;dB, not 3. Buffer between the sections, though, and each
+one sees an ideal source and an open-circuit load: the responses multiply exactly, the dB add
+exactly, and — with the resonance trick below — you can even shape each section's knee so the
+<em>combination</em> comes out flat. That's the whole active-filter recipe: buffered second-order
+sections, cascaded.</p>
+
+<h2>The Sallen-Key low-pass</h2>
+<p>The workhorse topology, and the gentlest introduction. Take two equal resistors in series,
+two equal capacitors, and an amplifier of gain K (an op-amp with a resistive gain network — or a
+bare wire for K&nbsp;=&nbsp;1). The second capacitor goes to ground, as in any RC low-pass. The
+first capacitor is the trick: it does <em>not</em> go to ground — it goes to the
+<strong>output</strong>. Near the corner, the amplifier drives that capacitor's bottom plate up
+and down in sympathy with the signal, canceling part of the current that would otherwise leak
+away through it — positive feedback, strongest right at the corner, weaker above and below.
+Working the node equations (do it once in your life — two nodes, Module&nbsp;02 algebra) gives,
+for the equal-component version:</p>
+<div class="formula">
+  f<sub>c</sub> = 1 / (2πRC) &nbsp;&nbsp;&nbsp;&nbsp; Q = 1 / (3 − K)
+  <small>equal-component Sallen-Key: corner set by RC, Q set purely by the amplifier gain K</small>
+</div>
+<p>Read that Q formula like a story. <strong>K&nbsp;=&nbsp;1</strong> (unity-gain follower):
+Q&nbsp;=&nbsp;0.5, two coincident real poles, the sluggish over-damped case.
+<strong>K&nbsp;=&nbsp;1.586</strong>: Q&nbsp;=&nbsp;0.707 — the magic Butterworth value, maximally
+flat. Push on: <strong>K&nbsp;=&nbsp;2.5</strong> gives Q&nbsp;=&nbsp;2 and a visible resonant
+peak. And as <strong>K&nbsp;→&nbsp;3</strong> the denominator goes to zero, Q&nbsp;→&nbsp;∞: the
+positive feedback fully replaces the losses and the circuit stops being a filter and becomes an
+<em>oscillator</em>. A filter and an oscillator are the same circuit with the damping knob at
+different settings — one of electronics' great punchlines, and Chapter&nbsp;7's opening act.</p>
+
+<h2>The response families</h2>
+<p>Once you can place complex poles anywhere, <em>where should you put them?</em> There is no
+single best answer — only trade-offs, and three classic compromises with names you'll see on
+every filter datasheet:</p>
+<p><strong>Butterworth</strong> (maximally flat): poles placed so the passband is as flat as
+mathematics allows — every derivative of the response that can be zeroed at DC, is. For a
+2nd-order section that means Q&nbsp;=&nbsp;0.707. No ripple, a clean −3&nbsp;dB at the corner, a
+decent knee. The default choice when you care about amplitude accuracy across the passband —
+which is to say, the default choice.</p>
+<p><strong>Bessel</strong> (maximally flat <em>delay</em>): poles placed to keep the time delay
+equal at all passband frequencies, so a waveform's components arrive together and its <em>shape</em>
+survives. Q&nbsp;≈&nbsp;0.58 for 2nd order. The frequency-domain knee is noticeably softer than
+Butterworth's — that's the price — but a step passes through with barely 0.5% overshoot. Choose
+it for pulses, square waves, and anything a scope will look at.</p>
+<p><strong>Chebyshev</strong> (sharpest knee, with ripple): give up passband flatness — allow the
+response to ripple up and down by a specified amount (0.5&nbsp;dB, 1&nbsp;dB…) — and in exchange
+the response dives past the corner dramatically faster. Section Qs run higher than Butterworth's,
+so it also rings harder in the time domain. Choose it when the stopband spec is brutal and the
+passband can tolerate some waviness.</p>
+<p>One family, one priority: Butterworth flattest passband, Bessel best waveforms, Chebyshev
+steepest skirt. You cannot have all three — pole placement is a budget, and each family spends it
+differently. For any 2nd-order low-pass, the whole magnitude story is one formula:</p>
+<div class="formula">
+  |H(f)| = 1 / √( (1 − x²)² + x²/Q² ) &nbsp;&nbsp; with &nbsp; x = f/f<sub>c</sub>
+  <small>2nd-order low-pass magnitude; sanity check: at x = 1 it collapses to |H| = Q exactly</small>
+</div>
+<p>Check the landmarks: at x&nbsp;≪&nbsp;1, |H|&nbsp;→&nbsp;1. At x&nbsp;≫&nbsp;1,
+|H|&nbsp;→&nbsp;1/x² — there's the 12&nbsp;dB/octave. And at x&nbsp;=&nbsp;1 exactly,
+|H|&nbsp;=&nbsp;Q: a Q&nbsp;=&nbsp;3 filter is +9.5&nbsp;dB <em>up</em> at its own corner, while
+Butterworth's Q&nbsp;=&nbsp;0.707 lands precisely on −3&nbsp;dB. The corner gain <em>is</em> the
+Q — worth tattooing somewhere.</p>
+
+<h2>Cascading to higher order</h2>
+<p>Need more than 12&nbsp;dB/octave? Don't crank Q — cascade. An N-th-order filter factors into
+N/2 second-order sections (plus one first-order section if N is odd), each buffered by its own
+op-amp so nothing loads anything. The crucial subtlety: the sections are <strong>not</strong>
+identical. A 4th-order Butterworth is <em>not</em> two 2nd-order Butterworths in a row — that
+would droop −6&nbsp;dB at the corner. Instead the standard tables prescribe one low-Q section and
+one peaking section whose bump exactly fills the other's sag:</p>
+<div class="formula">
+  4th-order Butterworth = section at Q = 0.541 × section at Q = 1.307
+  <small>same f<sub>c</sub> for both; the product is exactly 1/√(1 + x⁸) — flat, then 24 dB/octave</small>
+</div>
+<p>(Those Qs are just geometry: Butterworth poles sit on a circle at 22.5° and 67.5° from the
+axis, and Q&nbsp;=&nbsp;1/(2&nbsp;cos&nbsp;θ) gives 0.541 and 1.307.) Because each section is
+buffered, you build them independently, verify them independently, and multiply — the frequency
+domain's reward for the op-amp's isolation. Every filter handbook tabulates section Qs (and, for
+Chebyshev, per-section corner shifts) for any order and family; your job is only to pick the row
+and turn each line of the table into one Sallen-Key stage.</p>
+
+<h2>High-pass and band-pass</h2>
+<p><strong>High-pass:</strong> swap every R for a C and every C for an R. That's the entire
+recipe. The series elements become capacitors (blocking DC, as a high-pass must), the bootstrap
+element becomes a resistor, and the same formulas hold with the response mirrored:
+f<sub>c</sub>&nbsp;=&nbsp;1/(2πRC), Q&nbsp;=&nbsp;1/(3&nbsp;−&nbsp;K) for the equal-component
+version, magnitude |H|&nbsp;=&nbsp;x²/√((1−x²)²&nbsp;+&nbsp;x²/Q²). Module&nbsp;05's
+"where's the cap?" reflex still works: caps in series with the signal path — it's a high-pass.</p>
+<p><strong>Band-pass:</strong> the pedestrian route is a high-pass cascaded with a low-pass —
+perfectly respectable when the band is wide (corners a decade apart, say). For narrow bands you
+want a single resonant section with its center frequency and Q set independently; the clean way
+is the <strong>state-variable filter</strong> (AoE §6.3.3) — three op-amps wired as two
+integrators in a loop, which hands you low-pass, high-pass, <em>and</em> band-pass outputs
+simultaneously, with Q adjustable by a single resistor and far less component sensitivity than a
+high-Q Sallen-Key. When a design needs Q above ~3, reach for it.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>6 dB/octave per pole</strong> — count poles, know the ultimate slope. The knee is
+        the family's business; the slope is the order's.</li>
+    <li><strong>Butterworth for frequency-domain flatness, Bessel for waveform fidelity,
+        Chebyshev when the knee matters more than ripple.</strong> Pick the priority first, the
+        family follows.</li>
+    <li><strong>Q &gt; 0.707 peaks before it rolls</strong> — in the frequency domain a bump at
+        the corner, in the time domain overshoot and ringing. The two are the same fact.</li>
+    <li><strong>The op-amp must be boringly ideal at your corner:</strong> gain-bandwidth
+        product at least ~20 × f<sub>c</sub>·Q, or the amp's own phase lag shifts your poles and
+        your carefully chosen Q isn't what you built (Module&nbsp;18 makes this quantitative).</li>
+    <li><strong>1% resistors and NP0/C0G or film capacitors.</strong> The corner is only as
+        accurate as RC, and Q is only as stable as the gain network; ±10% ceramics that drift with
+        temperature and voltage make "precision filter" a contradiction.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Car-suspension analogy</span>
+  <p>A car's suspension — springs plus the car's mass — is a genuine 2nd-order system, and
+  <strong>Q is the shock absorbers</strong>:</p>
+  <ul>
+    <li><strong>Worn shocks = high Q.</strong> Push down on the fender and the car bounces
+    several times: a resonant peak. On the road, any bump near the resonant frequency gets
+    <em>amplified</em> — the boat-like wallow of a car overdue for new dampers.</li>
+    <li><strong>Overdamped = low Q (0.5 and below).</strong> Rock-hard shocks: no bounce ever,
+    but the body takes ages to return to level and the ride is sluggish and sloshy. Filters do
+    the same — a Q&nbsp;=&nbsp;0.5 section creeps to its final value.</li>
+    <li><strong>Critically damped-ish ≈ Butterworth "just right".</strong> One barely-there
+    overshoot, quick settling, comfortable — the tuning most passenger cars aim near.</li>
+    <li><strong>A pothole is a step input.</strong> Bessel is the limousine tuning: the shape of
+    the road insult is absorbed with almost no aftermath. Chebyshev is the track car: brutally
+    flat cornering (a razor knee) at the cost of rattling your teeth on every expansion joint
+    (ripple and ringing).</li>
+  </ul>
+  <p>Where the analogy fails: a suspension is one mechanical degree of freedom with one damping
+  knob, but filter families differ in pole <em>placement</em> — Bessel vs Chebyshev is not just
+  "more or less damping," it's a different geometric arrangement of poles, section by section.
+  And nothing mechanical mirrors the op-amp's bootstrapping trick: no spring in your car feeds a
+  scaled copy of the body's motion back under the wheels. (Active suspension comes close — and
+  is, fittingly, also built around amplifiers.)</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the Sallen-Key playground</div>
+  <div class="widget-hint">The equal-component Sallen-Key low-pass, live. One slider sets the
+  corner (it drives R, with C fixed at 10&nbsp;nF); the other sets Q (it drives the amplifier
+  gain K&nbsp;=&nbsp;3&nbsp;−&nbsp;1/Q). Blue: the 2nd-order response (normalized to its passband
+  gain, so families compare fairly). Dashed grey: a single passive RC at the same corner — the
+  Module&nbsp;05 filter this module retires. The dot marks the corner-frequency gain, which
+  equals Q exactly. Hover to read both curves.</div>
+
+  <div class="viz-row">
+    <svg id="sk-sch" class="schematic" viewBox="0 0 400 232" width="400" height="232" role="img"
+         aria-label="Equal-component Sallen-Key low-pass: two series resistors, capacitor to output, capacitor to ground, amplifier of gain K">
+      <!-- input source -->
+      <circle cx="34" cy="92" r="14" class="comp"/>
+      <path class="comp" d="M 25 92 q 4.5 -8 9 0 q 4.5 8 9 0"/>
+      <text x="16" y="124" class="lbl big">Vin</text>
+      <path class="wire" d="M 34 78 L 34 60 L 64 60"/>
+      <!-- R1 -->
+      <path class="comp" d="M 64 60 l 3 0 l 3 -8 l 7 16 l 7 -16 l 7 16 l 7 -16 l 7 16 l 3 -8 l 3 0"/>
+      <text x="72" y="42" class="lbl big" id="sk-r1-lbl">10 kΩ</text>
+      <path class="wire" d="M 111 60 L 140 60"/>
+      <circle cx="140" cy="60" r="3.2" class="node"/>
+      <!-- R2 -->
+      <path class="wire" d="M 140 60 L 148 60"/>
+      <path class="comp" d="M 148 60 l 3 0 l 3 -8 l 7 16 l 7 -16 l 7 16 l 7 -16 l 7 16 l 3 -8 l 3 0"/>
+      <text x="156" y="42" class="lbl big" id="sk-r2-lbl">10 kΩ</text>
+      <path class="wire" d="M 195 60 L 224 60"/>
+      <circle cx="224" cy="60" r="3.2" class="node"/>
+      <!-- amp triangle, + input at y=60 -->
+      <path class="comp" d="M 248 44 L 248 96 L 302 70 Z"/>
+      <text x="253" y="64" class="lbl">+</text>
+      <text x="253" y="90" class="lbl">−</text>
+      <text x="264" y="74" class="lbl big" id="sk-k-lbl">×1.59</text>
+      <path class="wire" d="M 224 60 L 248 60"/>
+      <path class="wire" d="M 302 70 L 366 70"/>
+      <circle cx="330" cy="70" r="3.2" class="node"/>
+      <text x="368" y="74" class="lbl big">Vout</text>
+      <!-- C1 bootstrap: node1 up, across, down to output -->
+      <path class="wire" d="M 140 60 L 140 20 L 214 20"/>
+      <line x1="214" y1="10" x2="214" y2="30" class="comp" stroke-width="3"/>
+      <line x1="223" y1="10" x2="223" y2="30" class="comp" stroke-width="3"/>
+      <path class="wire" d="M 223 20 L 330 20 L 330 70"/>
+      <text x="196" y="8" class="lbl big" id="sk-c1-lbl">10 nF</text>
+      <text x="240" y="24" class="lbl">to output!</text>
+      <!-- C2 to ground -->
+      <path class="wire" d="M 224 60 L 224 96"/>
+      <line x1="208" y1="96" x2="240" y2="96" class="comp" stroke-width="3"/>
+      <line x1="208" y1="105" x2="240" y2="105" class="comp" stroke-width="3"/>
+      <path class="wire" d="M 224 105 L 224 122"/>
+      <path class="gnd" d="M 214 122 L 234 122 M 218 127 L 230 127 M 222 132 L 226 132"/>
+      <text x="246" y="106" class="lbl big" id="sk-c2-lbl">10 nF</text>
+      <!-- gain network: Rf from output down to minus node, Rg to ground -->
+      <path class="wire" d="M 248 84 L 232 84 L 232 160 L 254 160"/>
+      <circle cx="232" cy="160" r="3.2" class="node"/>
+      <!-- Rf horizontal from 254..300 at y=160, then up to output -->
+      <path class="comp" d="M 254 160 l 3 0 l 3 -8 l 7 16 l 7 -16 l 7 16 l 7 -16 l 7 16 l 3 -8 l 3 0"/>
+      <path class="wire" d="M 301 160 L 330 160 L 330 70"/>
+      <text x="258" y="182" class="lbl" id="sk-rf-lbl">Rf</text>
+      <!-- Rg vertical from minus node down to ground -->
+      <path class="comp" d="M 232 160 l 0 3 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 3 l 0 3"/>
+      <path class="wire" d="M 232 207 L 232 214"/>
+      <path class="gnd" d="M 222 214 L 242 214 M 226 219 L 238 219 M 230 224 L 234 224"/>
+      <text x="204" y="192" class="lbl" id="sk-rg-lbl">Rg</text>
+      <text x="140" y="196" class="lbl">K = 1 + Rf/Rg</text>
+      <text x="140" y="212" class="lbl">sets Q = 1/(3−K)</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="sk-fc">Corner f<sub>c</sub> = 1/(2πRC) <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^5  (100 Hz .. 100 kHz) -->
+          <input type="range" id="sk-fc" min="2" max="5" step="0.01" value="3">
+        </div>
+        <div class="control">
+          <label for="sk-q">Q (via gain K = 3 − 1/Q) <span class="val"></span></label>
+          <input type="range" id="sk-q" min="0.5" max="3" step="0.01" value="0.71">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">R (both, C = 10 nF)</div><div class="v" id="sk-r-read">—</div></div>
+        <div class="readout"><div class="k">Amplifier gain K</div><div class="v" id="sk-k-read">—</div></div>
+        <div class="readout"><div class="k">Gain at f<sub>c</sub> (= Q)</div><div class="v" id="sk-gfc-read">—</div></div>
+      </div>
+      <p class="widget-hint" id="sk-warning" style="margin-top:10px"></p>
+    </div>
+  </div>
+  <canvas id="sk-plot" class="hh-plot" data-height="320"></canvas>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: step response — what Q feels like</div>
+  <div class="widget-hint">The same 2nd-order low-pass, hit with a voltage step — the frequency
+  domain's peak becomes the time domain's ringing. Time is measured in periods of
+  f<sub>c</sub> so one curve serves every corner frequency; the dashed line is the final value.
+  The Q slider is the same knob as in the playground above — they move together.</div>
+  <div class="controls">
+    <div class="control" style="max-width:440px; margin:0 auto">
+      <label for="step-q">Q <span class="val"></span></label>
+      <input type="range" id="step-q" min="0.5" max="3" step="0.01" value="0.71">
+    </div>
+  </div>
+  <canvas id="step-plot" class="hh-plot" data-height="300"></canvas>
+  <div class="readouts">
+    <div class="readout"><div class="k">Damping ζ = 1/(2Q)</div><div class="v" id="step-zeta">—</div></div>
+    <div class="readout"><div class="k">Overshoot</div><div class="v" id="step-os">—</div></div>
+  </div>
+  <p class="widget-hint" id="step-caption" style="margin-top:10px"></p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the corner formula. The filter tables can wait — everything here is
+2nd order (with one optional upgrade). Check the box when you've verified against the
+solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — anti-aliasing for an ADC</label>
+  </div>
+  <p>An ADC samples at 100&nbsp;kHz; your signal band is DC–10&nbsp;kHz. Anything above the
+  50&nbsp;kHz Nyquist frequency will alias irreversibly into the band, so it must be attenuated
+  <em>before</em> sampling. Design a 2nd-order Butterworth Sallen-Key low-pass with
+  f<sub>c</sub>&nbsp;=&nbsp;15&nbsp;kHz (comfortably above the signal, comfortably below
+  Nyquist). Use the equal-component topology with C&nbsp;=&nbsp;1&nbsp;nF: find R, pick the
+  standard value, then compute the actual attenuation at 50&nbsp;kHz and decide honestly whether
+  one section is enough.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Values.</strong> R&nbsp;=&nbsp;1/(2πf<sub>c</sub>C)&nbsp;=&nbsp;1/(2π&nbsp;×&nbsp;15&nbsp;kHz&nbsp;×&nbsp;1&nbsp;nF)&nbsp;≈&nbsp;<strong>10.6&nbsp;kΩ</strong>.
+      Nearest common value 10&nbsp;kΩ moves the corner to
+      f<sub>c</sub>&nbsp;=&nbsp;1/(2π&nbsp;×&nbsp;10&nbsp;kΩ&nbsp;×&nbsp;1&nbsp;nF)&nbsp;≈&nbsp;<strong>15.9&nbsp;kHz</strong> —
+      the corner moved <em>up</em>, which costs stopband, so check the numbers again rather than
+      assuming. Butterworth Q&nbsp;=&nbsp;0.707 needs K&nbsp;=&nbsp;1.586: Rg&nbsp;=&nbsp;10&nbsp;kΩ,
+      Rf&nbsp;=&nbsp;5.9&nbsp;kΩ (K&nbsp;=&nbsp;1.59, Q&nbsp;=&nbsp;0.709 — close enough).</p>
+      <p><strong>At 50 kHz:</strong> x&nbsp;=&nbsp;50/15.9&nbsp;=&nbsp;3.14. Far past the corner
+      |H|&nbsp;≈&nbsp;1/x²&nbsp;=&nbsp;0.101; the exact formula gives
+      1/√((1−9.87)²&nbsp;+&nbsp;9.87/0.5)&nbsp;=&nbsp;0.101 too — <strong>−19.9&nbsp;dB</strong>.
+      Passband check: at 10&nbsp;kHz, x&nbsp;=&nbsp;0.63, |H|&nbsp;=&nbsp;0.93 → −0.63&nbsp;dB of
+      droop. Acceptable for most sensors; calibrate it out if it isn't.</p>
+      <p><strong>Is −20 dB enough?</strong> That's ×0.10 — an aliased interferer is knocked down
+      only tenfold. Fine if the spectrum above 50&nbsp;kHz is already quiet; feeble for a 12-bit
+      ADC in a noisy environment. The upgrade costs one more op-amp: a <strong>4th-order
+      Butterworth</strong> — two cascaded sections at the same corner with Q&nbsp;=&nbsp;0.541 and
+      Q&nbsp;=&nbsp;1.307 — reaches <strong>−39.8&nbsp;dB</strong> at 50&nbsp;kHz (×0.01) with the
+      10&nbsp;kHz droop <em>improving</em> to −0.10&nbsp;dB. That double win — steeper skirt
+      <em>and</em> flatter passband — is exactly why cascaded active sections beat any amount of
+      passive cleverness.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — the rumble filter, revisited</label>
+  </div>
+  <p>Module&nbsp;05's Task&nbsp;1 built a 20&nbsp;Hz high-pass rumble filter from one capacitor
+  and the next stage's 47&nbsp;kΩ input — and admitted its 6&nbsp;dB/octave skirt was "lazy."
+  Upgrade it: a 2nd-order Butterworth Sallen-Key <em>high-pass</em> at
+  f<sub>c</sub>&nbsp;=&nbsp;20&nbsp;Hz. Describe the topology swap, pick equal-component values
+  using C&nbsp;=&nbsp;470&nbsp;nF, and compare rejection at 5&nbsp;Hz (deep rumble) against the
+  old single RC.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Topology.</strong> Take the Sallen-Key low-pass and swap every R for a C and
+      every C for an R: two 470&nbsp;nF capacitors now sit in series with the signal (blocking
+      DC — a high-pass must), the bootstrap element becomes a resistor to the output, and the
+      shunt element a resistor to ground. Same formulas, mirrored response.</p>
+      <p><strong>Values.</strong> R&nbsp;=&nbsp;1/(2πf<sub>c</sub>C)&nbsp;=&nbsp;1/(2π&nbsp;×&nbsp;20&nbsp;×&nbsp;470&nbsp;nF)&nbsp;≈&nbsp;16.9&nbsp;kΩ —
+      an E96 value that exists, giving f<sub>c</sub>&nbsp;=&nbsp;20.0&nbsp;Hz on the nose. Gain
+      network as before: Rg&nbsp;=&nbsp;10&nbsp;kΩ, Rf&nbsp;=&nbsp;5.9&nbsp;kΩ for
+      K&nbsp;=&nbsp;1.59, Q&nbsp;≈&nbsp;0.71. Note the passband now has gain 1.59 (+4&nbsp;dB) —
+      budget for it downstream, or trim it out; the unity-gain variant with a 2:1 resistor ratio
+      avoids it at the cost of unequal values. Use film capacitors: 470&nbsp;nF of ordinary
+      high-K ceramic would drift the corner audibly.</p>
+      <p><strong>At 5 Hz</strong> (x&nbsp;=&nbsp;0.25): the old single RC gives
+      x/√(1+x²)&nbsp;=&nbsp;0.243 → <strong>−12.3&nbsp;dB</strong>. The 2nd-order Butterworth
+      gives x²/√((1−x²)²&nbsp;+&nbsp;2x²)&nbsp;=&nbsp;0.0623 → <strong>−24.1&nbsp;dB</strong> —
+      four times less cone-flapping rumble voltage, while 20&nbsp;Hz program material sits at the
+      same −3&nbsp;dB as before and 40&nbsp;Hz is now <em>flatter</em> than the old filter left
+      it (the Butterworth knee is squarer on both sides). Steeper skirt, better passband:
+      the active upgrade in one line.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — diagnose: "my filter rings like a bell"</label>
+  </div>
+  <p>A colleague built an equal-component Sallen-Key designed for Q&nbsp;=&nbsp;2 (a deliberately
+  peaky response, K&nbsp;=&nbsp;2.5 from a gain network of 5% resistors). It works — but every
+  transient makes the output ring for many cycles, far worse than the 44% overshoot the design
+  predicted. Boards vary: some ring viciously, a few are nearly fine. What's going on, and what
+  are the fixes?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The culprit is Q&nbsp;=&nbsp;1/(3&nbsp;−&nbsp;K) itself.</strong> Differentiate
+      it: dQ/dK&nbsp;=&nbsp;Q². Sensitivity grows as the <em>square</em> of Q — at Q&nbsp;=&nbsp;2, a
+      1% shift in K moves Q by 4%; near K&nbsp;=&nbsp;3 the formula is a cliff edge. With 5%
+      resistors setting K&nbsp;=&nbsp;1&nbsp;+&nbsp;Rf/Rg, the ratio can land 10% high in the
+      worst case: K&nbsp;=&nbsp;2.66, and Q&nbsp;=&nbsp;1/(3&nbsp;−&nbsp;2.66)&nbsp;≈&nbsp;2.9 —
+      overshoot climbs from 44% to ~59% and the ring-down time stretches in proportion to Q.
+      Board-to-board spread in two cheap resistors explains the lottery. (Had the drift pushed K
+      past 3, the boards would oscillate outright — same cliff, further along.)</p>
+      <p><strong>Fixes, in order of preference.</strong> (1) If the application doesn't truly
+      need Q&nbsp;=&nbsp;2, redesign at Q&nbsp;≤&nbsp;0.707 using the <strong>unity-gain
+      topology</strong>: K&nbsp;=&nbsp;1 is set by a piece of wire — no resistors, no drift, Q
+      determined by a capacitor ratio instead (far gentler sensitivity). (2) If the peaky Q is
+      required, set K with <strong>1% (or 0.1%) resistors</strong>: a ±2% ratio bounds Q between
+      1.9 and 2.1 — the design behaves. (3) For Q much above ~3, abandon Sallen-Key for a
+      state-variable filter, whose Q sensitivity is benign by construction. The meta-lesson:
+      always ask not just "what are the component values?" but "how hard does the circuit
+      punish their tolerances?"</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="16-comparators-schmitt.html"><span class="dir">Previous</span><span class="name">16 · Comparators &amp; Schmitt Triggers</span></a>
+  <a href="18-opamp-imperfections.html"><span class="dir">Next</span><span class="name">18 · Op-Amp Imperfections &amp; Precision Design</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("17");
+
+  /* ---------- shared 2nd-order math ----------
+     Verified with node against the complex transfer function
+     H(s) = 1/(1 + (1/Q)(s/w0) + (s/w0)^2), s = j·2πf:
+       |H_LP| = 1/sqrt((1-x^2)^2 + x^2/Q^2),  x = f/fc
+     and, for the Sallen-Key node equations with equal R, C and gain K:
+       H = K/(1 + (3-K)·sRC + (sRC)^2)  =>  Q = 1/(3-K)  (max diff < 1e-13). */
+  function mag2(x, Q) {
+    var a = 1 - x * x;
+    return 1 / Math.sqrt(a * a + (x * x) / (Q * Q));
+  }
+  function mag1(x) { // 1st-order RC reference at the same corner
+    return 1 / Math.sqrt(1 + x * x);
+  }
+  function dB(g) { return 20 * Math.log10(g); }
+
+  /* Step response of the 2nd-order LP, normalized time u = t·fc (so ω·t = 2π·u).
+     Underdamped (ζ<1): y = 1 − e^{−ζωt}(cos ωd t + ζ/√(1−ζ²)·sin ωd t), ωd = ω√(1−ζ²).
+     Critically damped (ζ=1, i.e. Q=0.5): y = 1 − e^{−ωt}(1 + ωt).
+     Both verified with node against RK4 integration of
+     y'' + (ω/Q)y' + ω²y = ω²  (max diff < 1e-12). */
+  function stepResponse(u, Q) {
+    var z = 1 / (2 * Q);
+    var wt = 2 * Math.PI * u; // ω·t in normalized time
+    if (z >= 0.999999) {
+      return 1 - Math.exp(-wt) * (1 + wt); // critical (Q = 0.5, the slider's floor)
+    }
+    var root = Math.sqrt(1 - z * z);
+    var wdt = wt * root;
+    return 1 - Math.exp(-z * wt) * (Math.cos(wdt) + (z / root) * Math.sin(wdt));
+  }
+  /* Overshoot fraction = e^{−πζ/√(1−ζ²)} — verified against the simulated peak. */
+  function overshoot(Q) {
+    var z = 1 / (2 * Q);
+    if (z >= 0.999999) return 0;
+    return Math.exp(-Math.PI * z / Math.sqrt(1 - z * z));
+  }
+
+  var C_FIXED = 10e-9; // 10 nF, both capacitors
+  var state = { fc: 1000, Q: 0.71 };
+  function Rval() { return 1 / (2 * Math.PI * state.fc * C_FIXED); }
+  function Kval() { return 3 - 1 / state.Q; }
+
+  /* ================= Widget 1: Sallen-Key playground ================= */
+
+  var rRead = document.getElementById("sk-r-read");
+  var kRead = document.getElementById("sk-k-read");
+  var gfcRead = document.getElementById("sk-gfc-read");
+  var skWarning = document.getElementById("sk-warning");
+  var r1Lbl = document.getElementById("sk-r1-lbl");
+  var r2Lbl = document.getElementById("sk-r2-lbl");
+  var kLbl = document.getElementById("sk-k-lbl");
+
+  var FREQ_LBL = ["1", "10", "100", "1k", "10k", "100k", "1M", "10M"];
+  var bodePlot = HH.plot(document.getElementById("sk-plot"), {
+    xlabel: "frequency (Hz, log scale)",
+    ylabel: "gain (dB)",
+    xmin: 0, xmax: 7, ymin: -60, ymax: 15,
+    xticks: [0, 1, 2, 3, 4, 5, 6, 7],
+    yticks: [-60, -50, -40, -30, -20, -10, 0, 10],
+    xfmt: function (v) { return FREQ_LBL[Math.round(v)] || ""; },
+    yfmt: function (v) { return String(v); },
+    hover: function (lx) {
+      var f = Math.pow(10, lx);
+      var x = f / state.fc;
+      var g2 = mag2(x, state.Q), g1 = mag1(x);
+      return [
+        { text: "f = " + HH.fmt(f, "Hz") },
+        { color: "--series-1", text: "2nd order: " + dB(g2).toFixed(1) + " dB  (×" + g2.toFixed(3) + ")" },
+        { color: "--muted", text: "1st-order RC: " + dB(g1).toFixed(1) + " dB" }
+      ];
+    }
+  });
+
+  function refreshBode() {
+    var pts2 = [], pts1 = [];
+    for (var lx = 0; lx <= 7.0001; lx += 0.02) {
+      var x = Math.pow(10, lx) / state.fc;
+      pts2.push([lx, dB(mag2(x, state.Q))]);
+      pts1.push([lx, dB(mag1(x))]);
+    }
+    var lfc = Math.log10(state.fc);
+    bodePlot.draw(
+      [
+        { pts: pts1, color: "--muted", width: 1.4, dash: [4, 4] },
+        { pts: pts2, color: "--series-1", width: 2.5 }
+      ],
+      {
+        vline: lfc,
+        /* At f = fc the linear gain is exactly Q, so the marker sits at 20·log10(Q):
+           −6.0 dB for Q = 0.5, −3.0 dB for 0.707, +9.5 dB for Q = 3 (verified). */
+        markers: [{ x: lfc, y: dB(state.Q), color: "--series-1" }]
+      }
+    );
+
+    var R = Rval(), K = Kval();
+    rRead.innerHTML = HH.fmt(R, "Ω");
+    kRead.innerHTML = K.toFixed(2) + "<small> = 3 − 1/Q</small>";
+    gfcRead.innerHTML = dB(state.Q).toFixed(1) + "<small> dB (×" + state.Q.toFixed(2) + ")</small>";
+    r1Lbl.textContent = HH.fmt(R, "Ω");
+    r2Lbl.textContent = HH.fmt(R, "Ω");
+    kLbl.textContent = "×" + K.toFixed(2);
+
+    if (K >= 3) {
+      skWarning.innerHTML = "⚠️ K ≥ 3: Q is infinite — this is an oscillator, not a filter. " +
+        "The positive feedback now replaces all the damping.";
+      skWarning.style.color = "var(--critical)";
+    } else if (state.Q > 2) {
+      skWarning.innerHTML = "⚠️ Q = " + state.Q.toFixed(2) + ": peaking hard (+" +
+        dB(state.Q).toFixed(1) + " dB at the corner) — expect ringing in the time domain, " +
+        "and note how close K is getting to the K = 3 oscillation cliff.";
+      skWarning.style.color = "var(--critical)";
+    } else if (state.Q > 0.75) {
+      skWarning.textContent = "Q > 0.707: the response peaks above 0 dB before rolling off — " +
+        "compare the bump against the flat Butterworth setting.";
+      skWarning.style.color = "var(--muted)";
+    } else {
+      skWarning.textContent = "Q ≤ 0.707: no peaking. At Q = 0.71 the passband is maximally " +
+        "flat (Butterworth); at Q = 0.5 it droops early like two lazy real poles.";
+      skWarning.style.color = "var(--muted)";
+    }
+  }
+
+  var fcSlider = HH.slider("sk-fc", {
+    log: true,
+    format: function (f) { return HH.fmt(f, "Hz") + "  (R = " + HH.fmt(1 / (2 * Math.PI * f * C_FIXED), "Ω") + ")"; },
+    onchange: function (f) { state.fc = f; refreshBode(); drawStep(); }
+  });
+
+  /* ================= Widget 2: step response ================= */
+
+  var zetaRead = document.getElementById("step-zeta");
+  var osRead = document.getElementById("step-os");
+  var stepCaption = document.getElementById("step-caption");
+  var U_MAX = 4; // plot window: 4 periods of fc
+
+  var stepPlot = HH.plot(document.getElementById("step-plot"), {
+    xlabel: "time (in periods of fc, u = t·fc)",
+    ylabel: "output (× step height)",
+    xmin: 0, xmax: U_MAX, ymin: 0, ymax: 1.8,
+    xticks: [0, 1, 2, 3, 4],
+    yticks: [0, 0.5, 1, 1.5],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (u) {
+      var y = stepResponse(Math.max(0, u), state.Q);
+      return [
+        { text: "t = " + u.toFixed(2) + "/fc = " + HH.fmt(u / state.fc, "s") + " at fc = " + HH.fmt(state.fc, "Hz") },
+        { color: "--series-1", text: "Vout = " + y.toFixed(3) + " of final value" }
+      ];
+    }
+  });
+
+  function drawStep() {
+    var N = 700, pts = [];
+    for (var i = 0; i <= N; i++) {
+      var u = (i / N) * U_MAX;
+      pts.push([u, stepResponse(u, state.Q)]);
+    }
+    stepPlot.draw([
+      { pts: [[0, 1], [U_MAX, 1]], color: "--muted", width: 1.2, dash: [4, 4] },
+      { pts: pts, color: "--series-1", width: 2.4 }
+    ]);
+
+    var z = 1 / (2 * state.Q);
+    var os = overshoot(state.Q);
+    zetaRead.innerHTML = z.toFixed(3) + (z >= 1 ? "<small> critical</small>" : "<small> underdamped</small>");
+    osRead.innerHTML = os < 5e-4
+      ? "0<small> % — no overshoot</small>"
+      : (os * 100).toFixed(1) + "<small> %</small>";
+
+    var cap;
+    if (state.Q <= 0.52) {
+      cap = "Q = 0.5: critically damped — the slowest response that never overshoots. " +
+        "Sluggish, like overdamped shocks; nothing rings, nothing hurries.";
+    } else if (state.Q <= 0.62) {
+      cap = "Q ≈ 0.58 is the Bessel value: barely 0.5% overshoot, the cleanest compromise for " +
+        "preserving pulse shapes — the limousine tuning.";
+    } else if (state.Q <= 0.8) {
+      cap = "Q = 0.707 (Butterworth): one small 4.3% overshoot, quick settling — the price of a " +
+        "maximally flat frequency response, and usually a bargain.";
+    } else if (state.Q <= 1.5) {
+      cap = "Past Q = 0.707 the frequency-domain peak and the time-domain ring grow together — " +
+        "same poles, two views. Q = 1 already overshoots 16%.";
+    } else {
+      cap = "Q = " + state.Q.toFixed(2) + ": " + (os * 100).toFixed(0) + "% overshoot and a long " +
+        "ring-down — roughly Q oscillation cycles before it settles. This is what Chebyshev-style " +
+        "high-Q sections do to every transient; fine for spectra, rough on waveforms.";
+    }
+    stepCaption.textContent = cap;
+  }
+
+  /* Q sliders in both widgets share one state and stay in sync
+     (setting .value refreshes the label without re-firing onchange). */
+  var qSlider1, qSlider2;
+  function setQ(q, from) {
+    state.Q = q;
+    if (from !== 1) qSlider1.value = q;
+    if (from !== 2) qSlider2.value = q;
+    refreshBode();
+    drawStep();
+  }
+  qSlider1 = HH.slider("sk-q", {
+    format: function (q) { return q.toFixed(2) + "  (K = " + (3 - 1 / q).toFixed(2) + ")"; },
+    onchange: function (q) { setQ(q, 1); }
+  });
+  qSlider2 = HH.slider("step-q", {
+    format: function (q) { return q.toFixed(2) + "  (ζ = " + (1 / (2 * q)).toFixed(2) + ")"; },
+    onchange: function (q) { setQ(q, 2); }
+  });
+
+  refreshBode();
+  drawStep();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "Far beyond its corner, how fast does a 4th-order low-pass filter roll off?",
+      opts: [
+        "6 dB per octave — rolloff rate is fixed by physics",
+        "12 dB per octave",
+        "24 dB per octave (80 dB per decade)",
+        "It depends on whether it's Butterworth or Bessel"
+      ],
+      answer: 2,
+      expl: "Each pole contributes 6 dB/octave, so four poles give 24 dB/octave = 80 dB/decade. The family (Butterworth, Bessel, Chebyshev) shapes the <em>knee</em> near the corner; the ultimate slope is set purely by the order. Count the poles, know the slope."
+    },
+    {
+      q: "Why does an active filter of four buffered RC-based sections beat four passive RC sections wired straight together?",
+      opts: [
+        "The op-amps amplify the signal, making the slope steeper",
+        "Each passive section loads the previous one, smearing the corners; buffered sections are independent, so responses multiply exactly — and feedback can even create the complex poles a passive RC chain can't",
+        "Passive RCs generate more thermal noise than op-amps",
+        "Passive filters can't reach 24 dB/octave at any frequency"
+      ],
+      answer: 1,
+      expl: "Two problems, one op-amp. Loading: each passive stage's R works into the next stage's impedance (Module 02), dragging corners around and turning the knee into a long droopy shoulder. Buffering makes the cascade behave as the product of ideal sections. Deeper: passive RC chains can only make real poles — the op-amp's bootstrapping creates complex poles, so the knee can be genuinely sharp. The slope far out is the same 24 dB/octave either way; the knee is where the money is."
+    },
+    {
+      q: "An equal-component Sallen-Key low-pass uses R = 16 kΩ and C = 1 nF. Where's the corner?",
+      opts: ["About 1 kHz", "About 10 kHz", "About 100 kHz", "About 62 kHz"],
+      answer: 1,
+      expl: "f<sub>c</sub> = 1/(2πRC) = 1/(2π × 1.6×10⁴ × 10⁻⁹) ≈ 9.95 kHz ≈ 10 kHz. Same corner formula as the passive RC of Module 05 — the op-amp moves the poles sideways into the complex plane but the RC product still sets the frequency scale. (16 k with 1 n is a standard pairing precisely because it lands on a round corner.)"
+    },
+    {
+      q: "For the anti-aliasing filter in front of a general-purpose data-acquisition ADC, which response family is the standard first choice?",
+      opts: [
+        "Chebyshev — maximum stopband attenuation always wins",
+        "Bessel — the ADC must see undistorted waveforms",
+        "Butterworth — flat passband gain so in-band amplitudes are measured accurately",
+        "Highest Q available — sharpest possible corner"
+      ],
+      answer: 2,
+      expl: "A DAQ system's job is measuring in-band amplitudes accurately, and Butterworth's maximally flat passband serves exactly that — no ripple silently scaling some frequencies by ±1 dB. Chebyshev is the right call when the knee is critical (stopband starts very close to the passband) <em>and</em> you can tolerate or calibrate the ripple; it's a legitimate second choice, not the default. Bessel gives away too much knee for a job where the FFT, not the waveform shape, is the product."
+    },
+    {
+      q: "You're filtering a digital-ish pulse train and must keep the pulse shapes recognizable. Family?",
+      opts: [
+        "Chebyshev — sharpest knee preserves edges best",
+        "Bessel — flat time delay means all components arrive together, so the shape survives",
+        "Butterworth — flat is flat",
+        "Any of them, since they have the same number of poles"
+      ],
+      answer: 1,
+      expl: "Pulse shape lives in the <em>phase</em> response: if different frequency components are delayed differently, they re-assemble into a distorted, ringing wave even when their amplitudes are untouched. Bessel filters are designed for maximally flat delay — components arrive in formation and a step passes with ~0.5% overshoot. Chebyshev is the worst of the three here: its sharp knee comes with wildly frequency-dependent delay, and every edge rings."
+    },
+    {
+      q: "A 2nd-order low-pass has Q = 3. What does its response do near the corner?",
+      opts: [
+        "Reaches −3 dB at f<sub>c</sub>, like every filter",
+        "Rolls off three times faster than a Q = 1 filter",
+        "Peaks about +9.5 dB above the passband at f<sub>c</sub> — and rings hard on transients",
+        "Shifts the corner three times higher in frequency"
+      ],
+      answer: 2,
+      expl: "At x = f/f<sub>c</sub> = 1 the magnitude formula collapses to |H| = Q, so Q = 3 means gain ×3 = +9.5 dB right at the corner (the true peak, slightly below f<sub>c</sub>, is a hair higher at +9.7 dB). The time-domain twin: ζ = 1/6, about 59% overshoot and a ring-down lasting several cycles. Peaking and ringing are one phenomenon seen through two windows — Q never changes the ultimate slope, only the drama at the knee."
+    },
+    {
+      q: "Why must the op-amp in an active filter have a gain-bandwidth product far above the filter's corner (rule of thumb: GBW ≳ 20 × f<sub>c</sub>·Q)?",
+      opts: [
+        "Otherwise the op-amp's output can't swing rail to rail",
+        "The design math assumed an ideal amplifier; near GBW the real op-amp adds gain error and phase lag, shifting the poles so the built filter has the wrong f<sub>c</sub> and Q — possibly even oscillating",
+        "Slew rate limiting distorts low frequencies first",
+        "Higher GBW op-amps have lower input offset voltage"
+      ],
+      answer: 1,
+      expl: "Every formula in this module treated K as exact and instantaneous. A real op-amp's gain falls with frequency (Module 18), so near the corner it delivers slightly less gain, slightly late. That phase lag is indistinguishable from extra energy storage — it moves your poles, typically raising Q (remember how touchy Q = 1/(3−K) is). High-Q sections are hit hardest, hence the Q in the rule: keep GBW ≳ 20 × f<sub>c</sub>·Q and the amp stays boringly ideal where the filter is doing its delicate work."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
