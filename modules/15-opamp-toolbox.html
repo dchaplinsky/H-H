@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>15 · The Op-Amp Toolbox — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part III · Module 15</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>The Op-Amp Toolbox</h1>
+  <p class="subtitle">Five circuits built from one trick: pour currents into the virtual ground and
+  let the feedback element decide what mathematics comes out. <em>AoE 3rd ed. §4.3.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Module&nbsp;14's golden rules are a <em>grammar</em>: the inputs draw no current, and feedback
+forces them equal. This module is the <strong>phrasebook</strong> — the five or six op-amp
+sentences that appear on every analog schematic ever drawn. A mixing console is summing
+amplifiers. A strain-gauge readout is a difference amplifier. A function generator's triangle wave
+comes from an integrator; a spectrometer's photodiode feeds a transimpedance amplifier; and half
+of all precision instrumentation hides a rectifier with the diode tucked inside a feedback loop.
+Learn to recognize these five shapes and whole pages of schematics collapse into readable phrases:
+"mix, subtract, accumulate, differentiate, convert." Design-wise they're even better — each one is
+two or three components hung on an op-amp, with the math printed right on the resistor values.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p>One idea powers everything in this module: <strong>the virtual ground is a current summing
+  node.</strong> In the inverting configuration the feedback pins the inverting input at
+  0&nbsp;V (rule 2), and the input itself swallows nothing (rule 1). So every current that arrives
+  at that node — through an input resistor, out of a photodiode, from anywhere — has exactly one
+  place to go: <em>through the feedback element</em>. The output voltage is simply whatever value
+  makes that happen. That's the whole theory. The op-amp does no arithmetic; it just holds a node
+  at zero and pays whatever the feedback element charges for carrying the current away.</p>
+  <p>Which means the feedback element <em>is</em> the mathematical operation. Make it a resistor
+  and the output is proportional to the arriving current — multiplication:
+  V<sub>out</sub>&nbsp;=&nbsp;−I·R<sub>f</sub>. Make it a capacitor and the arriving current piles
+  up as stored charge (Module&nbsp;03: I&nbsp;=&nbsp;C·dV/dt, so
+  V&nbsp;=&nbsp;(1/C)∫I&nbsp;dt) — the output becomes the running total of everything that ever
+  flowed in: <em>integration</em>. Swap the resistor and capacitor and you get the derivative
+  instead. One node, one accounting rule, a whole toolbox of operations.</p>
+</div>
+
+<h2>The summing amplifier — a mixer with math</h2>
+<p>Take Module&nbsp;14's inverting amplifier and hang <em>more input resistors</em> onto the same
+virtual ground. Each source V<sub>n</sub> pushes a current V<sub>n</sub>/R<sub>n</sub> into the
+node — and because the node sits at a rock-solid 0&nbsp;V, each source computes its current
+knowing nothing about the others. The feedback resistor must carry the sum, so:</p>
+<div class="formula">
+  V<sub>out</sub> = −R<sub>f</sub> (V₁/R₁ + V₂/R₂ + V₃/R₃ + …)
+  <small>each channel's gain is −R<sub>f</sub>/R<sub>n</sub> — an independent knob per input</small>
+</div>
+<p>This is the audio engineer's <strong>mixer</strong>: every microphone gets its own input
+resistor (its own fader, really), and the virtual ground is the mixing bus. The magic is the
+isolation — turning channel 2's gain up doesn't change channel 1's gain, because both dump into a
+node whose voltage never moves. Try that with a passive resistor network and every input loads
+every other (Module&nbsp;02's divider headaches, multiplied). The virtual ground makes crosstalk
+mathematically zero.</p>
+
+<h2>The difference amplifier — subtract, then amplify</h2>
+<p>Four resistors and one op-amp: V₁ enters through R₁ into the inverting input with R₂ as
+feedback; V₂ enters through an identical R₁ into the non-inverting input, which is held by a
+matching R₂ divider to ground. Grind through the golden rules and the result is beautifully
+clean:</p>
+<div class="formula">
+  V<sub>out</sub> = (R₂/R₁)(V₂ − V₁)
+  <small>true only when both R₂/R₁ ratios match — matching is the whole game</small>
+</div>
+<p>This circuit amplifies the <em>difference</em> between two signals while (ideally) ignoring
+whatever voltage they share — the common-mode signal, like the hum both wires of a long sensor
+cable pick up together. But "ideally" leans entirely on resistor matching: if the two R₂/R₁
+ratios disagree, a slice of the common-mode voltage leaks through as if it were signal. With
+ordinary 1% resistors the worst-case CMRR of a unity-gain difference amp is about
+<strong>34&nbsp;dB</strong> — Module&nbsp;11's long-tailed pair would blush. That's why the
+industrial-strength version exists: the <strong>instrumentation amplifier</strong>, three op-amps
+and a laser-trimmed matched resistor network on one chip, delivering 100+&nbsp;dB of CMRR and a
+gain set by a single external resistor. When a difference measurement matters, buy the matching.</p>
+
+<h2>The integrator — a capacitor keeps the books</h2>
+<p>Replace R<sub>f</sub> with a capacitor. Input current V<sub>in</sub>/R still arrives at the
+virtual ground and must still leave through the feedback — but now "leaving" means accumulating
+as charge on C, and the output must ramp to keep the node pinned:</p>
+<div class="formula">
+  V<sub>out</sub> = −(1/RC) ∫ V<sub>in</sub> dt
+  <small>the output is the running total of the input's past — a memory made of charge</small>
+</div>
+<p>Feed it a constant voltage and the output is a ramp (slope −V<sub>in</sub>/RC). Feed it a
+<strong>square wave and out comes a triangle wave</strong> — the integrator's signature, and the
+heart of every function generator. But the memory is also the menace: an integrator integrates
+<em>everything</em>, including the op-amp's own input offset voltage and bias current. Any DC at
+the input, however microscopic, ramps the output relentlessly toward a supply rail — a 1&nbsp;mV
+offset into RC&nbsp;=&nbsp;1&nbsp;ms drifts at a full volt per second. Every practical integrator
+therefore needs a <strong>DC escape path</strong>: a large resistor across C (rolling the DC gain
+down from "infinite" to −R<sub>big</sub>/R), or a reset switch that periodically empties the
+bucket. No escape path, no working circuit — this is the classic first-op-amp-project failure.</p>
+
+<h2>The differentiator — the mirror image, with teeth</h2>
+<p>Swap the components: C in series with the input, R as feedback. Now the input current is
+C·dV<sub>in</sub>/dt (Module&nbsp;03's law again), and the feedback resistor converts it to:</p>
+<div class="formula">
+  V<sub>out</sub> = −RC · dV<sub>in</sub>/dt
+  <small>output proportional to how fast the input is changing</small>
+</div>
+<p>Feed it a <strong>triangle wave and out comes a square wave</strong> — constant slopes become
+constant levels. Feed it a square wave and it tries to output the derivative of a vertical edge:
+an impulse, slamming into the rails. And therein lies the problem: a differentiator's gain is
+ωRC, <em>rising without limit as frequency rises</em>. Noise lives at high frequency; a
+differentiator is a noise <em>amplifier</em> by construction, and the fast phase shift also
+invites oscillation. The standard taming is a small resistor in series with C, which flattens the
+gain above some frequency and turns the circuit into "differentiator below, inverting amp above."
+H&amp;H's honest advice: differentiators are trouble — tame them, or restructure the problem so
+you can integrate instead.</p>
+
+<h2>The transimpedance amplifier — current in, voltage out</h2>
+<p>Some sources speak current, not voltage: photodiodes, photomultipliers, DACs with current
+outputs. Feed the current straight into the virtual ground — no input resistor at all — and the
+feedback resistor does the conversion:</p>
+<div class="formula">
+  V<sub>out</sub> = −I<sub>in</sub> · R<sub>f</sub>
+  <small>a current-to-voltage converter; R<sub>f</sub> is the "gain" in volts per amp</small>
+</div>
+<p>The canonical customer is the <strong>photodiode front end</strong> — light in, photocurrent
+out, microamps per milliwatt. Why not just push the photocurrent through a plain resistor and
+read the voltage? Because then the diode's own voltage would swing as the light changes, and that
+ruins two things at once: the diode's junction capacitance (Module&nbsp;06) must charge and
+discharge through the resistor, murdering the speed; and a biased photodiode is measurably
+nonlinear. The transimpedance amp holds the photodiode at <strong>exactly 0&nbsp;V forever</strong>
+— no capacitance ever charges, no bias ever varies, and the diode operates in its most linear
+mode, delivering pure current into a node that never argues. Same current, same resistor, vastly
+better measurement: the virtual ground is doing all the work.</p>
+
+<h2>The precision rectifier — feedback fixes even diodes</h2>
+<p>Module&nbsp;06 left a scar: a diode rectifier loses 0.6&nbsp;V, so millivolt-scale signals
+simply vanish. The op-amp cure is to put the diode <em>inside the feedback loop</em>: op-amp
+output → diode → circuit output, with feedback taken after the diode. The golden rules force the
+<em>final</em> output to track the input, so the op-amp simply swings its own output 0.6&nbsp;V
+higher than needed, absorbing the diode drop as if it weren't there. The result rectifies signals
+of a few millivolts as crisply as volts — an "ideal diode" conjured from an ordinary one. The
+transferable moral, one last time: <strong>anything placed inside a feedback loop has its errors
+divided by the loop gain</strong> — diode drops, output impedance, distortion, all of it.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>Virtual ground = current accounting.</strong> To read any inverting-family
+        circuit, sum the currents into the node and ask what output makes the feedback element
+        carry them away. That one move analyzes everything in this module.</li>
+    <li><strong>Summing gains are independent knobs.</strong> Each channel's gain is
+        −R<sub>f</sub>/R<sub>n</sub>, full stop — the virtual ground isolates the inputs from
+        each other completely.</li>
+    <li><strong>Every practical integrator needs a DC escape path</strong> — a big resistor
+        across C or a reset switch. Otherwise offset and bias current walk the output to a rail,
+        always.</li>
+    <li><strong>Differentiators are noise machines</strong> — gain rises with frequency forever.
+        Tame with a series resistor, or redesign so you integrate instead.</li>
+    <li><strong>Keep impedances roughly 1&nbsp;kΩ–1&nbsp;MΩ.</strong> Smaller loads the op-amp
+        output and wastes current; larger invites bias-current errors, Johnson noise, and stray
+        capacitance corners. (Transimpedance feedback resistors earn an exemption when the
+        photocurrent is tiny.)</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Funnel-and-pump analogy</span>
+  <p>Picture the summing node as a <strong>funnel</strong> whose water level must stay pinned
+  exactly at the rim of a drain — the 0&nbsp;V mark. Several streams pour in (the input currents,
+  each set by its own source and pipe). At the drain sits a <strong>pump</strong> — the op-amp
+  output — that must pump out <em>precisely</em> what arrives, moment by moment, to keep the
+  level from budging. Watch the pump's effort and you've measured the total inflow: that's the
+  summing amplifier. The streams never disturb each other because the level they pour into never
+  changes — that's channel isolation.</p>
+  <p>Now plumb a <strong>bucket</strong> (a capacitor) into the drain line. The pump must now
+  raise the bucket's contents to keep the funnel level pinned, and the bucket's fill records the
+  <em>total volume that has ever arrived</em> — integration, as a water meter. Drill a pinhole in
+  the bucket (the reset resistor) and old history slowly leaks away, which is exactly what keeps
+  the bucket from eventually overflowing from a slow dribble no one noticed.</p>
+  <p>Where the analogy fails: real funnels overflow — the op-amp output hits its supply rails and
+  the level-pinning fiction collapses. Real pumps have a maximum flow (output current limit) and
+  a reaction lag when the inflow changes abruptly (slew rate — Module&nbsp;18 makes this
+  quantitative). Inside those limits, the accounting is exact.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the mixer (summing amplifier)</div>
+  <div class="widget-hint">Three DC inputs through 10&nbsp;kΩ each into the virtual ground;
+  R<sub>f</sub> is the master gain. Slide the inputs and watch each channel's contribution — the
+  bars add algebraically to make V<sub>out</sub>, and no slider ever disturbs another channel's
+  bar. Push the sum past the ±11&nbsp;V rails to see the funnel overflow.</div>
+
+  <div class="viz-row">
+    <svg id="mix-sch" class="schematic" viewBox="0 0 400 230" width="400" height="230" role="img"
+         aria-label="Three-input summing amplifier: three 10k resistors into a virtual ground, op-amp with feedback resistor Rf">
+      <!-- input 1 -->
+      <text x="2" y="44" class="lbl big" id="mix-v1-lbl">+0.50 V</text>
+      <path class="comp" d="M 60 40 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+      <text x="72" y="20" class="lbl">10 k</text>
+      <path class="wire" d="M 116 40 L 180 40"/>
+      <!-- input 2 -->
+      <text x="2" y="94" class="lbl big" id="mix-v2-lbl">−0.30 V</text>
+      <path class="comp" d="M 60 90 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+      <text x="72" y="70" class="lbl">10 k</text>
+      <path class="wire" d="M 116 90 L 180 90"/>
+      <!-- input 3 -->
+      <text x="2" y="144" class="lbl big" id="mix-v3-lbl">+0.20 V</text>
+      <path class="comp" d="M 60 140 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+      <text x="72" y="120" class="lbl">10 k</text>
+      <path class="wire" d="M 116 140 L 180 140"/>
+      <!-- summing bus (virtual ground) -->
+      <path class="wire" d="M 180 28 L 180 140"/>
+      <path class="wire" d="M 180 90 L 205 90"/>
+      <circle cx="180" cy="90" r="3.5" class="node"/>
+      <text x="130" y="112" class="lbl" fill="var(--series-2)">0 V (virtual gnd)</text>
+      <!-- op-amp -->
+      <path class="comp" d="M 205 60 L 205 140 L 285 100 Z"/>
+      <text x="212" y="95" class="lbl big">−</text>
+      <text x="212" y="129" class="lbl big">+</text>
+      <path class="wire" d="M 205 120 L 192 120 L 192 150"/>
+      <path class="gnd" d="M 192 150 L 192 156 M 182 156 L 202 156 M 186 161 L 198 161 M 190 166 L 194 166"/>
+      <!-- output -->
+      <path class="wire" d="M 285 100 L 340 100"/>
+      <circle cx="318" cy="100" r="3.5" class="node"/>
+      <text x="346" y="96" class="lbl big">Vout</text>
+      <text x="346" y="112" class="lbl" id="mix-vout-lbl">—</text>
+      <!-- feedback: up from output, left through Rf, down to bus -->
+      <path class="wire" d="M 318 100 L 318 28 L 262 28"/>
+      <path class="comp" d="M 206 28 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+      <path class="wire" d="M 206 28 L 180 28"/>
+      <text x="222" y="9" class="lbl big" id="mix-rf-lbl">Rf = 10 kΩ</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:10px">
+        <div class="control">
+          <label for="mix-v1">Input V₁ <span class="val"></span></label>
+          <input type="range" id="mix-v1" min="-1" max="1" step="0.05" value="0.5">
+        </div>
+        <div class="control">
+          <label for="mix-v2">Input V₂ <span class="val"></span></label>
+          <input type="range" id="mix-v2" min="-1" max="1" step="0.05" value="-0.3">
+        </div>
+        <div class="control">
+          <label for="mix-v3">Input V₃ <span class="val"></span></label>
+          <input type="range" id="mix-v3" min="-1" max="1" step="0.05" value="0.2">
+        </div>
+        <div class="control">
+          <label for="mix-rf">Feedback R<sub>f</sub> (master gain) <span class="val"></span></label>
+          <!-- log: 10^3 .. 10^5  (1 kΩ .. 100 kΩ) -->
+          <input type="range" id="mix-rf" min="3" max="5" step="0.01" value="4">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Gain per channel</div><div class="v" id="mix-gain">—</div></div>
+        <div class="readout"><div class="k">V<sub>out</sub></div><div class="v" id="mix-vout">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="readouts">
+    <div class="readout"><div class="k">Ch 1 contribution</div><div class="v" id="mix-c1">—</div></div>
+    <div class="readout"><div class="k">Ch 2 contribution</div><div class="v" id="mix-c2">—</div></div>
+    <div class="readout"><div class="k">Ch 3 contribution</div><div class="v" id="mix-c3">—</div></div>
+  </div>
+  <canvas id="mix-plot" class="hh-plot" data-height="280"></canvas>
+  <p class="widget-hint" id="mix-warning" style="margin-top:10px"></p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: integrator / differentiator scope</div>
+  <div class="widget-hint">One op-amp, one R, one C — swap which is the feedback element and the
+  circuit swaps between calculus operations. The input (dashed grey, 500&nbsp;Hz, ±1&nbsp;V) is
+  processed analytically: square&nbsp;→&nbsp;triangle through the integrator,
+  triangle&nbsp;→&nbsp;square through the differentiator. Drag R and C to scale the output — and
+  watch what happens when the math demands more than ±11&nbsp;V.</div>
+
+  <div class="viz-row">
+    <svg id="sc-sch" class="schematic" viewBox="0 0 380 190" width="380" height="190" role="img"
+         aria-label="Op-amp circuit, switchable between integrator (resistor in, capacitor feedback) and differentiator (capacitor in, resistor feedback)">
+      <text x="2" y="99" class="lbl big">Vin</text>
+      <!-- INTEGRATOR: series R, feedback C -->
+      <g id="sch-int">
+        <path class="comp" d="M 38 95 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+        <text x="52" y="74" class="lbl big" id="int-r-lbl">10 kΩ</text>
+        <path class="wire" d="M 94 95 L 150 95"/>
+        <path class="wire" d="M 285 30 L 219 30"/>
+        <line x1="219" y1="16" x2="219" y2="44" class="comp" stroke-width="3"/>
+        <line x1="211" y1="16" x2="211" y2="44" class="comp" stroke-width="3"/>
+        <path class="wire" d="M 211 30 L 150 30"/>
+        <text x="232" y="52" class="lbl big" id="int-c-lbl">100 nF</text>
+      </g>
+      <!-- DIFFERENTIATOR: series C, feedback R -->
+      <g id="sch-diff" style="display:none">
+        <path class="wire" d="M 38 95 L 62 95"/>
+        <line x1="62" y1="81" x2="62" y2="109" class="comp" stroke-width="3"/>
+        <line x1="70" y1="81" x2="70" y2="109" class="comp" stroke-width="3"/>
+        <path class="wire" d="M 70 95 L 150 95"/>
+        <text x="44" y="70" class="lbl big" id="dif-c-lbl">100 nF</text>
+        <path class="wire" d="M 285 30 L 243 30"/>
+        <path class="comp" d="M 187 30 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+        <path class="wire" d="M 187 30 L 150 30"/>
+        <text x="198" y="10" class="lbl big" id="dif-r-lbl">10 kΩ</text>
+      </g>
+      <!-- shared: node, op-amp, output, feedback drop -->
+      <path class="wire" d="M 150 30 L 150 95 L 175 95"/>
+      <circle cx="150" cy="95" r="3.5" class="node"/>
+      <path class="comp" d="M 175 67 L 175 143 L 252 105 Z"/>
+      <text x="182" y="100" class="lbl big">−</text>
+      <text x="182" y="132" class="lbl big">+</text>
+      <path class="wire" d="M 175 125 L 162 125 L 162 152"/>
+      <path class="gnd" d="M 162 152 L 162 158 M 152 158 L 172 158 M 156 163 L 168 163 M 160 168 L 164 168"/>
+      <path class="wire" d="M 252 105 L 310 105"/>
+      <circle cx="285" cy="105" r="3.5" class="node"/>
+      <path class="wire" d="M 285 105 L 285 30"/>
+      <text x="316" y="109" class="lbl big">Vout</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div style="display:flex; gap:10px; margin:0 0 10px">
+        <button class="btn" id="sc-int-btn">Integrator</button>
+        <button class="btn ghost" id="sc-diff-btn">Differentiator</button>
+      </div>
+      <div style="display:flex; gap:8px; margin:0 0 12px">
+        <button class="btn" id="sc-sq-btn">Square</button>
+        <button class="btn ghost" id="sc-tri-btn">Triangle</button>
+        <button class="btn ghost" id="sc-sin-btn">Sine</button>
+      </div>
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="sc-r">Resistance R <span class="val"></span></label>
+          <!-- log: 10^3 .. 10^5  (1 kΩ .. 100 kΩ) -->
+          <input type="range" id="sc-r" min="3" max="5" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="sc-c">Capacitance C <span class="val"></span></label>
+          <!-- log: 10^-9 .. 10^-6  (1 nF .. 1 µF) -->
+          <input type="range" id="sc-c" min="-9" max="-6" step="0.01" value="-7">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Time constant RC</div><div class="v" id="sc-rc">—</div></div>
+        <div class="readout"><div class="k">Output peak</div><div class="v" id="sc-peak">—</div></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="sc-plot" class="hh-plot" data-height="320"></canvas>
+  <p class="widget-hint" id="sc-caption" style="margin-top:10px"></p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil and paper; the only formulas you need are on this page. Check the box when you've done
+it and verified against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — a three-channel audio mixer</label>
+  </div>
+  <p>Build a summing amplifier for three line-level sources with channel gains of 1, 2, and 0.5
+  (magnitudes — the whole mix comes out inverted, which we'll accept; audio doesn't care about
+  absolute polarity, and a second inverting stage could fix it later anyway). Choose
+  R<sub>f</sub>&nbsp;=&nbsp;20&nbsp;kΩ and find the three input resistors, then check them against
+  the standard-value drawers.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Each channel's gain magnitude is R<sub>f</sub>/R<sub>n</sub>, so
+      R<sub>n</sub>&nbsp;=&nbsp;R<sub>f</sub>/gain:</p>
+      <p>Gain 1 → R₁ = 20&nbsp;kΩ/1 = <strong>20&nbsp;kΩ</strong> (E24 standard — done).
+      Gain 2 → R₂ = 20&nbsp;kΩ/2 = <strong>10&nbsp;kΩ</strong> (every drawer on earth — done).
+      Gain 0.5 → R₃ = 20&nbsp;kΩ/0.5 = <strong>40&nbsp;kΩ</strong> — and here the drawer pushes
+      back: 40&nbsp;kΩ isn't E24. Nearest neighbors: 39&nbsp;kΩ gives a gain of 20/39 = 0.513
+      (2.6% high — inaudible), or reach for the E96 drawer's 40.2&nbsp;kΩ for 0.498. For audio,
+      39&nbsp;kΩ and move on.</p>
+      <p>Sanity checks worth the habit: all values sit comfortably in the 1&nbsp;kΩ–1&nbsp;MΩ
+      window, and each channel's gain came from <em>its own resistor only</em> — you set three
+      gains with three independent knobs, courtesy of the virtual ground. A passive mixer could
+      never do that.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — a triangle-wave source</label>
+  </div>
+  <p>You have a clean 1&nbsp;kHz, ±5&nbsp;V square wave and you want a ±2.5&nbsp;V triangle wave.
+  Design the integrator: derive the required RC, then pick standard R and C values and state the
+  actual output amplitude. Don't forget the component every practical integrator needs.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Derive the peak.</strong> During each half-period T/2 the input is a constant
+      ±A, so the output ramps at A/RC and climbs A·(T/2)/RC in total — that's the
+      <em>peak-to-peak</em>. The peak is half that:
+      V<sub>pk</sub>&nbsp;=&nbsp;A·T/(4RC). Solve for RC with A&nbsp;=&nbsp;5&nbsp;V,
+      T&nbsp;=&nbsp;1&nbsp;ms, V<sub>pk</sub>&nbsp;=&nbsp;2.5&nbsp;V:
+      RC&nbsp;=&nbsp;5&nbsp;×&nbsp;10⁻³/(4&nbsp;×&nbsp;2.5)&nbsp;=&nbsp;<strong>0.5&nbsp;ms</strong>.</p>
+      <p><strong>Pick parts.</strong> R&nbsp;=&nbsp;10&nbsp;kΩ with C&nbsp;=&nbsp;50&nbsp;nF is
+      exact but 50&nbsp;nF isn't standard; <strong>10&nbsp;kΩ&nbsp;+&nbsp;47&nbsp;nF</strong>
+      (RC&nbsp;=&nbsp;0.47&nbsp;ms) gives V<sub>pk</sub>&nbsp;=&nbsp;5&nbsp;×&nbsp;10⁻³/(4&nbsp;×&nbsp;4.7&nbsp;×&nbsp;10⁻⁴)&nbsp;≈&nbsp;<strong>2.66&nbsp;V</strong>
+      — 6% big. Prefer the low side? 5.1&nbsp;kΩ&nbsp;+&nbsp;100&nbsp;nF (RC&nbsp;=&nbsp;0.51&nbsp;ms)
+      gives 2.45&nbsp;V. Either is a fine answer; knowing <em>which way</em> you rounded is the
+      real skill.</p>
+      <p><strong>The mandatory extra:</strong> a DC escape path — say 1&nbsp;MΩ across C. Without
+      it, the square wave's tiniest asymmetry plus the op-amp's own offset integrate forever and
+      the triangle rides a ramp into the rail. With it, DC gain is capped at −1&nbsp;MΩ/10&nbsp;kΩ
+      = −100, and the 1&nbsp;kHz triangle is untouched (the escape corner sits at
+      1/(2π&nbsp;×&nbsp;1&nbsp;MΩ&nbsp;×&nbsp;47&nbsp;nF)&nbsp;≈&nbsp;3.4&nbsp;Hz, far below
+      1&nbsp;kHz).</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — a photodiode ambient-light sensor</label>
+  </div>
+  <p>A photodiode delivers 0–50&nbsp;µA across the ambient-light range you care about, and your
+  microcontroller's ADC accepts 0–3.3&nbsp;V. Design the transimpedance stage: find the ideal
+  R<sub>f</sub>, pick a standard value, state the actual full-scale output — and deal with the
+  sign.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Size R<sub>f</sub>.</strong> Full scale wants |V<sub>out</sub>| = I·R<sub>f</sub>:
+      R<sub>f</sub>&nbsp;=&nbsp;3.3&nbsp;V/50&nbsp;µA&nbsp;=&nbsp;<strong>66&nbsp;kΩ</strong>.
+      Round <em>down</em> so full sunlight can't overrun the ADC: the E24 drawer offers
+      <strong>62&nbsp;kΩ</strong>, giving 50&nbsp;µA&nbsp;×&nbsp;62&nbsp;kΩ&nbsp;=&nbsp;3.1&nbsp;V
+      full scale — 94% of the ADC range used, 6% safety margin. (68&nbsp;kΩ would hit 3.4&nbsp;V
+      and clip the brightest readings — rounding direction is a design decision, not arithmetic.)</p>
+      <p><strong>The sign.</strong> V<sub>out</sub>&nbsp;=&nbsp;−I·R<sub>f</sub> = 0 to
+      <strong>−3.1&nbsp;V</strong> as drawn — useless to an ADC that wants positive. The clean fix
+      costs nothing: <em>flip the photodiode</em>. Reverse its orientation and the photocurrent
+      flows out of the summing node instead of in, so the output swings 0 to +3.1&nbsp;V. (The
+      op-amp must be able to swing to (near) 0&nbsp;V and run from the ADC's supply — a
+      rail-to-rail single-supply part; the alternative, a second inverting stage, spends a whole
+      op-amp to fix a sign.) The photodiode itself still sits at 0&nbsp;V either way — the
+      virtual ground doesn't care which direction the current flows, and neither does the
+      accounting.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="14-opamp-golden-rules.html"><span class="dir">Previous</span><span class="name">14 · Op-Amp Golden Rules</span></a>
+  <a href="16-comparators-schmitt.html"><span class="dir">Next</span><span class="name">16 · Comparators &amp; Schmitt Triggers</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("15");
+
+  var RAIL = 11; // ±12 V supplies, ~±11 V usable swing
+
+  /* ================= Widget 1: the mixer ================= */
+
+  var R_IN = 10000; // fixed input resistors
+  var mix = { v: [0.5, -0.3, 0.2], Rf: 10000 };
+
+  var mixVLbls = [
+    document.getElementById("mix-v1-lbl"),
+    document.getElementById("mix-v2-lbl"),
+    document.getElementById("mix-v3-lbl")
+  ];
+  var mixRfLbl = document.getElementById("mix-rf-lbl");
+  var mixVoutLbl = document.getElementById("mix-vout-lbl");
+  var mixGainRead = document.getElementById("mix-gain");
+  var mixVoutRead = document.getElementById("mix-vout");
+  var mixCReads = [
+    document.getElementById("mix-c1"),
+    document.getElementById("mix-c2"),
+    document.getElementById("mix-c3")
+  ];
+  var mixWarning = document.getElementById("mix-warning");
+
+  function fmtSigned(v, digits) {
+    return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(digits == null ? 2 : digits) + " V";
+  }
+
+  function mixContribs() {
+    var g = mix.Rf / R_IN;
+    return mix.v.map(function (v) { return -g * v; });
+  }
+
+  var MIX_COLORS = ["--series-2", "--series-4", "--series-7"];
+  var mixPlot = HH.plot(document.getElementById("mix-plot"), {
+    xlabel: "channel contributions add to make Vout",
+    ylabel: "volts",
+    xmin: 0, xmax: 5.4, ymin: -12, ymax: 12,
+    xticks: [1, 2, 3, 4.5],
+    yticks: [-12, -8, -4, 0, 4, 8, 12],
+    xfmt: function (v) {
+      if (v === 4.5) return "Vout";
+      return "ch " + Math.round(v);
+    },
+    yfmt: function (v) { return String(v); },
+    hover: function () {
+      var c = mixContribs();
+      var sum = c[0] + c[1] + c[2];
+      return [
+        { color: MIX_COLORS[0], text: "ch 1: " + fmtSigned(c[0]) },
+        { color: MIX_COLORS[1], text: "ch 2: " + fmtSigned(c[1]) },
+        { color: MIX_COLORS[2], text: "ch 3: " + fmtSigned(c[2]) },
+        { color: "--series-1", text: "sum: " + fmtSigned(sum) +
+            (Math.abs(sum) > RAIL ? " → clips" : "") }
+      ];
+    }
+  });
+
+  function mixUpdate() {
+    var g = mix.Rf / R_IN;
+    var c = mixContribs();
+    var sum = c[0] + c[1] + c[2];
+    var vout = Math.max(-RAIL, Math.min(RAIL, sum));
+    var clipped = Math.abs(sum) > RAIL;
+
+    mixVLbls.forEach(function (el, i) { el.textContent = fmtSigned(mix.v[i]); });
+    mixRfLbl.textContent = "Rf = " + HH.fmt(mix.Rf, "Ω");
+    mixVoutLbl.textContent = fmtSigned(vout) + (clipped ? " (rail!)" : "");
+    mixGainRead.innerHTML = "×−" + (g >= 10 ? g.toFixed(1) : g.toFixed(2));
+    mixVoutRead.innerHTML = fmtSigned(vout) + (clipped ? " <small>(rail)</small>" : "");
+    mixCReads.forEach(function (el, i) { el.innerHTML = fmtSigned(c[i]); });
+
+    if (clipped) {
+      mixWarning.innerHTML = "⚠️ The sum wants to be " + fmtSigned(sum) +
+        " but the output can't leave the ±" + RAIL + " V rails — the funnel is overflowing. " +
+        "Once clipped, the virtual ground is no longer held at 0 V and every channel's math fails at once.";
+      mixWarning.style.color = "var(--critical)";
+    } else {
+      mixWarning.textContent = "Each bar is −(Rf/10k)·Vn, computed by its channel alone. " +
+        "Vout is their algebraic sum: " +
+        c.map(function (x) { return fmtSigned(x); }).join(" ") + " = " + fmtSigned(sum) + ".";
+      mixWarning.style.color = "var(--muted)";
+    }
+
+    var series = [
+      { pts: [[0, RAIL], [5.4, RAIL]], color: "--series-8", width: 1, dash: [4, 4] },
+      { pts: [[0, -RAIL], [5.4, -RAIL]], color: "--series-8", width: 1, dash: [4, 4] }
+    ];
+    c.forEach(function (ci, i) {
+      series.push({ pts: [[i + 1, 0], [i + 1, ci]], color: MIX_COLORS[i], width: 34 });
+    });
+    series.push({ pts: [[4.5, 0], [4.5, vout]], color: "--series-1", width: 34 });
+    mixPlot.draw(series);
+  }
+
+  ["mix-v1", "mix-v2", "mix-v3"].forEach(function (id, i) {
+    HH.slider(id, {
+      format: function (v) { return fmtSigned(v); },
+      onchange: function (v) { mix.v[i] = v; mixUpdate(); }
+    });
+  });
+  HH.slider("mix-rf", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { mix.Rf = r; mixUpdate(); }
+  });
+  mixUpdate();
+
+  /* ================= Widget 2: integrator / differentiator scope =================
+
+     Input: 500 Hz, ±1 V. Analytic outputs (verified numerically with node):
+       integrator (Vout = −(1/RC)∫Vin dt, zero-mean steady state):
+         square   → triangle, peak A·T/(4RC)
+         triangle → parabolic arcs, peak A·T/(8RC)
+         sine     → +(A/ωRC)·cos ωt, peak A/(ωRC)
+       differentiator (Vout = −RC·dVin/dt):
+         square   → impulse train (rendered clipped at the rails — honest)
+         triangle → square, amplitude 4A·RC/T
+         sine     → −ωRC·A·cos ωt, peak ωRC·A                                   */
+
+  var F0 = 500, T0 = 1 / F0, A0 = 1;
+  var W0 = 2 * Math.PI * F0;
+  var sc = { mode: "int", shape: "square", R: 10000, C: 1e-7 };
+
+  var scIntBtn = document.getElementById("sc-int-btn");
+  var scDiffBtn = document.getElementById("sc-diff-btn");
+  var shapeBtns = {
+    square: document.getElementById("sc-sq-btn"),
+    triangle: document.getElementById("sc-tri-btn"),
+    sine: document.getElementById("sc-sin-btn")
+  };
+  var schInt = document.getElementById("sch-int");
+  var schDiff = document.getElementById("sch-diff");
+  var intRLbl = document.getElementById("int-r-lbl");
+  var intCLbl = document.getElementById("int-c-lbl");
+  var difRLbl = document.getElementById("dif-r-lbl");
+  var difCLbl = document.getElementById("dif-c-lbl");
+  var rcRead = document.getElementById("sc-rc");
+  var peakRead = document.getElementById("sc-peak");
+  var scCaption = document.getElementById("sc-caption");
+
+  function vin(t) {
+    var tm = ((t % T0) + T0) % T0;
+    if (sc.shape === "square") return tm < T0 / 2 ? A0 : -A0;
+    if (sc.shape === "triangle") {
+      if (tm < T0 / 4) return (4 * A0 / T0) * tm;
+      if (tm < 3 * T0 / 4) return 2 * A0 - (4 * A0 / T0) * tm;
+      return -4 * A0 + (4 * A0 / T0) * tm;
+    }
+    return A0 * Math.sin(W0 * t);
+  }
+
+  function voutIdeal(t) { // finite everywhere except diff+square (handled separately)
+    var RC = sc.R * sc.C;
+    var tm = ((t % T0) + T0) % T0;
+    if (sc.mode === "int") {
+      if (sc.shape === "square") {
+        return tm < T0 / 2 ? -(A0 / RC) * (tm - T0 / 4)
+                           : (A0 / RC) * (tm - 3 * T0 / 4);
+      }
+      if (sc.shape === "triangle") {
+        var I;
+        if (tm < T0 / 4) I = (2 * A0 / T0) * tm * tm;
+        else if (tm < 3 * T0 / 4)
+          I = A0 * T0 / 8 + 2 * A0 * (tm - T0 / 4) - (2 * A0 / T0) * (tm * tm - T0 * T0 / 16);
+        else
+          I = A0 * T0 / 8 - 4 * A0 * (tm - 3 * T0 / 4) + (2 * A0 / T0) * (tm * tm - 9 * T0 * T0 / 16);
+        return -(1 / RC) * (I - A0 * T0 / 8);
+      }
+      return (A0 / (W0 * RC)) * Math.cos(W0 * t);
+    }
+    // differentiator
+    if (sc.shape === "triangle") {
+      var D = 4 * A0 * RC / T0;
+      return (tm >= T0 / 4 && tm < 3 * T0 / 4) ? D : -D;
+    }
+    if (sc.shape === "sine") return -W0 * RC * A0 * Math.cos(W0 * t);
+    return 0; // diff+square baseline; spikes drawn separately
+  }
+
+  function idealPeak() {
+    var RC = sc.R * sc.C;
+    if (sc.mode === "int") {
+      if (sc.shape === "square") return A0 * T0 / (4 * RC);
+      if (sc.shape === "triangle") return A0 * T0 / (8 * RC);
+      return A0 / (W0 * RC);
+    }
+    if (sc.shape === "square") return Infinity;
+    if (sc.shape === "triangle") return 4 * A0 * RC / T0;
+    return W0 * RC * A0;
+  }
+
+  var scPlot = HH.plot(document.getElementById("sc-plot"), {
+    xlabel: "time (ms) — two cycles at 500 Hz",
+    ylabel: "voltage (V)",
+    xmin: 0, xmax: 4, ymin: -12, ymax: 12,
+    xticks: [0, 1, 2, 3, 4],
+    yticks: [-12, -6, 0, 6, 12],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(parseFloat(v.toPrecision(2))); },
+    hover: function (x) {
+      var t = x / 1000;
+      var vo;
+      if (sc.mode === "diff" && sc.shape === "square") {
+        var tm = ((t % T0) + T0) % T0;
+        var w = 0.03e-3;
+        if (tm < w || tm > T0 - w) vo = -RAIL;            // rising edge → −rail
+        else if (Math.abs(tm - T0 / 2) < w) vo = RAIL;    // falling edge → +rail
+        else vo = 0;
+      } else {
+        vo = Math.max(-RAIL, Math.min(RAIL, voutIdeal(t)));
+      }
+      return [
+        { text: "t = " + x.toFixed(2) + " ms" },
+        { color: "--muted", text: "Vin = " + vin(t).toFixed(2) + " V" },
+        { color: "--series-1", text: "Vout = " + vo.toFixed(2) + " V" }
+      ];
+    }
+  });
+
+  function niceY(v) {
+    var steps = [1.5, 2, 3, 4, 6, 8, 12];
+    for (var i = 0; i < steps.length; i++) if (steps[i] >= v) return steps[i];
+    return 12;
+  }
+
+  function scUpdate() {
+    var RC = sc.R * sc.C;
+    var pk = idealPeak();
+    var pkClipped = Math.min(pk, RAIL);
+    var clips = pk > RAIL;
+
+    // auto-range vertically: input (±1 V) must stay visible, rails cap at 12
+    var Y = clips ? 12 : niceY(Math.max(1.4, 1.25 * pkClipped));
+    scPlot.cfg.ymin = -Y;
+    scPlot.cfg.ymax = Y;
+    scPlot.cfg.yticks = [-Y, -Y / 2, 0, Y / 2, Y];
+
+    // input trace
+    var N = 700, inPts = [], outPts = [];
+    for (var i = 0; i <= N; i++) {
+      var t = (i / N) * 2 * T0;
+      inPts.push([t * 1000, vin(t)]);
+    }
+    // output trace
+    if (sc.mode === "diff" && sc.shape === "square") {
+      // impulse train: tall narrow pulses at every edge, clipped at the rails
+      var w = 0.03; // ms, visual width
+      outPts.push([0, 0]);
+      [[0, -RAIL], [1, RAIL], [2, -RAIL], [3, RAIL], [4, -RAIL]].forEach(function (e) {
+        outPts.push([e[0] - w, 0], [e[0] - w, e[1]], [e[0] + w, e[1]], [e[0] + w, 0]);
+      });
+      outPts.push([4, 0]);
+    } else {
+      for (var j = 0; j <= N; j++) {
+        var tj = (j / N) * 2 * T0;
+        outPts.push([tj * 1000, Math.max(-RAIL, Math.min(RAIL, voutIdeal(tj)))]);
+      }
+    }
+
+    var series = [];
+    if (Y >= RAIL) {
+      series.push({ pts: [[0, RAIL], [4, RAIL]], color: "--series-8", width: 1, dash: [4, 4] });
+      series.push({ pts: [[0, -RAIL], [4, -RAIL]], color: "--series-8", width: 1, dash: [4, 4] });
+    }
+    series.push({ pts: inPts, color: "--muted", width: 1.2, dash: [4, 4] });
+    series.push({ pts: outPts, color: "--series-1", width: 2.4 });
+    scPlot.draw(series);
+
+    // labels + readouts
+    intRLbl.textContent = HH.fmt(sc.R, "Ω");
+    difRLbl.textContent = HH.fmt(sc.R, "Ω");
+    intCLbl.textContent = HH.fmt(sc.C, "F");
+    difCLbl.textContent = HH.fmt(sc.C, "F");
+    rcRead.innerHTML = HH.fmt(RC, "s");
+    peakRead.innerHTML = isFinite(pk)
+      ? HH.fmt(pk, "V") + (clips ? " <small>→ clips</small>" : "")
+      : "∞ <small>→ rails</small>";
+
+    // caption
+    var cap;
+    if (sc.mode === "int") {
+      if (sc.shape === "square") {
+        cap = "Square → triangle: the integrator's signature. Each half-cycle the constant ±1 V " +
+          "input makes the output ramp at A/RC = " + HH.fmt(A0 / RC, "V/s") +
+          ", peaking at A·T/(4RC) = " + HH.fmt(pk, "V") + ".";
+      } else if (sc.shape === "triangle") {
+        cap = "Triangle → parabolic arcs (integrate a straight ramp and you get t²). " +
+          "Peak = A·T/(8RC) = " + HH.fmt(pk, "V") + " — integrating always smooths.";
+      } else {
+        cap = "Sine → cosine: amplitude divided by ωRC (= " + HH.fmt(W0 * RC, "").trim() +
+          "), phase shifted 90°. An integrator is a 1/f filter with calculus credentials.";
+      }
+      cap += clips
+        ? " ⚠️ The ideal output exceeds the ±" + RAIL + " V rails — shown clipped. A real " +
+          "integrator would also wind up (the cap keeps charging while clipped) and recover late."
+        : " Remember: this ideal picture also integrates any DC offset — without a reset " +
+          "resistor across C, the whole trace would drift steadily toward a rail.";
+    } else {
+      if (sc.shape === "triangle") {
+        cap = "Triangle → square: the differentiator's signature. Constant slopes ±4A/T become " +
+          "constant levels ∓4A·RC/T = ∓" + HH.fmt(4 * A0 * RC / T0, "V") + ".";
+      } else if (sc.shape === "square") {
+        cap = "Square → impulses: the derivative of a vertical edge is (ideally) infinite, so " +
+          "the output slams into the ±" + RAIL + " V rails at every transition and is zero " +
+          "between them. This is why differentiators and fast edges — or noise — don't mix.";
+      } else {
+        cap = "Sine → −cosine: amplitude multiplied by ωRC (= " + HH.fmt(W0 * RC, "").trim() +
+          "). Gain rising with frequency is exactly why differentiators amplify noise" +
+          (clips ? " — and here it already exceeds the rails (shown clipped)." : ".");
+      }
+    }
+    scCaption.textContent = cap;
+  }
+
+  function setScMode(mode) {
+    sc.mode = mode;
+    schInt.style.display = mode === "int" ? "" : "none";
+    schDiff.style.display = mode === "diff" ? "" : "none";
+    scIntBtn.className = mode === "int" ? "btn" : "btn ghost";
+    scDiffBtn.className = mode === "diff" ? "btn" : "btn ghost";
+    scUpdate();
+  }
+  function setScShape(shape) {
+    sc.shape = shape;
+    Object.keys(shapeBtns).forEach(function (k) {
+      shapeBtns[k].className = k === shape ? "btn" : "btn ghost";
+    });
+    scUpdate();
+  }
+  scIntBtn.addEventListener("click", function () { setScMode("int"); });
+  scDiffBtn.addEventListener("click", function () { setScMode("diff"); });
+  Object.keys(shapeBtns).forEach(function (k) {
+    shapeBtns[k].addEventListener("click", function () { setScShape(k); });
+  });
+
+  HH.slider("sc-r", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { sc.R = r; scUpdate(); }
+  });
+  HH.slider("sc-c", {
+    log: true,
+    format: function (c) { return HH.fmt(c, "F"); },
+    onchange: function (c) { sc.C = c; scUpdate(); }
+  });
+  scUpdate();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "A summing amplifier has inputs of +0.5 V and −0.2 V, each through 10 kΩ, with R<sub>f</sub> = 10 kΩ. What's the output?",
+      opts: ["−0.3 V", "+0.3 V", "−0.7 V", "−3.0 V"],
+      answer: 0,
+      expl: "Both channel gains are −10k/10k = −1, so V<sub>out</sub> = −(0.5 + (−0.2)) = −0.3 V. Or by current accounting: 50 µA in, 20 µA out, net 30 µA must leave through R<sub>f</sub>, and 30 µA × 10 kΩ demands the output sit at −0.3 V."
+    },
+    {
+      q: "In the summing amplifier, what does the virtual ground actually do for the multiple inputs?",
+      opts: [
+        "It divides the output voltage equally among the channels",
+        "It isolates the channels — each input drives a fixed 0 V node, so no channel's setting affects another's gain",
+        "It filters out any DC component of the inputs",
+        "It protects the op-amp from excessive input current"
+      ],
+      answer: 1,
+      expl: "Each source sees only its own resistor terminated at a rock-steady 0 V, so its injected current — and hence its gain — depends on nothing else in the circuit. That's why a mixing console can have 24 independent faders on one bus. In a passive summing network the inputs would all load each other."
+    },
+    {
+      q: "For the four-resistor difference amplifier to reject common-mode signals, what must be true?",
+      opts: [
+        "The op-amp must have very high open-loop gain",
+        "Both inputs must be below the supply rails",
+        "The two R₂/R₁ ratios must match precisely — mismatch lets common-mode voltage leak into the output",
+        "The source impedances must be exactly 50 Ω"
+      ],
+      answer: 2,
+      expl: "V<sub>out</sub> = (R₂/R₁)(V₂ − V₁) holds only when both dividers have the same ratio. Any mismatch converts a slice of the shared (common-mode) voltage into apparent signal — with 1% resistors, worst-case CMRR at unity gain is only ~34 dB. Op-amp gain can't save you; this error is in the resistors. Hence instrumentation amps with trimmed on-chip networks."
+    },
+    {
+      q: "Why does a plain op-amp integrator drift to a supply rail, and what's the standard fix?",
+      opts: [
+        "The capacitor leaks; fix it with a bigger capacitor",
+        "It integrates the op-amp's own offset and bias current — any DC ramps forever; fix: a large resistor across C to give DC a path around the integrator",
+        "The feedback is positive at DC; fix: swap the op-amp inputs",
+        "The input resistor is too small; fix: use at least 1 MΩ"
+      ],
+      answer: 1,
+      expl: "An integrator has (ideally) infinite DC gain, so even microvolts of offset accumulate without limit — a 1 mV offset with RC = 1 ms ramps at 1 V/s and hits the rail in seconds. A large resistor across C caps the DC gain at −R<sub>big</sub>/R and lets the accumulated error bleed away, while barely touching signals above its (very low) corner."
+    },
+    {
+      q: "Feed a square wave into an integrator. What comes out?",
+      opts: ["A bigger square wave", "A sine wave", "A series of spikes at the edges", "A triangle wave"],
+      answer: 3,
+      expl: "During each half-cycle the input is constant, so the output is a constant-slope ramp — alternating ramps make a triangle. This is the signature transform (and the spike answer is the differentiator's response to a square wave — the mirror image)."
+    },
+    {
+      q: "Why are differentiators notorious for noise?",
+      opts: [
+        "The capacitor picks up hum from nearby wiring",
+        "Their gain is ωRC — rising without limit with frequency — so high-frequency noise is amplified more than any signal beneath it",
+        "They invert the signal, which doubles the noise power",
+        "The virtual ground injects thermal noise into the input"
+      ],
+      answer: 1,
+      expl: "A differentiator responds to <em>rate of change</em>, and noise changes fast: gain grows proportionally with frequency, so hiss and glitches tower over the slow signal you wanted the slope of. The taming fix is a small resistor in series with C, flattening the gain above some frequency — or better, restructure the problem to integrate instead."
+    },
+    {
+      q: "A photodiode pushes 10 µA into a transimpedance amplifier with R<sub>f</sub> = 100 kΩ. The output is…",
+      opts: ["−1 V", "−10 V", "−0.1 V", "+1 V"],
+      answer: 0,
+      expl: "V<sub>out</sub> = −I·R<sub>f</sub> = −10 µA × 100 kΩ = −1 V. Handy habit: microamps × 100 kΩ reads out directly in tenths of a volt. And the photodiode itself sits at 0 V the whole time — no capacitance to charge, no bias-dependent nonlinearity."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
