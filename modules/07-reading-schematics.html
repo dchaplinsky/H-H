@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · Reading &amp; Drawing Schematics — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+<style>
+  /* Module-07 specific: drawing comparison + symbol trainer.
+     Colors come from the shared theme variables only. */
+  .draw-toggle { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .sin-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px; margin-top: 14px; }
+  .sin-item {
+    text-align: left; font: 0.88rem/1.45 system-ui, sans-serif; color: var(--ink-2);
+    background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; cursor: pointer; transition: border-color 0.12s;
+  }
+  .sin-item:hover { border-color: var(--critical); }
+  .sin-item.active {
+    border-color: var(--critical);
+    background: color-mix(in srgb, var(--critical) 9%, transparent);
+    color: var(--ink);
+  }
+  .sin-item .sin-num { font-weight: 700; color: var(--critical); margin-right: 6px; }
+  #bad-svg .sin-hot .wire, #bad-svg .sin-hot .comp { stroke: var(--critical); }
+  #bad-svg .sin-hot .node { fill: var(--critical); }
+  .st-card { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+  .st-stage {
+    flex: 1 1 280px; min-width: 240px; display: grid; place-items: center;
+    border: 1px dashed var(--axis); border-radius: 10px; background: var(--page); padding: 10px;
+  }
+  .st-right { flex: 1 1 280px; min-width: 240px; }
+  .st-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .st-opt {
+    font: 600 0.92rem system-ui, sans-serif; color: var(--ink); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px;
+    cursor: pointer; transition: border-color 0.12s;
+  }
+  .st-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .st-opt.good { border-color: var(--good);     box-shadow: inset 0 0 0 1px var(--good); }
+  .st-opt.bad  { border-color: var(--critical); box-shadow: inset 0 0 0 1px var(--critical); }
+  .st-opt:disabled { cursor: default; }
+</style>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 07</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Reading &amp; Drawing Schematics</h1>
+  <p class="subtitle">Schematics are a written language, and Modules 01–06 have been teaching you
+  to read it one word at a time. This module teaches the grammar — and how to write it well.
+  <em>AoE 3rd ed. Appendix B.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>A schematic is a <strong>sentence, not a wiring diagram</strong>. It doesn't record where the
+wires physically go — it records what the circuit <em>means</em>: which nodes exist, what connects
+to what, and (if it's drawn well) what the circuit is <em>for</em>. A good schematic reads
+left-to-right like prose: supply at the top, ground at the bottom, signal marching from input to
+output, each familiar idiom — divider, RC, follower — sitting there like a word you already know.
+A bad schematic hides the same information in spaghetti, and hides bugs with it: a missing junction
+dot or a mislabeled net has burned more prototypes than any amount of bad math.</p>
+<p>Horowitz &amp; Hill devote an appendix to this and then demonstrate it on every page of the
+book: their schematics are the house style to imitate. Learn to draw like them and other engineers
+will read your circuits at a glance — and you'll read theirs.</p>
+
+<div class="panel physics">
+  <span class="panel-label">The abstraction</span>
+  <p>A schematic makes a deal with you. It promises to capture the circuit's
+  <strong>topology</strong> (exactly which terminals join at which nodes) and its
+  <strong>function</strong> (drawn so the intent is visible). In exchange it deliberately omits
+  <strong>physical reality</strong>: component positions, wire lengths, enclosure, heat, the loop
+  areas that current actually flows around. Two wildly different physical builds of the same
+  schematic are, by this deal, "the same circuit".</p>
+  <p>The deal holds remarkably well — and you should know where it leaks. Every real wire has
+  resistance, inductance (~1&nbsp;nH per mm) and capacitance to its neighbours; at high frequencies
+  those parasitics become real circuit elements the schematic never drew. And "ground", shown as
+  many little symbols all pretending to be one node, is physically a network of wires carrying
+  current and dropping real millivolts. At DC and audio you can ignore all this. At MHz you can't
+  — that's where layout engineering begins (Module 30 will pick this up).</p>
+</div>
+
+<h2>The grammar</h2>
+<p>Schematic conventions exist for the same reason word order exists in English: so the reader can
+stop decoding and start understanding. The core rules:</p>
+<ul>
+  <li><strong>Signals flow left → right.</strong> Inputs enter on the left, outputs leave on the
+  right. A reader should be able to follow the story without ever tracing backwards.</li>
+  <li><strong>Higher voltage is up.</strong> Positive supplies at the top of the page, ground and
+  negative supplies at the bottom. Current then "falls" down the page, which makes bias arithmetic
+  visual: a resistor hanging from +5&nbsp;V <em>pulls up</em>; one to ground <em>pulls down</em>.</li>
+  <li><strong>Power rails are labeled stubs, not routed wires.</strong> A short bar labeled
+  <code>+5&nbsp;V</code> or <code>+15&nbsp;V</code> wherever power is needed. Routing the supply as an
+  actual wire everywhere would bury the signal path in plumbing.</li>
+  <li><strong>Ground is a symbol, not a return wire.</strong> Every ground symbol is the same node
+  (per the abstraction above). Two symbol families exist and they are <em>not</em> decoration: the
+  three-bar / triangle-with-stub symbol means <strong>circuit (signal) ground</strong> — the 0&nbsp;V
+  reference; the rake-like hatched symbol means <strong>chassis or earth ground</strong> — the metal
+  box or the mains safety conductor. They may or may not be the same net; joining them, and where,
+  is a deliberate design decision.</li>
+  <li><strong>One function per region of the page.</strong> The power supply lives in one corner,
+  the input stage in another. White space is punctuation.</li>
+</ul>
+
+<h2>Symbol gallery</h2>
+<p>The vocabulary. These are the symbols H&amp;H use (American style — zigzag resistors); learn to
+sketch each one in two seconds. The letter after each name is its <em>reference-designator</em>
+prefix, coming up below.</p>
+
+<div class="widget">
+  <div class="widget-title">The core symbols</div>
+  <div class="widget-hint">Scroll sideways on a small screen. The transistor and gate pins are
+  labeled here as a reminder — on real schematics you usually label the net, not the pin.</div>
+  <div style="overflow-x:auto">
+  <svg class="schematic" viewBox="0 0 820 472" width="820" style="min-width:700px" role="img"
+       aria-label="Gallery of schematic symbols: passive components, sources, diodes, transistors, op-amp and logic gate">
+    <!-- faint cell separators -->
+    <g stroke="var(--grid)" stroke-width="1">
+      <line x1="205" y1="10" x2="205" y2="462"/><line x1="410" y1="10" x2="410" y2="462"/><line x1="615" y1="10" x2="615" y2="462"/>
+      <line x1="10" y1="118" x2="810" y2="118"/><line x1="10" y1="236" x2="810" y2="236"/><line x1="10" y1="354" x2="810" y2="354"/>
+    </g>
+
+    <!-- row 1 -->
+    <g transform="translate(102,48)">
+      <g id="sym-resistor"><path class="comp" d="M -60 0 H -30 l 6 -10 l 12 20 l 12 -20 l 12 20 l 12 -20 l 6 10 H 60"/></g>
+    </g>
+    <text class="lbl" x="102" y="106" text-anchor="middle">Resistor — R</text>
+
+    <g transform="translate(255,48)">
+      <g id="sym-cap">
+        <path class="wire" d="M -40 0 H -7 M 7 0 H 40"/>
+        <path class="comp" d="M -7 -14 V 14 M 7 -14 V 14"/>
+      </g>
+    </g>
+    <g transform="translate(359,48)">
+      <g id="sym-cappol">
+        <path class="wire" d="M -40 0 H -7 M 7 0 H 40"/>
+        <path class="comp" d="M -7 -14 V 14"/>
+        <path class="comp" d="M 12 -14 Q 2 0 12 14"/>
+      </g>
+    </g>
+    <text class="lbl" x="342" y="30">+</text>
+    <text class="lbl" x="307" y="106" text-anchor="middle">Capacitor — C (right: polarized)</text>
+
+    <g transform="translate(512,48)">
+      <g id="sym-inductor"><path class="comp" d="M -60 0 H -40 a 10 10 0 0 1 20 0 a 10 10 0 0 1 20 0 a 10 10 0 0 1 20 0 a 10 10 0 0 1 20 0 H 60"/></g>
+    </g>
+    <text class="lbl" x="512" y="106" text-anchor="middle">Inductor — L</text>
+
+    <g transform="translate(717,48)">
+      <g id="sym-diode">
+        <path class="wire" d="M -50 0 H -13 M 12 0 H 50"/>
+        <path d="M -13 -11 L -13 11 L 12 0 Z" fill="var(--ink)" stroke="none"/>
+        <path class="comp" d="M 12 -11 V 11"/>
+      </g>
+    </g>
+    <text class="lbl" x="717" y="106" text-anchor="middle">Diode — D (anode → cathode)</text>
+
+    <!-- row 2 -->
+    <g transform="translate(102,166)">
+      <g id="sym-led">
+        <path class="wire" d="M -50 0 H -13 M 12 0 H 50"/>
+        <path d="M -13 -11 L -13 11 L 12 0 Z" fill="var(--ink)" stroke="none"/>
+        <path class="comp" d="M 12 -11 V 11"/>
+        <path class="comp" d="M -2 -14 l 9 -9 M 7 -23 l -6 1 M 7 -23 l -1 6 M 7 -9 l 9 -9 M 16 -18 l -6 1 M 16 -18 l -1 6"/>
+      </g>
+    </g>
+    <text class="lbl" x="102" y="224" text-anchor="middle">LED — D (arrows: light out)</text>
+
+    <g transform="translate(307,166)">
+      <g id="sym-zener">
+        <path class="wire" d="M -50 0 H -13 M 12 0 H 50"/>
+        <path d="M -13 -11 L -13 11 L 12 0 Z" fill="var(--ink)" stroke="none"/>
+        <path class="comp" d="M 12 -11 l -6 -4 M 12 -11 V 11 l 6 4"/>
+      </g>
+    </g>
+    <text class="lbl" x="307" y="224" text-anchor="middle">Zener diode — D (bent bar)</text>
+
+    <g transform="translate(512,166)">
+      <g id="sym-battery">
+        <path class="wire" d="M -50 0 H -5 M 5 0 H 50"/>
+        <line class="comp" x1="-5" y1="-16" x2="-5" y2="16"/>
+        <line class="comp" stroke-width="4" x1="5" y1="-8" x2="5" y2="8"/>
+      </g>
+    </g>
+    <text class="lbl vplus" x="486" y="152">+</text>
+    <text class="lbl" x="512" y="224" text-anchor="middle">Battery — BT (long plate = +)</text>
+
+    <g transform="translate(717,166)">
+      <g id="sym-acsource">
+        <path class="wire" d="M -50 0 H -18 M 18 0 H 50"/>
+        <circle class="comp" cx="0" cy="0" r="18"/>
+        <path class="comp" d="M -10 0 Q -5 -10 0 0 T 10 0"/>
+      </g>
+    </g>
+    <text class="lbl" x="717" y="224" text-anchor="middle">AC source (sine inside)</text>
+
+    <!-- row 3 -->
+    <g transform="translate(102,284)">
+      <g id="sym-switch">
+        <path class="wire" d="M -55 0 H -20 M 20 0 H 55"/>
+        <circle class="node" cx="-20" cy="0" r="3"/>
+        <circle class="node" cx="20" cy="0" r="3"/>
+        <line class="comp" x1="-20" y1="0" x2="17" y2="-16"/>
+      </g>
+    </g>
+    <text class="lbl" x="102" y="342" text-anchor="middle">Switch — S (SPST)</text>
+
+    <g transform="translate(307,284)">
+      <g id="sym-fuse">
+        <path class="wire" d="M -55 0 H -25 M 25 0 H 55"/>
+        <path class="comp" d="M -25 0 a 12.5 9 0 0 1 25 0 a 12.5 9 0 0 0 25 0"/>
+      </g>
+    </g>
+    <text class="lbl" x="307" y="342" text-anchor="middle">Fuse — F</text>
+
+    <g transform="translate(512,284)">
+      <g id="sym-crystal">
+        <path class="wire" d="M -50 0 H -13 M 13 0 H 50"/>
+        <path class="comp" d="M -13 -12 V 12 M 13 -12 V 12"/>
+        <rect class="comp" x="-8" y="-16" width="16" height="32"/>
+      </g>
+    </g>
+    <text class="lbl" x="512" y="342" text-anchor="middle">Crystal — X or Y</text>
+
+    <g transform="translate(717,284)">
+      <g id="sym-transformer">
+        <path class="wire" d="M -40 -30 H -8 M -40 30 H -8 M 8 -30 H 40 M 8 30 H 40"/>
+        <path class="comp" d="M -8 -30 a 9 9 0 0 0 0 15 a 9 9 0 0 0 0 15 a 9 9 0 0 0 0 15 a 9 9 0 0 0 0 15"/>
+        <path class="comp" d="M 8 -30 a 9 9 0 0 1 0 15 a 9 9 0 0 1 0 15 a 9 9 0 0 1 0 15 a 9 9 0 0 1 0 15"/>
+        <line class="comp" x1="-2" y1="-28" x2="-2" y2="28"/>
+        <line class="comp" x1="2" y1="-28" x2="2" y2="28"/>
+      </g>
+    </g>
+    <text class="lbl" x="717" y="342" text-anchor="middle">Transformer — T</text>
+
+    <!-- row 4 -->
+    <g transform="translate(102,402)">
+      <g id="sym-npn">
+        <circle class="comp" cx="0" cy="0" r="24"/>
+        <path class="wire" d="M -45 0 H -10 M 12 -20 V -38 M 12 20 V 38"/>
+        <line class="comp" stroke-width="3.5" x1="-10" y1="-15" x2="-10" y2="15"/>
+        <path class="comp" d="M -10 -6 L 12 -20 M -10 6 L 12 20"/>
+        <path d="M 9 18 L -1 16.5 L 3 9.5 Z" fill="var(--ink)" stroke="none"/>
+      </g>
+    </g>
+    <text class="lbl" x="120" y="378">C</text>
+    <text class="lbl" x="58" y="396">B</text>
+    <text class="lbl" x="120" y="438">E</text>
+    <text class="lbl" x="102" y="460" text-anchor="middle">NPN transistor — Q</text>
+
+    <g transform="translate(307,402)">
+      <g id="sym-nmos">
+        <path class="wire" d="M -45 0 H -16 M 14 -11 V -38 M 14 11 V 38"/>
+        <line class="comp" x1="-16" y1="-14" x2="-16" y2="14"/>
+        <path class="comp" stroke-width="3" d="M -8 -16 V -6 M -8 -5 V 5 M -8 6 V 16"/>
+        <path class="comp" d="M -8 -11 H 14 M -8 11 H 14 M 2 0 H 14 V 11"/>
+        <path d="M -8 0 L 2 -4.5 L 2 4.5 Z" fill="var(--ink)" stroke="none"/>
+        <circle class="node" cx="14" cy="11" r="3"/>
+      </g>
+    </g>
+    <text class="lbl" x="325" y="378">D</text>
+    <text class="lbl" x="258" y="396">G</text>
+    <text class="lbl" x="325" y="438">S</text>
+    <text class="lbl" x="307" y="460" text-anchor="middle">N-channel MOSFET — Q</text>
+
+    <g transform="translate(512,402)">
+      <g id="sym-opamp">
+        <path class="wire" d="M -50 -11 H -24 M -50 11 H -24 M 26 0 H 50"/>
+        <path class="comp" d="M -24 -24 L -24 24 L 26 0 Z"/>
+        <text class="lbl" x="-19" y="-6">−</text>
+        <text class="lbl" x="-19" y="16">+</text>
+      </g>
+    </g>
+    <text class="lbl" x="512" y="460" text-anchor="middle">Op-amp — U</text>
+
+    <g transform="translate(717,402)">
+      <g id="sym-and">
+        <path class="wire" d="M -45 -9 H -22 M -45 9 H -22 M 18 0 H 45"/>
+        <path class="comp" d="M -22 -18 H 0 A 18 18 0 0 1 0 18 H -22 Z"/>
+      </g>
+    </g>
+    <text class="lbl" x="717" y="460" text-anchor="middle">AND gate — U (logic)</text>
+  </svg>
+  </div>
+</div>
+
+<h2>Junctions — the dot is the whole sentence</h2>
+<p>Wires meet constantly on a drawing. Only the <strong>dot</strong> says they actually connect.
+A crossing without a dot is two wires passing like strangers. And because the entire meaning of the
+circuit can hinge on one tiny dot, H&amp;H's convention adds a safety rule: <strong>never draw a
+four-way dotted junction</strong>. If a dot at a 4-way crossing fades in a photocopy — or was
+simply forgotten — the drawing silently turns into a different circuit. Offset the joins so every
+connection is an unambiguous T:</p>
+
+<div style="overflow-x:auto">
+<svg class="schematic" viewBox="0 0 760 170" width="760" style="min-width:640px" role="img"
+     aria-label="Junction conventions: T with dot connected, crossing without dot not connected, four-way with dot forbidden, offset joins instead">
+  <path class="wire" d="M 35 60 H 155 M 95 60 V 115"/>
+  <circle class="node" cx="95" cy="60" r="3.5"/>
+  <text class="lbl" x="95" y="145" text-anchor="middle">dot = connected</text>
+
+  <path class="wire" d="M 225 60 H 345 M 285 15 V 115"/>
+  <text class="lbl" x="285" y="145" text-anchor="middle">no dot = crossing</text>
+
+  <path class="wire" d="M 415 60 H 535 M 475 15 V 115"/>
+  <circle class="node" cx="475" cy="60" r="3.5"/>
+  <path d="M 451 36 L 499 84 M 499 36 L 451 84" stroke="var(--critical)" stroke-width="3" fill="none"/>
+  <text class="lbl" x="475" y="145" text-anchor="middle" fill="var(--critical)">never: 4-way + dot</text>
+
+  <path class="wire" d="M 605 60 H 725 M 635 60 V 115 M 695 15 V 60"/>
+  <circle class="node" cx="635" cy="60" r="3.5"/>
+  <circle class="node" cx="695" cy="60" r="3.5"/>
+  <text class="lbl" x="665" y="145" text-anchor="middle">instead: offset the joins</text>
+</svg>
+</div>
+
+<h2>Names &amp; values</h2>
+<p>Every part gets a <strong>reference designator</strong> — a letter for the species, a number for
+the individual: <code>R1</code>, <code>C2</code>, <code>Q3</code>, <code>U4</code>. It's how you
+talk about a circuit ("Q3 is saturating") and how the parts list, the board, and the schematic stay
+in sync:</p>
+<table>
+  <tr><th>Prefix</th><th>Component</th><th>Prefix</th><th>Component</th></tr>
+  <tr><td>R</td><td>resistor</td><td>Q</td><td>transistor</td></tr>
+  <tr><td>C</td><td>capacitor</td><td>U</td><td>integrated circuit, op-amp, gate</td></tr>
+  <tr><td>L</td><td>inductor</td><td>K</td><td>relay</td></tr>
+  <tr><td>D</td><td>diode, LED, zener</td><td>S / SW</td><td>switch</td></tr>
+  <tr><td>T</td><td>transformer</td><td>X / Y</td><td>crystal, oscillator</td></tr>
+  <tr><td>F</td><td>fuse</td><td>J / P</td><td>connector / plug</td></tr>
+</table>
+<p><strong>Values</strong> use the engineering prefixes you know, with a European habit worth
+adopting: write the multiplier letter <em>in place of the decimal point</em> —
+<code>4k7</code> means 4.7&nbsp;kΩ, <code>2M2</code> means 2.2&nbsp;MΩ, <code>R47</code> means
+0.47&nbsp;Ω. A decimal point is the one character that vanishes in a bad photocopy or a small font;
+"4.7k" misread as "47k" is a classic way to bias a transistor into the wall. On resistors the Ω is
+usually left off entirely ("10k"); on capacitors <code>100n</code> = 0.1&nbsp;µF (and old drawings
+write <code>mF</code> for µF — beware).</p>
+<p>Two more habits that keep pages readable:</p>
+<ul>
+  <li><strong>Net labels replace long wires.</strong> Writing <code>CLK</code> at both ends beats a
+  wire crossing the whole page — every stub carrying the same label is one node. Rule of thumb:
+  when a wire would have to cross three or more others, name it instead. And label every net you'd
+  want to probe on a scope (<code>V<sub>in</sub></code>, <code>V_B</code>, <code>OUT</code>) — you'll
+  be probing them soon enough.</li>
+  <li><strong>Decoupling capacitors are drawn next to their chip</strong>, not banished to a corner
+  as a row of anonymous 100&nbsp;n's. The schematic is telling the layout what to do: that cap only
+  works if it physically sits at the chip's supply pin — one place where the abstraction leans
+  toward geometry on purpose.</li>
+</ul>
+
+<h2>Reading strategy — the skill you've been building</h2>
+<p>Faced with a new schematic, resist the urge to compute. Read it the way Modules 01–06 taught
+you, in order:</p>
+<ul>
+  <li><strong>1 — Find power and ground.</strong> Which rails exist (+5, +15, −15…)? Where does
+  current come from and where must it return? This frames every voltage on the page.</li>
+  <li><strong>2 — Find the signal path.</strong> Enter at the left, walk to the right. Everything
+  hanging off that path vertically is bias, filtering, or protection.</li>
+  <li><strong>3 — Spot the idioms.</strong> Two resistors stacked between rail and ground: a
+  divider (Module 02) — mentally replace it with its Thévenin source. R feeding C to ground: a
+  low-pass (Module 03). Diode toward the rail: a clamp (Module 06). Circuits are written in these
+  words, not in raw components.</li>
+  <li><strong>4 — Only then compute</strong> — and estimate first, exactly the way H&amp;H do:
+  "about half the rail", "roughly a milliamp", "corner near 100&nbsp;Hz".</li>
+</ul>
+
+<div class="panel rule">
+  <span class="panel-label">Drafting rules of thumb</span>
+  <ul>
+    <li>Signals flow left → right; more positive voltages sit higher on the page; ground hangs
+    at the bottom.</li>
+    <li>Power rails are labeled stubs (<code>+5&nbsp;V</code>), ground is a symbol — never routed
+    wires.</li>
+    <li>Dot every real junction; never a 4-way dotted junction — offset the joins.</li>
+    <li>Name every part (R1, C2, Q3…) and label every net you'd want on a scope.</li>
+    <li>One function per region of the page; white space between stages is free and worth it.</li>
+    <li>A wire about to cross three or more others should become a net label instead.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Subway-map analogy</span>
+  <p>The London Tube map is a schematic. It shows <em>topology</em> — which lines exist, where they
+  interchange — and cheerfully lies about geography: distances are wrong, curves are straightened,
+  the Thames is decorative. And it is <strong>better for it</strong>. Beck's 1931 map replaced
+  geographically accurate ones precisely because navigation needs connections, not coordinates.</p>
+  <p>An aerial photo of London is the wiring photo of a circuit board: perfectly accurate,
+  useless for navigation. That's the choice a schematic makes — abstraction over accuracy,
+  meaning over metal.</p>
+  <p>Where the analogy fails (all analogies do): when physical placement starts to matter — the
+  decoupling cap that must sit at the chip, EMI between "unconnected" wires, the hot resistor next
+  to the precision reference — the map is lying exactly where you need the truth. That boundary is
+  where layout engineering begins.</p>
+</div>
+
+<h2>Same circuit, two drawings</h2>
+<p>Both drawings below are the <em>identical</em> circuit — a 9&nbsp;V supply, a 10k/10k divider,
+an RC low-pass, and a 100k load. One is written in H&amp;H style; one commits the six classic
+sins. Notice how long it takes you to see the divider in the bad one.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: spot the sins</div>
+  <div class="widget-hint">Toggle between the drawings, then click each sin in the checklist —
+  the offending region lights up in the bad drawing.</div>
+
+  <div class="draw-toggle">
+    <button class="btn" id="show-bad" type="button">The bad drawing</button>
+    <button class="btn ghost" id="show-good" type="button">The H&amp;H-style drawing</button>
+  </div>
+
+  <div id="bad-view">
+    <svg id="bad-svg" class="schematic" viewBox="0 0 460 230" width="460" role="img"
+         aria-label="Badly drawn schematic: battery on the right, wandering wires, routed ground, unnamed parts">
+      <!-- sin 6: supply routed as a wandering wire -->
+      <g id="bsin-6">
+        <path class="wire" d="M 420 75 V 30 H 385 V 18 H 350 V 55"/>
+      </g>
+      <!-- sin 1: source on the right, output on the left -->
+      <g id="bsin-1">
+        <path class="wire" d="M 420 75 V 85 M 420 95 V 103"/>
+        <line class="comp" x1="406" y1="85" x2="434" y2="85"/>
+        <line class="comp" stroke-width="4" x1="412" y1="95" x2="428" y2="95"/>
+        <path class="wire" d="M 60 122 H 185"/>
+        <circle class="comp" cx="56" cy="122" r="4" fill="var(--surface)"/>
+      </g>
+      <!-- sin 2: ground routed as a wire around the page -->
+      <g id="bsin-2">
+        <path class="wire" d="M 420 103 V 205 H 140 M 350 192 V 205 M 200 151 V 205"/>
+        <circle class="node" cx="350" cy="205" r="3.5"/>
+        <circle class="node" cx="200" cy="205" r="3.5"/>
+      </g>
+      <!-- sin 5: a wire that wanders across the whole page and crosses the signal -->
+      <g id="bsin-5">
+        <path class="wire" d="M 200 60 V 55 H 168 V 48 H 140 V 205"/>
+      </g>
+      <!-- plain connector wires -->
+      <path class="wire" d="M 350 115 V 122 M 350 122 H 332 M 272 122 H 215 M 350 122 V 132 M 200 100 V 107 M 200 137 V 143"/>
+      <!-- sin 4: nameless, value-less component bodies -->
+      <g id="bsin-4">
+        <path class="comp" d="M 350 55 V 61 L 340 65 L 360 73 L 340 81 L 360 89 L 340 97 L 360 105 L 350 109 L 350 115"/>
+        <path class="comp" d="M 332 122 l -6 -10 l -12 20 l -12 -20 l -12 20 l -12 -20 l -6 10"/>
+        <path class="comp" d="M 200 100 V 95 L 190 91 L 210 83 L 190 75 L 210 67 L 200 63 L 200 60"/>
+        <path class="comp" d="M 350 132 V 138 L 340 142 L 360 150 L 340 158 L 360 166 L 340 174 L 360 182 L 350 186 L 350 192"/>
+        <path class="comp" d="M 188 143 H 212 M 188 151 H 212"/>
+      </g>
+      <!-- sin 3: the four-way dotted junction -->
+      <g id="bsin-3">
+        <path class="wire" d="M 215 122 H 185 M 200 107 V 137"/>
+        <circle class="node" cx="200" cy="122" r="3.5"/>
+      </g>
+      <circle class="node" cx="350" cy="122" r="3.5"/>
+    </svg>
+    <div class="widget-hint" style="text-align:center; margin-top:6px">Technically correct.
+    Practically unreadable — and one faded dot away from being a different circuit.</div>
+  </div>
+
+  <div id="good-view" style="display:none">
+    <svg class="schematic" viewBox="0 0 460 230" width="460" role="img"
+         aria-label="The same circuit drawn H&amp;H style: labeled +9 V stub, divider R1 R2, low-pass R3 C1, load R4, ground symbols">
+      <text class="lbl big vplus" x="70" y="20" text-anchor="middle">+9 V</text>
+      <line class="comp" x1="62" y1="28" x2="78" y2="28"/>
+      <path class="wire" d="M 70 28 V 55 M 70 115 V 125 M 70 125 H 150 M 210 125 H 270 M 270 125 H 340 M 340 125 H 400 M 270 125 V 148 M 270 156 V 185"/>
+      <path class="comp" d="M 70 55 V 61 L 60 65 L 80 73 L 60 81 L 80 89 L 60 97 L 80 105 L 70 109 L 70 115"/>
+      <text class="lbl" x="88" y="88">R1 10k</text>
+      <circle class="node" cx="70" cy="125" r="3.5"/>
+      <text class="lbl" x="92" y="118">A</text>
+      <path class="comp" d="M 70 125 V 131 L 60 135 L 80 143 L 60 151 L 80 159 L 60 167 L 80 175 L 70 179 L 70 185"/>
+      <text class="lbl" x="88" y="158">R2 10k</text>
+      <path class="gnd" d="M 58 185 H 82 M 63 190 H 77 M 68 195 H 72"/>
+      <path class="comp" d="M 150 125 l 6 -10 l 12 20 l 12 -20 l 12 20 l 12 -20 l 6 10"/>
+      <text class="lbl" x="180" y="105" text-anchor="middle">R3 4k7</text>
+      <circle class="node" cx="270" cy="125" r="3.5"/>
+      <text class="lbl" x="262" y="114">B</text>
+      <path class="comp" d="M 258 148 H 282 M 258 156 H 282"/>
+      <text class="lbl" x="250" y="156" text-anchor="end">C1 100n</text>
+      <path class="gnd" d="M 258 185 H 282 M 263 190 H 277 M 268 195 H 272"/>
+      <circle class="node" cx="340" cy="125" r="3.5"/>
+      <path class="comp" d="M 340 125 V 131 L 330 135 L 350 143 L 330 151 L 350 159 L 330 167 L 350 175 L 340 179 L 340 185"/>
+      <text class="lbl" x="356" y="158">R4 100k</text>
+      <path class="gnd" d="M 328 185 H 352 M 333 190 H 347 M 338 195 H 342"/>
+      <circle class="comp" cx="404" cy="125" r="4" fill="var(--surface)"/>
+      <text class="lbl" x="412" y="129">out</text>
+    </svg>
+    <div class="widget-hint" style="text-align:center; margin-top:6px">Supply stub top-left,
+    ground symbols below, signal left → right: divider → low-pass → load. Readable in one pass.</div>
+  </div>
+
+  <div class="sin-list">
+    <button class="sin-item" type="button" data-sin="bsin-1"><span class="sin-num">1</span>
+      Signal flows right-to-left — the source sits on the right, the output on the left.</button>
+    <button class="sin-item" type="button" data-sin="bsin-2"><span class="sin-num">2</span>
+      Ground is a routed wire snaking around the page instead of ground symbols.</button>
+    <button class="sin-item" type="button" data-sin="bsin-3"><span class="sin-num">3</span>
+      A four-way dotted junction — connection or crossing? One faded dot decides.</button>
+    <button class="sin-item" type="button" data-sin="bsin-4"><span class="sin-num">4</span>
+      No reference designators or values — you can't discuss "R3" or check "10k".</button>
+    <button class="sin-item" type="button" data-sin="bsin-5"><span class="sin-num">5</span>
+      A wire wanders the full page with pointless jogs, crossing the signal path.</button>
+    <button class="sin-item" type="button" data-sin="bsin-6"><span class="sin-num">6</span>
+      The supply is routed as a wire from the battery instead of a labeled +9&nbsp;V stub.</button>
+  </div>
+</div>
+
+<h2>Symbol trainer</h2>
+<div class="widget">
+  <div class="widget-title">Interactive: flashcards</div>
+  <div class="widget-hint">A symbol appears; name it. Build a streak — a wrong answer resets it.
+  Your best streak is saved with your module progress.</div>
+  <div class="st-card">
+    <div class="st-stage" id="st-stage" aria-live="polite"></div>
+    <div class="st-right">
+      <div class="st-opts" id="st-opts"></div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Streak</div><div class="v" id="st-streak">0</div></div>
+        <div class="readout"><div class="k">Best</div><div class="v" id="st-best">0</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Paper and pencil this time — drawing is the exercise. Check the box when your drawing matches
+the conventions in the solution, not just the topology.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — redraw it properly</label>
+  </div>
+  <p>A colleague describes a circuit over the phone: "a 9&nbsp;V battery's plus goes to a switch,
+  then to a 470&nbsp;Ω resistor, then an LED back to the battery's minus; and a 100&nbsp;nF cap
+  sits across the battery." Draw it H&amp;H-style on paper. Name every part, dot every junction,
+  make the current's path obvious.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <svg class="schematic" viewBox="0 0 470 210" width="470" role="img"
+           aria-label="Clean drawing: 9 V battery, decoupling cap C1, switch S1, resistor R1 470 ohms, LED D1, ground on the bottom rail">
+        <path class="wire" d="M 60 95 V 50 H 110 M 110 50 H 150 M 190 50 H 225 M 285 50 H 340 V 78 M 340 98 V 150 M 60 105 V 150 H 340 M 110 50 V 78 M 110 86 V 150 M 200 150 V 160"/>
+        <line class="comp" x1="46" y1="95" x2="74" y2="95"/>
+        <line class="comp" stroke-width="4" x1="52" y1="105" x2="68" y2="105"/>
+        <text class="lbl vplus" x="38" y="90">+</text>
+        <text class="lbl" x="40" y="118">−</text>
+        <text class="lbl big" x="8" y="103">9 V</text>
+        <circle class="node" cx="110" cy="50" r="3.5"/>
+        <path class="comp" d="M 98 78 H 122 M 98 86 H 122"/>
+        <text class="lbl" x="128" y="86">C1 100n</text>
+        <circle class="node" cx="110" cy="150" r="3.5"/>
+        <circle class="node" cx="150" cy="50" r="3"/>
+        <circle class="node" cx="190" cy="50" r="3"/>
+        <line class="comp" x1="150" y1="50" x2="186" y2="34"/>
+        <text class="lbl" x="158" y="24">S1</text>
+        <path class="comp" d="M 225 50 l 6 -10 l 12 20 l 12 -20 l 12 20 l 12 -20 l 6 10"/>
+        <text class="lbl" x="255" y="26" text-anchor="middle">R1 470</text>
+        <path d="M 330 78 H 350 L 340 96 Z" fill="var(--ink)" stroke="none"/>
+        <path class="comp" d="M 330 98 H 350"/>
+        <path class="comp" d="M 352 82 l 12 5 M 364 87 l -6 0.5 M 364 87 l -4 -4.5 M 352 94 l 12 5 M 364 99 l -6 0.5 M 364 99 l -4 -4.5"/>
+        <text class="lbl" x="324" y="92" text-anchor="end">D1</text>
+        <circle class="node" cx="200" cy="150" r="3.5"/>
+        <path class="gnd" d="M 188 160 H 212 M 193 165 H 207 M 198 170 H 202"/>
+      </svg>
+      <p>Conventions applied: the battery's <strong>+ is up</strong> and current falls left → right
+      → down through S1, R1 and D1 to the bottom return rail; <strong>C1 is drawn right at the
+      battery it decouples</strong> (the drawing tells the builder where it belongs);
+      <strong>every part is named and valued</strong>; junction <strong>dots</strong> mark exactly
+      the three real joins (C1's top, C1's bottom, the ground tap) and nothing else; the return
+      rail carries one ground symbol declaring it the 0&nbsp;V reference. Note the LED points
+      <em>down</em> — anode toward +, current to ground, exactly as Module 06 biased it.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — read this schematic</label>
+  </div>
+  <p>Apply the four-step reading strategy to this two-stage circuit, then answer:
+  (a) What is the DC voltage at node <strong>A</strong>? (b) What is the −3&nbsp;dB frequency seen
+  at node <strong>B</strong>? Careful — it is <em>not</em> set by R3 alone. (c) What circuit idiom
+  is each stage?</p>
+  <svg class="schematic" viewBox="0 0 480 220" width="480" role="img"
+       aria-label="Two-stage circuit: +12 V rail, divider R1 R2 making node A, series R3 and shunt C1 making node B, open output">
+    <text class="lbl big vplus" x="80" y="20" text-anchor="middle">+12 V</text>
+    <line class="comp" x1="72" y1="28" x2="88" y2="28"/>
+    <path class="wire" d="M 80 28 V 55 M 80 115 V 125 M 80 125 H 150 M 210 125 H 280 M 280 125 H 370 M 280 125 V 148 M 280 156 V 185"/>
+    <path class="comp" d="M 80 55 V 61 L 70 65 L 90 73 L 70 81 L 90 89 L 70 97 L 90 105 L 80 109 L 80 115"/>
+    <text class="lbl" x="98" y="88">R1 10k</text>
+    <circle class="node" cx="80" cy="125" r="3.5"/>
+    <text class="lbl" x="102" y="118">A</text>
+    <path class="comp" d="M 80 125 V 131 L 70 135 L 90 143 L 70 151 L 90 159 L 70 167 L 90 175 L 80 179 L 80 185"/>
+    <text class="lbl" x="98" y="158">R2 10k</text>
+    <path class="gnd" d="M 68 185 H 92 M 73 190 H 87 M 78 195 H 82"/>
+    <path class="comp" d="M 150 125 l 6 -10 l 12 20 l 12 -20 l 12 20 l 12 -20 l 6 10"/>
+    <text class="lbl" x="180" y="105" text-anchor="middle">R3 10k</text>
+    <circle class="node" cx="280" cy="125" r="3.5"/>
+    <text class="lbl" x="272" y="114">B</text>
+    <path class="comp" d="M 268 148 H 292 M 268 156 H 292"/>
+    <text class="lbl" x="300" y="156">C1 100n</text>
+    <path class="gnd" d="M 268 185 H 292 M 273 190 H 287 M 278 195 H 282"/>
+    <circle class="comp" cx="374" cy="125" r="4" fill="var(--surface)"/>
+    <text class="lbl" x="382" y="129">out</text>
+  </svg>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Power first:</strong> one +12&nbsp;V rail, ground at the bottom — every voltage on
+      the page lives between those. <strong>Path second:</strong> nothing enters from the left, so
+      this circuit <em>generates</em> its operating point at A and delivers it, filtered, to
+      <code>out</code>. <strong>Idioms third:</strong> R1/R2 is a voltage divider (Module 02);
+      R3 + C1 is an RC low-pass (Module 03). <strong>Now compute:</strong></p>
+      <p>(a) Equal divider: V<sub>A</sub> = 12 × 10k/(10k+10k) = <strong>6&nbsp;V</strong>.
+      (No DC flows through R3 — C1 blocks it and <code>out</code> is open — so R3 drops nothing
+      and V<sub>B</sub> is also 6&nbsp;V DC.)</p>
+      <p>(b) The resistance C1 sees is R3 <em>plus the divider's Thévenin resistance</em>:
+      10k&nbsp;∥&nbsp;10k = 5k, so R<sub>tot</sub> = 15k.
+      f<sub>3dB</sub> = 1/(2πRC) = 1/(2π × 15k × 100n) ≈ <strong>106&nbsp;Hz</strong>.
+      Using R3 alone (159&nbsp;Hz) is the classic mistake — the schematic idiom "divider feeding
+      an RC" should trigger the Thévenin reflex automatically.</p>
+      <p>(c) Stage 1: divider ≡ a 6&nbsp;V source with 5k inside it. Stage 2: low-pass. The whole
+      thing: a quiet 6&nbsp;V reference with ripple rolled off above ~100&nbsp;Hz.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — netlist to schematic</label>
+  </div>
+  <p>A netlist is the schematic with all the drawing stripped out — pure topology, nodes by number.
+  Draw this one H&amp;H-style. Decide which node is ground and which goes up before you draw
+  anything:</p>
+  <table>
+    <tr><th>Part</th><th>From node</th><th>To node</th><th>Value / type</th></tr>
+    <tr><td>V1</td><td>1 (+)</td><td>0 (−)</td><td>9 V supply</td></tr>
+    <tr><td>R1</td><td>1</td><td>2</td><td>4.7 kΩ</td></tr>
+    <tr><td>C1</td><td>2</td><td>0</td><td>10 µF</td></tr>
+    <tr><td>R2</td><td>2</td><td>3</td><td>1 kΩ</td></tr>
+    <tr><td>D1</td><td>3 (anode)</td><td>0 (cathode)</td><td>LED</td></tr>
+  </table>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <svg class="schematic" viewBox="0 0 470 200" width="470" role="img"
+           aria-label="Drawn netlist: +9 V stub, R1 to node 2 with C1 to ground, R2 to LED D1 to ground">
+        <text class="lbl big vplus" x="70" y="16" text-anchor="middle">+9 V</text>
+        <line class="comp" x1="62" y1="24" x2="78" y2="24"/>
+        <path class="wire" d="M 70 24 V 50 H 105 M 165 50 H 220 M 220 50 H 250 M 310 50 H 360 V 73 M 360 93 V 120 M 220 50 V 78 M 220 86 V 110"/>
+        <path class="comp" d="M 105 50 l 6 -10 l 12 20 l 12 -20 l 12 20 l 12 -20 l 6 10"/>
+        <text class="lbl" x="135" y="26" text-anchor="middle">R1 4k7</text>
+        <circle class="node" cx="220" cy="50" r="3.5"/>
+        <text class="lbl" x="212" y="42" text-anchor="end">2</text>
+        <path class="comp" d="M 208 78 H 232 M 208 86 H 232"/>
+        <text class="lbl" x="240" y="86">C1 10µ</text>
+        <path class="gnd" d="M 208 110 H 232 M 213 115 H 227 M 218 120 H 222"/>
+        <path class="comp" d="M 250 50 l 6 -10 l 12 20 l 12 -20 l 12 20 l 12 -20 l 6 10"/>
+        <text class="lbl" x="280" y="26" text-anchor="middle">R2 1k</text>
+        <path d="M 350 73 H 370 L 360 91 Z" fill="var(--ink)" stroke="none"/>
+        <path class="comp" d="M 350 93 H 370"/>
+        <path class="comp" d="M 372 77 l 12 5 M 384 82 l -6 0.5 M 384 82 l -4 -4.5 M 372 89 l 12 5 M 384 94 l -6 0.5 M 384 94 l -4 -4.5"/>
+        <text class="lbl" x="344" y="86" text-anchor="end">D1</text>
+        <path class="gnd" d="M 348 120 H 372 M 353 125 H 367 M 358 130 H 362"/>
+      </svg>
+      <p><strong>The choices:</strong> node <strong>0</strong> appears three times — it's the
+      return everything comes home to, so it becomes <em>ground at the bottom</em> (drawn as two
+      separate symbols; same node, no return wire). Node <strong>1</strong> is the supply's +, so
+      it becomes a <em>labeled +9&nbsp;V stub at the top-left</em> — V1 itself doesn't even need
+      drawing. The remaining chain 1 → 2 → 3 → 0 lays out <em>left to right</em>, current falling
+      to ground at the end through the LED. One junction dot at node 2 (three-way: R1, C1, R2 —
+      no four-way possible here, and node 3 is just a corner). C1 hangs vertically off the signal
+      path: bias/filtering below, signal on top — exactly the visual grammar of the module.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="06-diodes.html"><span class="dir">Previous</span><span class="name">06 · Diodes &amp; Diode Circuits</span></a>
+  <a href="../index.html"><span class="dir">Next</span><span class="name">Curriculum hub — Part II coming soon</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("07");
+
+  /* ---------- widget 1: same circuit, two drawings ---------- */
+  var badView = document.getElementById("bad-view");
+  var goodView = document.getElementById("good-view");
+  var btnBad = document.getElementById("show-bad");
+  var btnGood = document.getElementById("show-good");
+
+  function showView(which) {
+    var bad = which === "bad";
+    badView.style.display = bad ? "" : "none";
+    goodView.style.display = bad ? "none" : "";
+    btnBad.className = bad ? "btn" : "btn ghost";
+    btnGood.className = bad ? "btn ghost" : "btn";
+  }
+  btnBad.addEventListener("click", function () { showView("bad"); });
+  btnGood.addEventListener("click", function () { showView("good"); });
+
+  var sinItems = document.querySelectorAll(".sin-item");
+  sinItems.forEach(function (item) {
+    item.addEventListener("click", function () {
+      var turnOn = !item.classList.contains("active");
+      sinItems.forEach(function (o) { o.classList.remove("active"); });
+      document.querySelectorAll("#bad-svg .sin-hot").forEach(function (g) {
+        g.classList.remove("sin-hot");
+      });
+      if (turnOn) {
+        item.classList.add("active");
+        var region = document.getElementById(item.dataset.sin);
+        if (region) region.classList.add("sin-hot");
+        showView("bad"); /* the sins live in the bad drawing */
+      }
+    });
+  });
+
+  /* ---------- widget 2: symbol trainer ---------- */
+  var pool = [
+    { id: "sym-resistor",    name: "Resistor" },
+    { id: "sym-cap",         name: "Capacitor" },
+    { id: "sym-cappol",      name: "Polarized capacitor" },
+    { id: "sym-inductor",    name: "Inductor" },
+    { id: "sym-diode",       name: "Diode" },
+    { id: "sym-led",         name: "LED" },
+    { id: "sym-zener",       name: "Zener diode" },
+    { id: "sym-battery",     name: "Battery" },
+    { id: "sym-acsource",    name: "AC source" },
+    { id: "sym-switch",      name: "Switch" },
+    { id: "sym-fuse",        name: "Fuse" },
+    { id: "sym-crystal",     name: "Crystal" },
+    { id: "sym-transformer", name: "Transformer" },
+    { id: "sym-npn",         name: "NPN transistor" },
+    { id: "sym-nmos",        name: "N-channel MOSFET" },
+    { id: "sym-opamp",       name: "Op-amp" },
+    { id: "sym-and",         name: "AND gate" }
+  ];
+  var stage = document.getElementById("st-stage");
+  var optsBox = document.getElementById("st-opts");
+  var streakEl = document.getElementById("st-streak");
+  var bestEl = document.getElementById("st-best");
+  var streak = 0;
+  var best = HH.progress.get("07").symbolBest || 0;
+  var current = null;
+  var locked = false;
+  bestEl.textContent = best;
+
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function nextRound() {
+    locked = false;
+    var pick;
+    do {
+      pick = pool[Math.floor(Math.random() * pool.length)];
+    } while (current && pick.id === current.id);
+    current = pick;
+    stage.innerHTML =
+      '<svg class="schematic" viewBox="-72 -50 144 100" width="300" role="img" aria-label="Mystery symbol">' +
+      '<use href="#' + pick.id + '"></use></svg>';
+    var opts = [pick];
+    while (opts.length < 4) {
+      var cand = pool[Math.floor(Math.random() * pool.length)];
+      var dupe = opts.some(function (o) { return o.id === cand.id; });
+      if (!dupe) opts.push(cand);
+    }
+    shuffle(opts);
+    optsBox.innerHTML = "";
+    opts.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "st-opt";
+      b.textContent = o.name;
+      b.addEventListener("click", function () { answer(b, o); });
+      optsBox.appendChild(b);
+    });
+  }
+
+  function answer(btn, opt) {
+    if (locked) return;
+    locked = true;
+    var ok = opt.id === current.id;
+    optsBox.querySelectorAll(".st-opt").forEach(function (b) {
+      b.disabled = true;
+      if (b.textContent === current.name) b.classList.add("good");
+    });
+    if (!ok) btn.classList.add("bad");
+    if (ok) {
+      streak++;
+      if (streak > best) {
+        best = streak;
+        HH.progress.set("07", { symbolBest: best });
+      }
+    } else {
+      streak = 0;
+    }
+    streakEl.textContent = streak;
+    bestEl.textContent = best;
+    setTimeout(nextRound, ok ? 900 : 1600);
+  }
+
+  nextRound();
+
+  /* ---------- quiz ---------- */
+  HH.quiz("quiz", [
+    {
+      q: "Two wires cross on a schematic with no dot at the crossing. What does that mean?",
+      opts: [
+        "They connect — touching wires always connect",
+        "They do not connect — it's just two wires passing on the page",
+        "They connect only if both are signal wires",
+        "The drawing is in error; crossings are never allowed"
+      ],
+      answer: 1,
+      expl: "Only the dot means connection. A dotless crossing is the schematic's way of routing two unrelated nets through the same patch of paper — remember, the drawing owes you topology, not geography."
+    },
+    {
+      q: "Why do H&H forbid a four-way junction with a dot, even though it's technically unambiguous?",
+      opts: [
+        "Four wires at one point exceed the current rating of a node",
+        "Because if the dot is lost — bad photocopy, thin print, CAD glitch — the drawing silently becomes a valid but different circuit; offset joins can't be misread",
+        "It's purely aesthetic; four-way junctions are fine",
+        "SPICE netlists cannot represent four-way junctions"
+      ],
+      answer: 1,
+      expl: "A 4-way + dot and a 4-way crossing differ by one fragile dot. Two offset T-joins say 'connected' with geometry instead of a speck of ink — no failure mode. Cheap insurance you draw for free."
+    },
+    {
+      q: "Which way should signals flow across a well-drawn schematic?",
+      opts: [
+        "Left to right — inputs on the left, outputs on the right",
+        "Right to left, following electron flow",
+        "Top to bottom, following current to ground",
+        "Whatever minimizes total wire length"
+      ],
+      answer: 0,
+      expl: "Left → right like prose (top → bottom is for <em>voltage</em>: + rails up, ground down). The reader should walk the signal path without ever tracing backwards — that's what makes idioms visible at a glance."
+    },
+    {
+      q: "A schematic uses the familiar three-bar ground symbol in most places, but a rake-like hatched symbol near the mains inlet. What should you conclude?",
+      opts: [
+        "They're interchangeable styles for the same thing; ignore the difference",
+        "The hatched symbol marks a connection that is broken",
+        "Three-bar = circuit (signal) ground, hatched = chassis/earth ground — possibly different nets, joined (or not) deliberately",
+        "The hatched symbol means a high-current ground"
+      ],
+      answer: 2,
+      expl: "Both exist and they're not decoration: the three-bar/triangle symbol is the 0 V signal reference; the hatched 'rake' is the metal box or mains earth. Whether and <em>where</em> those nets join is a real design decision — mixing them up is how hum and ground loops are born (Module 30 territory)."
+    },
+    {
+      q: "A resistor is marked <code>4k7</code>. What's its value, and why write it that way?",
+      opts: [
+        "47 kΩ — the k separates the digits",
+        "4.7 kΩ — the multiplier letter sits in place of the decimal point, which can't get lost in a photocopy the way a '.' can",
+        "4700 kΩ — k after a digit means thousands of kΩ",
+        "4.7 Ω — k marks a precision part"
+      ],
+      answer: 1,
+      expl: "4k7 = 4.7 kΩ, just as 2M2 = 2.2 MΩ and R47 = 0.47 Ω. A vanished decimal point turns 4.7k into 47k — a 10× bias error from one speck of toner. The letter-as-point convention has no such failure mode."
+    },
+    {
+      q: "Where should the 100 nF decoupling capacitors be drawn on a schematic, and why?",
+      opts: [
+        "Grouped in a corner so they don't clutter the signal path",
+        "Next to the chip they decouple — the drawing mirrors the layout intent: that cap only works at the chip's supply pin",
+        "Anywhere; capacitors on the same net are electrically identical",
+        "On a separate power-supply page, always"
+      ],
+      answer: 1,
+      expl: "Electrically 'the same net', physically not the same at all: a decoupling cap fights nanosecond current spikes and must sit millimetres from the pin. Drawing it there is the schematic deliberately leaking a bit of geometry — a message to whoever lays out the board."
+    },
+    {
+      q: "You read: R3 = 10k from node X up to +5 V; C7 = 100 n from node X to Q2's base. What idiom is this?",
+      opts: [
+        "A voltage divider driving a low-pass filter",
+        "A pull-up on X, AC-coupled into Q2 — X rests at +5 V, and only signal <em>changes</em> reach the base",
+        "A high-pass filter to ground",
+        "A zener clamp protecting Q2"
+      ],
+      answer: 1,
+      expl: "Resistor to a rail with nothing pulling the other way = pull-up (X sits at +5 V when idle). Series cap into the next stage = AC coupling: DC blocked, edges and wiggles pass (Module 03). Reading 'pull-up + AC coupling' from two lines of text, without a picture, is exactly the fluency this module is after."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
