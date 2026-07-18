@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>13 · FET Switches &amp; Analog Switching — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part II · Module 13</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>FET Switches &amp; Analog Switching</h1>
+  <p class="subtitle">The same transistor, two very different jobs: dumping amps into motors and
+  LEDs without breaking a sweat, and passing fragile analog signals without leaving a fingerprint
+  on them. <em>AoE 3rd ed. §3.4–3.5.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Module 12 introduced the FET as a voltage-controlled device with an insulated gate. This
+module — the last of Part II — puts it to work at its two signature jobs. The first is switching
+<strong>power</strong>: a logic pin that weighs nothing commanding an amp or ten into a motor,
+a relay coil, a strip of LEDs. BJTs can do this too, but the FET does it with no base current
+to supply and milliohms of on-resistance, which is why essentially every modern power switch is
+a MOSFET. The second job is stranger and more exclusive: switching <strong>signals</strong> —
+routing a delicate analog voltage from here to there, connecting and disconnecting it on command,
+<em>without touching it</em>. No offset added, no current stolen, no distortion smeared on. The
+FET is the only device that does this second job well, and it's worth understanding exactly why —
+because the reasons tell you both when to reach for an analog switch and when it will quietly
+betray you.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — why a FET makes a good analog switch</span>
+  <p>Recall from Module 12 that with plenty of gate drive and only a small drain–source voltage,
+  the FET sits in the <strong>triode (linear) region</strong>: the channel is just a slab of
+  conductive silicon — a <strong>resistor</strong>, R<sub>DS(on)</sub>. And a genuinely
+  remarkable resistor, for switching purposes: it is <strong>bidirectional</strong> (current
+  flows either way — there is no junction in the path insisting on a direction), and it has
+  <strong>no offset voltage</strong>. At zero current the drop is exactly zero. Compare the
+  competition: a saturated BJT never gets below V<sub>CE(sat)</sub> ≈ 0.1–0.2&nbsp;V — a built-in
+  error stamped onto every signal it passes — and a diode demands its 0.6&nbsp;V toll before
+  conducting at all. The FET channel asks for nothing; a small signal passes through as if
+  through a plain 50&nbsp;Ω resistor, because it <em>is</em> a plain 50&nbsp;Ω resistor.</p>
+  <p>Better still, the control terminal is insulated: the gate injects <strong>no current into
+  the signal path</strong>. Almost. The gate is a capacitor plate facing the channel, and when
+  the gate voltage slews, a squirt of charge couples capacitively into the signal — the
+  <em>charge injection</em> we'll meet in the gotchas section. Small, but not zero, and it will
+  matter exactly when you can least afford it.</p>
+  <p>Now the catch. R<sub>on</sub> depends on the gate <em>overdrive</em>,
+  V<sub>GS</sub>&nbsp;−&nbsp;V<sub>th</sub> — and for an analog switch, the source terminal
+  <em>is the signal</em>. Gate held at V<sub>DD</sub>, signal wandering up and down:
+  V<sub>GS</sub> = V<sub>DD</sub> − V<sub>sig</sub>, so <strong>R<sub>on</sub> varies with the
+  very signal it is passing</strong>. That's the R<sub>on</sub> flatness problem — a
+  signal-dependent series resistance, which is a polite name for distortion. The classic fix is
+  the <strong>complementary transmission gate</strong>: an N-FET and a P-FET in parallel, gates
+  driven oppositely, so whichever device is starving for overdrive, the other is feasting. We'll
+  build it below.</p>
+</div>
+
+<h2>Switching power — the low-side cell</h2>
+<p>Here is the standard cell from Module 12, worth engraving: <strong>logic pin → small gate
+resistor → N-channel MOSFET, source grounded, load from drain up to the positive supply.</strong>
+Logic HIGH puts the full logic swing across gate–source (source is at ground, so
+V<sub>GS</sub>&nbsp;=&nbsp;V<sub>logic</sub> exactly — the great convenience of low-side
+switching), the channel drops to milliohms, and the load sees essentially the whole supply.
+Logic LOW, V<sub>GS</sub>&nbsp;=&nbsp;0, and the FET is an open circuit but for nanoamps of
+leakage. The gate resistor (47–330&nbsp;Ω, uncritical) isn't there to set a current — the gate
+draws none at DC — it damps the ringing between the driver and the gate capacitance and blunts
+the charging-current spike drawn from the logic pin at each edge.</p>
+<p>If the load is inductive — motor, relay coil, solenoid — the Module 04 rule applies with full
+force: the coil's current cannot stop instantly, and at switch-off it will generate whatever
+voltage it takes to keep flowing. Give it somewhere to go: a <strong>flyback diode</strong>
+across the load, cathode to the supply, sits idle while the switch is on and catches the coil's
+current at turn-off, clamping the drain to one diode drop above the rail instead of letting it
+spike to FET-destroying heights.</p>
+<p>And one paragraph on <strong>PWM</strong>, because this cell is how power is <em>controlled</em>,
+not just switched: to run that motor at 40% speed, don't drop the extra voltage across a pass
+element — switch fully on and fully off, fast, with a 40% duty cycle, and let the motor's
+inertia (or an LC filter) average it. The Module 01 callback makes the case:
+P&nbsp;=&nbsp;V·I in the switch. Fully on, V across the FET is millivolts — P tiny. Fully off,
+I is nanoamps — P tiny. The switch only visits the deadly high-V·I middle ground for the few
+nanoseconds of each transition. A linear controller dropping 7&nbsp;V at 1&nbsp;A dissipates
+7&nbsp;W and needs a heatsink; the same FET switched hard dissipates
+I²R&nbsp;=&nbsp;(1&nbsp;A)²·50&nbsp;mΩ&nbsp;=&nbsp;50&nbsp;mW and doesn't get warm. That
+hundredfold difference is the entire premise of switching regulators, motor drives, and Class-D
+amplifiers.</p>
+
+<h2>High-side switching — when the load demands a real ground</h2>
+<p>Low-side switching is the default because it's easy. But notice what it does to the load:
+when the switch is off, the load's bottom end floats — the load is still tied to the positive
+rail, and its "ground" terminal dangles. For a dumb LED strip, who cares. For anything with a
+second connection to the outside world — a sensor sharing an ADC, a module with a communication
+line, anything with a chassis connection — a floating or bouncing ground reference is poison:
+signals leak through unintended paths, and even when "off" the load sits at supply potential,
+ready to find sneak return routes through those other connections. When the load needs a solid,
+permanent ground, you must switch the <strong>high side</strong>.</p>
+<p>The recipe is the P-channel mirror image of the standard cell: <strong>P-FET with source to
+the positive rail, load from drain to ground. Gate pulled up to the rail = off
+(V<sub>GS</sub>&nbsp;=&nbsp;0); gate pulled down = on</strong> (V<sub>GS</sub> goes several
+volts negative). The mental speed bump is that P-FET logic is inverted — gate LOW turns it ON —
+and there's a practical snag: a 3.3&nbsp;V logic pin cannot work the gate directly. "Off" means
+gate at +12&nbsp;V, and your microcontroller pin must never be dragged to +12. So we
+<strong>level-shift</strong> with the smallest possible circuit: an NPN with its emitter
+grounded, base driven from logic through a resistor, collector to the P-FET gate, and a pull-up
+resistor from gate to the +12&nbsp;V rail. Logic HIGH → NPN saturates → gate yanked to
+~0.2&nbsp;V → V<sub>GS</sub>&nbsp;≈&nbsp;−11.8&nbsp;V → P-FET hard on. Logic LOW → NPN off →
+pull-up parks the gate at +12 → V<sub>GS</sub>&nbsp;=&nbsp;0 → off. Two inversions in a row
+(NPN inverts, P-FET's gate sense inverts) cancel out, and logic HIGH means load ON, as nature
+intended. The widget below draws it live.</p>
+<p>Can an N-FET switch the high side? Only if you can hold its gate <em>above</em> the positive
+rail by a full V<sub>GS</sub> — which is exactly what charge-pump "high-side driver" ICs and
+bootstrap circuits exist to do, and all we'll say about them here.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: low-side vs high-side bench</div>
+  <div class="widget-hint">Pick a cell, then flip the logic pin. Watch the gate voltages, the
+  highlighted current path, and — in the high-side cell — the double inversion doing its work.
+  The power FET is modeled with R<sub>DS(on)</sub> = 50&nbsp;mΩ carrying 1&nbsp;A when on.</div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px">
+    <button class="btn" id="btn-low" type="button">Low-side (N-FET)</button>
+    <button class="btn ghost" id="btn-high" type="button">High-side (P-FET)</button>
+    <label style="display:flex; align-items:center; gap:8px; margin-left:auto; font-weight:600; cursor:pointer">
+      <input type="checkbox" id="logic-cb" checked style="width:18px;height:18px;accent-color:var(--accent)">
+      logic HIGH (3.3 V)
+    </label>
+  </div>
+
+  <div class="viz-row">
+    <svg id="bench-svg" class="schematic" viewBox="0 0 400 258" width="400" height="258" role="img"
+         aria-label="Switchable schematic: low-side N-FET cell or high-side P-FET cell with NPN level shifter">
+      <!-- ================= LOW-SIDE CELL ================= -->
+      <g id="cell-low">
+        <!-- current path highlight (under everything) -->
+        <path id="lo-path" d="M 250 30 L 250 212" fill="none" stroke="var(--series-2)"
+              stroke-width="6" opacity="0" stroke-linecap="round"/>
+        <!-- +12 V feed -->
+        <path class="wire" d="M 250 30 L 250 60"/>
+        <text x="250" y="22" class="lbl big" text-anchor="middle">+12 V</text>
+        <!-- motor -->
+        <circle id="lo-load" cx="250" cy="80" r="19" class="comp" fill="var(--surface)"/>
+        <text x="250" y="85" class="lbl big" text-anchor="middle">M</text>
+        <text x="188" y="85" class="lbl" text-anchor="end">motor, 1 A</text>
+        <!-- flyback diode across motor: anode at bottom node, cathode at top node -->
+        <circle cx="250" cy="52" r="3.5" class="node"/>
+        <circle cx="250" cy="108" r="3.5" class="node"/>
+        <path class="wire" d="M 250 52 L 316 52 L 316 82"/>
+        <path class="wire" d="M 316 96 L 316 108 L 250 108"/>
+        <path d="M 308 96 L 324 96 L 316 82 Z" fill="var(--ink)"/>
+        <path class="comp" d="M 308 82 L 324 82"/>
+        <text x="330" y="94" class="lbl">flyback</text>
+        <!-- motor to drain -->
+        <path class="wire" d="M 250 99 L 250 130"/>
+        <!-- N-FET: channel, gate plate, leads -->
+        <path class="comp" d="M 250 130 L 250 164" stroke-width="3"/>
+        <path class="comp" d="M 240 134 L 240 160"/>
+        <path class="wire" d="M 240 147 L 166 147"/>
+        <text x="264" y="151" class="lbl big">N-FET</text>
+        <!-- source to ground -->
+        <path class="wire" d="M 250 164 L 250 212"/>
+        <g class="gnd">
+          <line x1="238" y1="212" x2="262" y2="212"/>
+          <line x1="242" y1="218" x2="258" y2="218"/>
+          <line x1="246" y1="224" x2="254" y2="224"/>
+        </g>
+        <!-- gate drive: logic node, 100 Ω, gate -->
+        <circle cx="58" cy="147" r="3.5" class="node"/>
+        <text x="58" y="133" class="lbl" text-anchor="middle">logic pin</text>
+        <path class="wire" d="M 58 147 L 78 147"/>
+        <path class="comp" d="M 78 147 L 82 147 L 86 137 L 94 157 L 102 137 L 110 157 L 118 137 L 126 157 L 130 147 L 134 147"/>
+        <path class="wire" d="M 134 147 L 166 147"/>
+        <text x="106" y="130" class="lbl" text-anchor="middle">100 Ω</text>
+        <text x="106" y="172" class="lbl" text-anchor="middle" id="lo-vlogic">3.3 V</text>
+        <text x="180" y="141" class="lbl" id="lo-vgate" fill="var(--series-1)">V_G = 3.3 V</text>
+        <text x="58" y="243" class="lbl" id="lo-note">FET ON — current flows</text>
+      </g>
+
+      <!-- ================= HIGH-SIDE CELL ================= -->
+      <g id="cell-high" style="display:none">
+        <!-- current path highlight -->
+        <path id="hi-path" d="M 268 30 L 268 212" fill="none" stroke="var(--series-2)"
+              stroke-width="6" opacity="0" stroke-linecap="round"/>
+        <!-- +12 V rail -->
+        <path class="wire" d="M 132 30 L 320 30"/>
+        <text x="122" y="34" class="lbl big" text-anchor="end">+12 V</text>
+        <!-- P-FET: source to rail, drain down. channel line + gate plate -->
+        <path class="wire" d="M 268 30 L 268 46"/>
+        <path class="comp" d="M 268 46 L 268 80" stroke-width="3"/>
+        <path class="comp" d="M 258 50 L 258 76"/>
+        <path class="wire" d="M 258 63 L 210 63"/>
+        <text x="282" y="60" class="lbl big">P-FET</text>
+        <text x="282" y="76" class="lbl">source ↑</text>
+        <!-- 10k pull-up from gate node to rail -->
+        <circle cx="210" cy="63" r="3.5" class="node"/>
+        <path class="wire" d="M 210 30 L 210 34"/>
+        <path class="comp" d="M 210 34 L 210 36 L 202 39 L 218 45 L 202 51 L 218 57 L 210 60"/>
+        <path class="wire" d="M 210 60 L 210 63"/>
+        <text x="226" y="48" class="lbl">10 kΩ</text>
+        <text x="152" y="56" class="lbl" id="hi-vgate" fill="var(--series-1)" text-anchor="end">V_G = 0.2 V</text>
+        <!-- gate node down to NPN collector -->
+        <path class="wire" d="M 210 63 L 210 118"/>
+        <!-- NPN level shifter: base bar, collector/emitter diagonals -->
+        <path class="comp" d="M 196 124 L 196 152"/>
+        <path class="wire" d="M 210 118 L 210 124 L 196 132"/>
+        <path class="wire" d="M 196 144 L 210 152 L 210 158"/>
+        <path d="M 204 151 L 210 152 L 206 146 Z" fill="var(--ink)"/>
+        <text x="216" y="142" class="lbl">NPN</text>
+        <text x="216" y="156" class="lbl" id="hi-npn">ON (inverts)</text>
+        <!-- emitter to ground -->
+        <path class="wire" d="M 210 158 L 210 200"/>
+        <g class="gnd">
+          <line x1="198" y1="200" x2="222" y2="200"/>
+          <line x1="202" y1="206" x2="218" y2="206"/>
+          <line x1="206" y1="212" x2="214" y2="212"/>
+        </g>
+        <!-- base drive: logic node, 4.7k -->
+        <circle cx="52" cy="138" r="3.5" class="node"/>
+        <text x="52" y="124" class="lbl" text-anchor="middle">logic pin</text>
+        <path class="wire" d="M 52 138 L 70 138"/>
+        <path class="comp" d="M 70 138 L 74 138 L 78 128 L 86 148 L 94 128 L 102 148 L 110 128 L 118 148 L 122 138 L 126 138"/>
+        <path class="wire" d="M 126 138 L 196 138"/>
+        <text x="98" y="121" class="lbl" text-anchor="middle">4.7 kΩ</text>
+        <text x="98" y="163" class="lbl" text-anchor="middle" id="hi-vlogic">3.3 V</text>
+        <!-- drain to load: LED strip box -->
+        <path class="wire" d="M 268 80 L 268 104"/>
+        <rect id="hi-load" x="252" y="104" width="32" height="48" class="comp" fill="var(--surface)" rx="4"/>
+        <text x="292" y="124" class="lbl">LED strip</text>
+        <text x="292" y="140" class="lbl">1 A</text>
+        <path class="wire" d="M 268 152 L 268 200"/>
+        <g class="gnd">
+          <line x1="256" y1="200" x2="280" y2="200"/>
+          <line x1="260" y1="206" x2="276" y2="206"/>
+          <line x1="264" y1="212" x2="272" y2="212"/>
+        </g>
+        <text x="52" y="243" class="lbl" id="hi-note">logic HIGH → NPN ON → gate LOW → P-FET ON</text>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 260px">
+      <div class="readouts" style="flex-direction:column">
+        <div class="readout"><div class="k">Gate voltage V<sub>G</sub></div><div class="v" id="w1-vgate">—</div></div>
+        <div class="readout"><div class="k">Power FET V<sub>GS</sub></div><div class="v" id="w1-vgs">—</div></div>
+        <div class="readout"><div class="k">Load</div><div class="v" id="w1-load">—</div></div>
+        <div class="readout"><div class="k">P in FET = I²·R<sub>DS(on)</sub></div><div class="v" id="w1-pfet">—</div></div>
+      </div>
+      <p class="widget-hint" id="w1-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+</div>
+
+<h2>Analog switches — the transmission gate</h2>
+<p>Now the second job. Take a small N-FET, put the signal on one channel terminal and the load
+on the other, drive the gate to V<sub>DD</sub> to close the switch, to 0 (or below) to open it.
+For signals near ground this works beautifully: overdrive is huge, R<sub>on</sub> is low and
+steady. But watch what happens as the signal climbs. The FET's effective source is the channel
+terminal, riding on the signal, so the overdrive is
+V<sub>DD</sub>&nbsp;−&nbsp;V<sub>sig</sub>&nbsp;−&nbsp;V<sub>th</sub> — shrinking as the signal
+rises. R<sub>on</sub> climbs, gently at first, then steeply, and as V<sub>sig</sub> approaches
+<strong>V<sub>DD</sub>&nbsp;−&nbsp;V<sub>th</sub> the switch simply stops conducting</strong>.
+A single N-FET switch passes low voltages well and dies near the top of the range. A single
+P-FET (gate driven to 0 to turn on) is the exact mirror image: happy at the top, dead near
+ground.</p>
+<div class="formula">
+  R<sub>on</sub> ≈ 1 / [k·(V<sub>GS</sub> − V<sub>th</sub>)]
+  <small>triode-region channel resistance — inversely proportional to gate overdrive,
+  and for an analog switch the overdrive depends on the signal</small>
+</div>
+<p>You can hear the fix coming: put both in <strong>parallel</strong>, gates driven to opposite
+rails, and you have the <strong>complementary transmission gate</strong>. Where the N-FET is
+starving, the P-FET is fully enhanced, and vice versa; the parallel combination (Module 01!) is
+dominated by whichever is lower, and the result is a flattish "bathtub" of R<sub>on</sub>
+across the whole supply range. This is the circuit inside the classic <strong>4066</strong>
+quad bilateral switch — four transmission gates with their opposite-phase gate drivers in one
+package — and inside the <strong>4051</strong> family of analog multiplexers, which are just
+trees of transmission gates with an address decoder: three digital pins select which of eight
+analog paths is connected. Route audio, chop signals, share one ADC among eight sensors — all
+the same trick.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: R<sub>on</sub> across the signal range</div>
+  <div class="widget-hint">On-resistance vs signal voltage for a 5&nbsp;V-supplied switch:
+  <span style="color:var(--series-1);font-weight:600">N-FET alone</span>,
+  <span style="color:var(--series-3);font-weight:600">P-FET alone</span>, and the
+  <span style="color:var(--series-2);font-weight:600">complementary pair</span> (parallel
+  combination — the keeper). Curves leaving the top of the plot have effectively cut off
+  (capped at 10&nbsp;kΩ in the model). Hover to read all three; raise V<sub>th</sub> and watch
+  the mid-range coverage gap grow.</div>
+  <canvas id="ron-plot" class="hh-plot" data-height="320"></canvas>
+  <div class="controls">
+    <div class="control">
+      <label for="vth-slider">Threshold V<sub>th</sub> <span class="val"></span></label>
+      <input type="range" id="vth-slider" min="1" max="2.5" step="0.05" value="1.5">
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout"><div class="k">Pair R<sub>on</sub> at mid-scale (2.5 V)</div><div class="v" id="ron-mid">—</div></div>
+    <div class="readout"><div class="k">Divider error into 100 kΩ load</div><div class="v" id="err-mid">—</div></div>
+  </div>
+  <p class="widget-hint" id="ron-note" style="margin-top:10px"></p>
+</div>
+
+<h2>Analog-switch gotchas</h2>
+<p>Analog switches are honest parts, but their datasheets confess four sins you must design
+around:</p>
+<p><strong>1. R<sub>on</sub> is not zero.</strong> Tens to hundreds of ohms, and (as the widget
+shows) not constant. That resistance forms a voltage divider (Module 02) with whatever load the
+switch drives: 100&nbsp;Ω of switch into a 10&nbsp;kΩ load is a 1% error — and a
+<em>signal-dependent</em> 1%, which is distortion, not just gain error. The cure is the
+Thévenin habit: drive high-impedance loads. Into 100&nbsp;kΩ the same switch contributes 0.1%;
+into an op-amp follower's near-infinite input, essentially nothing.</p>
+<p><strong>2. Charge injection.</strong> The gate must slew a full rail-to-rail swing to operate
+the switch, and the gate–channel capacitance couples a small packet of charge — a picocoulomb or
+so — straight into the signal path at every transition. Into a stiff low-impedance source it
+vanishes; into a small <em>hold capacitor</em> it becomes a voltage step, ΔV&nbsp;=&nbsp;Q/C.
+This is the classic plague of the <strong>sample-and-hold</strong> (a preview of Part III's
+data-conversion circuits: switch closes, cap tracks the signal; switch opens, cap holds it for
+the ADC). A 1&nbsp;pC injection into 200&nbsp;pF is a 5&nbsp;mV glitch — a full LSB at 10 bits.
+Bigger caps glitch less (ΔV&nbsp;∝&nbsp;1/C<sub>hold</sub>) but charge slower; complementary
+switches help too, since the N and P gates slew in opposite directions and their injections
+partially cancel.</p>
+<p><strong>3. Off-state leakage.</strong> An open switch isn't open — nanoamps trickle through.
+Irrelevant into a 10&nbsp;kΩ load; deadly into that same hold capacitor, where 1&nbsp;nA drains
+1&nbsp;mV from 1&nbsp;nF every millisecond (Module 03's I&nbsp;=&nbsp;C·dV/dt, running in
+reverse on you).</p>
+<p><strong>4. The signal must stay within the switch's supply rails.</strong> The channel sits
+in a substrate tied to the supplies; drag the signal beyond a rail and substrate junctions
+forward-bias — at best the switch conducts when it shouldn't, at worst the chip latches up.
+A ±5&nbsp;V audio signal through a 0–5&nbsp;V-supplied 4066 is a bug you only ship once.</p>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy — three kinds of valve</span>
+  <p>A <strong>power switch is the main water valve</strong>: its job is fully open or fully
+  shut, and both states are cheap to hold — open, the water barely notices it; shut, nothing
+  flows, nothing is lost. What's <em>expensive</em> is holding it half-open: the valve itself
+  eats the pressure drop, roaring and heating. That half-open state is linear regulation, and
+  PWM is the trick of never lingering there — snap between the two cheap states and let the
+  average do the regulating.</p>
+  <p>An <strong>analog switch is a clean, food-grade valve in a sampling line</strong> at a
+  bottling plant. Its duty isn't moving volume — it's passing a small taste of the product
+  <em>unchanged</em>. It must not flavor what passes (offset voltage), must not restrict it
+  (R<sub>on</sub>), and must not contaminate it when it operates (charge injection — the puff
+  of air the valve stem pushes into the line every time it moves).</p>
+  <p>A <strong>transmission gate is two such valves in parallel, angled opposite ways</strong>,
+  so that whatever the line pressure, at least one of them is always fully open — the flow
+  always has one easy path.</p>
+  <p>Where the analogy fails: water valves don't leak backward through their stems the way an
+  off FET leaks nanoamps; the "puff" of charge injection scales with the <em>speed</em> of gate
+  slew and the smallness of what's downstream, which has no clean plumbing counterpart; and no
+  water valve stops working just because the line pressure got within V<sub>th</sub> of the
+  supply.</p>
+</div>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>Low-side switch by default</strong> — it's the simple, full-gate-drive cell.
+        Go high-side when the load demands a solid ground reference (shared signals, sensors,
+        anything with a second path to the world).</li>
+    <li><strong>P-FET logic is inverted:</strong> gate LOW = on. With an NPN level shifter in
+        front, the two inversions cancel and logic HIGH = load ON. Say the chain out loud until
+        it stops surprising you.</li>
+    <li><strong>Analog switch R<sub>on</sub> should feed a load ≥ 100× its value</strong> —
+        100&nbsp;Ω of switch wants ≥ 10&nbsp;kΩ, comfortably 100&nbsp;kΩ or an op-amp input.</li>
+    <li><strong>Watch the signal range against the switch's supply</strong> — the switch only
+        works (and only survives) between its own rails, and single-FET switches die a
+        V<sub>th</sub> short of the rail.</li>
+    <li><strong>Charge injection ∝ 1/C<sub>hold</sub>:</strong> bigger hold caps glitch less
+        but settle slower (τ = R<sub>on</sub>C). Every sample-and-hold is a negotiation between
+        those two.</li>
+  </ul>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Real tasks, pencil-and-paper (or head) only. Check the box when you've done it and verified
+against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — high-side switch for a 12 V LED strip</label>
+  </div>
+  <p>A 12&nbsp;V, 2&nbsp;A LED strip must be switched from a 3.3&nbsp;V logic pin, and the
+  strip's ground must stay solidly grounded (it shares a metal channel with other electronics).
+  Design the complete high-side switch: choose the topology, all resistor values, and verify
+  both states — including what holds the switch off when the logic pin is low, and the power
+  dissipated in the FET when on (assume R<sub>DS(on)</sub> = 50&nbsp;mΩ).</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Topology:</strong> P-FET, source to +12&nbsp;V, drain to the strip, strip to
+      ground. Gate: 10&nbsp;kΩ pull-up to +12&nbsp;V, and down to the collector of a small NPN
+      (2N3904 class), emitter grounded, base fed from the logic pin through 4.7&nbsp;kΩ. Pick a
+      P-FET with V<sub>GS</sub> rating ≥ ±20&nbsp;V and R<sub>DS(on)</sub> specified at
+      V<sub>GS</sub> = −10&nbsp;V or less (we'll give it −11.8).</p>
+      <p><strong>ON state (logic HIGH):</strong> base current ≈ (3.3&nbsp;−&nbsp;0.7)/4.7k =
+      0.55&nbsp;mA. Collector current is only the pull-up's 12/10k = 1.2&nbsp;mA, so even
+      β&nbsp;=&nbsp;10 saturates it hopelessly hard — the NPN drags the gate to ≈&nbsp;0.2&nbsp;V,
+      giving V<sub>GS</sub> = 0.2&nbsp;−&nbsp;12 = <strong>−11.8&nbsp;V</strong>: fully enhanced,
+      safely inside ±20&nbsp;V. Housekeeping costs: ~14&nbsp;mW in the pull-up
+      (11.8²/10k) and ~1.4&nbsp;mW in the base resistor — negligible. FET dissipation:
+      P = I²R = 2² × 0.05 = <strong>0.2&nbsp;W</strong> — warm but fine for a SOT-23 power FET
+      with a bit of copper pour; no heatsink.</p>
+      <p><strong>OFF state (logic LOW):</strong> NPN off; its collector leakage (nA) through
+      10&nbsp;kΩ drops microvolts, so the gate sits at 12.000&nbsp;V and
+      V<sub>GS</sub>&nbsp;=&nbsp;0 — the pull-up <em>guarantees</em> off, even with the micro
+      unpowered or the pin floating at reset. That guarantee is the pull-up's real job; never
+      leave a power FET's gate to float.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — the case of the corrupted ADC readings</label>
+  </div>
+  <p>A battery-powered board switches a sensor's power with a low-side N-FET (to save sleep
+  current). The sensor's analog output goes to an ADC that other circuits share. Symptom: the
+  sensor's readings are offset high by a few millivolts, and the offset <em>changes when the
+  sensor's own supply current changes</em>. The sensor draws 20&nbsp;mA; the small switching FET
+  has R<sub>DS(on)</sub> = 0.5&nbsp;Ω. Diagnose the offset, put a number on it (the ADC is
+  10-bit, 5&nbsp;V full scale), and propose the fix.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Diagnosis:</strong> the low-side FET sits between the sensor's ground pin and
+      the board's real ground, so the sensor's entire supply current flows through
+      R<sub>DS(on)</sub>. The sensor's "ground" is bounced up by I·R = 20&nbsp;mA × 0.5&nbsp;Ω =
+      <strong>10&nbsp;mV</strong> — and the sensor's output, referenced to its own lifted ground,
+      arrives at the ADC (referenced to real ground) offset by that amount. At 5/1024 =
+      4.88&nbsp;mV per LSB, that's <strong>about 2 LSB</strong> — and it wanders with supply
+      current, so you can't even calibrate it out. Exactly the "load loses its ground reference"
+      failure the high-side section warned about.</p>
+      <p><strong>Fix:</strong> switch the sensor's <em>high side</em> (P-FET + level shifter from
+      Task 1, scaled down) so its ground pin ties directly and permanently to board ground. Where
+      high-side isn't available, the damage can be reduced by careful grounding — sense the
+      sensor's output differentially, or route a dedicated sense/ground trace to the sensor's
+      ground pin so no load current flows in the measurement path. That's Kelvin sensing and
+      star grounding — Module 30's whole subject, previewed here by a 0.5&nbsp;Ω villain.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — sizing a sample-and-hold capacitor</label>
+  </div>
+  <p>A sample-and-hold uses an analog switch (R<sub>on</sub> = 100&nbsp;Ω) to charge a hold
+  capacitor, which must then hold its voltage for 1&nbsp;ms while a 10-bit, 5&nbsp;V ADC does
+  other work. Total leakage off the cap (switch + ADC input) is 1&nbsp;nA. Choose C for less
+  than 1&nbsp;LSB of droop, then compute the acquisition time (take 5τ) — and describe what
+  you're trading away as C grows.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Droop:</strong> 1&nbsp;LSB = 5&nbsp;V/1024 = 4.88&nbsp;mV. The cap loses charge
+      at I = 1&nbsp;nA for 1&nbsp;ms, so ΔV = I·t/C, and C ≥ I·t/ΔV =
+      (1&nbsp;nA × 1&nbsp;ms)/4.88&nbsp;mV ≈ <strong>0.2&nbsp;nF</strong> (0.205&nbsp;nF exactly
+      — use 220&nbsp;pF or larger).</p>
+      <p><strong>Acquisition:</strong> τ = R<sub>on</sub>C = 100&nbsp;Ω × 0.205&nbsp;nF =
+      20.5&nbsp;ns; 5τ ≈ <strong>100&nbsp;ns</strong>. (Honesty note: 5τ settles to 0.7% of the
+      step, ≈&nbsp;7 LSB at 10 bits — to settle within ½&nbsp;LSB you actually need
+      ln(2048)&nbsp;≈&nbsp;7.6τ, about 156&nbsp;ns. Cheap here, but the habit of matching
+      settling depth to converter resolution will save you in Part III.)</p>
+      <p><strong>The trade:</strong> minimum-C isn't optimum-C. That 0.2&nbsp;nF cap also
+      receives the switch's charge injection: 1&nbsp;pC into 0.205&nbsp;nF is a 4.9&nbsp;mV
+      glitch — a full LSB, right at your error budget. Grow C to 10&nbsp;nF and both droop
+      (0.1&nbsp;mV) and injection glitch (0.1&nbsp;mV) become negligible… but acquisition
+      stretches to 5τ = 5&nbsp;µs, capping your sample rate. Every sample-and-hold lives on
+      this seesaw: <strong>bigger C holds cleaner, smaller C acquires faster</strong>, and the
+      design point is wherever your droop, glitch, and speed budgets balance.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="12-fets.html"><span class="dir">Previous</span><span class="name">12 · FETs: JFETs &amp; MOSFETs</span></a>
+  <a href="../index.html"><span class="dir">Next</span><span class="name">Curriculum hub — Part III coming soon</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("13");
+
+  /* ================= Widget 1: low-side vs high-side bench ================= */
+  var w1 = {
+    cell: "low",       // "low" | "high"
+    logicHigh: true,
+    VDD: 12, VLOGIC: 3.3, VSAT: 0.2, RDSON: 0.05, ILOAD: 1
+  };
+
+  var btnLow = document.getElementById("btn-low");
+  var btnHigh = document.getElementById("btn-high");
+  var logicCb = document.getElementById("logic-cb");
+  var cellLow = document.getElementById("cell-low");
+  var cellHigh = document.getElementById("cell-high");
+
+  var w1Vgate = document.getElementById("w1-vgate");
+  var w1Vgs = document.getElementById("w1-vgs");
+  var w1Load = document.getElementById("w1-load");
+  var w1P = document.getElementById("w1-pfet");
+  var w1Note = document.getElementById("w1-note");
+
+  var loPath = document.getElementById("lo-path");
+  var loLoad = document.getElementById("lo-load");
+  var loVgate = document.getElementById("lo-vgate");
+  var loVlogic = document.getElementById("lo-vlogic");
+  var loNote = document.getElementById("lo-note");
+
+  var hiPath = document.getElementById("hi-path");
+  var hiLoad = document.getElementById("hi-load");
+  var hiVgate = document.getElementById("hi-vgate");
+  var hiVlogic = document.getElementById("hi-vlogic");
+  var hiNpn = document.getElementById("hi-npn");
+  var hiNote = document.getElementById("hi-note");
+
+  function benchUpdate() {
+    var on, vGate, vGS;
+    var high = w1.logicHigh;
+    if (w1.cell === "low") {
+      /* N-FET, source grounded: V_GS = logic level directly */
+      vGate = high ? w1.VLOGIC : 0;
+      vGS = vGate;
+      on = high;
+      cellLow.style.display = "";
+      cellHigh.style.display = "none";
+      loVlogic.textContent = high ? "3.3 V" : "0 V";
+      loVgate.textContent = "V_G = " + vGate.toFixed(1) + " V";
+      loPath.setAttribute("opacity", on ? "0.35" : "0");
+      loLoad.setAttribute("fill", on ? "var(--task-wash)" : "var(--surface)");
+      loLoad.style.stroke = on ? "var(--series-2)" : "";
+      loNote.textContent = on
+        ? "logic HIGH → V_GS = 3.3 V → FET ON — 1 A flows"
+        : "logic LOW → V_GS = 0 → FET OFF — flyback catches the motor's current";
+      w1Note.innerHTML = on
+        ? "One inversion nowhere: logic HIGH → gate HIGH → N-FET ON. The source sits at " +
+          "ground, so the gate gets the <em>full</em> logic swing as overdrive — the whole " +
+          "charm of low-side switching."
+        : "Switch open. The motor's bottom end now floats near +12 V through the winding — " +
+          "harmless for a motor, but this is exactly the state that corrupts grounded loads " +
+          "(see the high-side cell).";
+    } else {
+      /* P-FET high side through NPN level shifter */
+      var npnOn = high;
+      vGate = npnOn ? w1.VSAT : w1.VDD;
+      vGS = vGate - w1.VDD;          /* −11.8 on, 0 off */
+      on = npnOn;
+      cellLow.style.display = "none";
+      cellHigh.style.display = "";
+      hiVlogic.textContent = high ? "3.3 V" : "0 V";
+      hiVgate.textContent = "V_G = " + (npnOn ? "0.2" : "12") + " V";
+      hiNpn.textContent = npnOn ? "ON (inverts)" : "OFF";
+      hiPath.setAttribute("opacity", on ? "0.35" : "0");
+      hiLoad.setAttribute("fill", on ? "var(--task-wash)" : "var(--surface)");
+      hiLoad.style.stroke = on ? "var(--series-2)" : "";
+      hiNote.textContent = on
+        ? "logic HIGH → NPN ON → gate LOW → P-FET ON"
+        : "logic LOW → NPN OFF → 10 k pulls gate to +12 → V_GS = 0 → P-FET OFF";
+      w1Note.innerHTML = on
+        ? "<strong>The double inversion:</strong> logic HIGH → NPN ON (inversion 1: gate " +
+          "pulled LOW) → P-FET sees V_GS = −11.8 V (inversion 2: gate LOW = ON) → load ON. " +
+          "Two flips cancel — HIGH still means ON."
+        : "NPN off, so the pull-up parks the gate at the rail: V_GS = 0 and the P-FET is " +
+          "guaranteed off — even if the logic pin floats at power-up. That guarantee is the " +
+          "pull-up's real job.";
+    }
+    var pFet = on ? w1.ILOAD * w1.ILOAD * w1.RDSON : 0;
+    w1Vgate.textContent = HH.fmt(vGate, "V", 1);
+    w1Vgs.textContent = (vGS >= 0 ? "" : "−") + HH.fmt(Math.abs(vGS), "V", 1);
+    w1Load.textContent = on ? "ON — 1 A" : "OFF";
+    w1Load.style.color = on ? "var(--good-text)" : "var(--muted)";
+    w1P.textContent = on ? HH.fmt(pFet, "W") : "0 W";
+    btnLow.className = w1.cell === "low" ? "btn" : "btn ghost";
+    btnHigh.className = w1.cell === "high" ? "btn" : "btn ghost";
+  }
+  btnLow.addEventListener("click", function () { w1.cell = "low"; benchUpdate(); });
+  btnHigh.addEventListener("click", function () { w1.cell = "high"; benchUpdate(); });
+  logicCb.addEventListener("change", function () { w1.logicHigh = logicCb.checked; benchUpdate(); });
+  benchUpdate();
+
+  /* ================= Widget 2: R_on across the signal range ================= */
+  var VDD2 = 5;
+  var K = 1 / 350;      /* S/V — chosen so R_on,N = 1/(k·(5−0−1.5)) = 100 Ω at Vsig = 0 */
+  var RCEIL = 10000;    /* display/model ceiling: "effectively off" */
+  var RLOAD = 100e3;    /* divider-error load */
+  var vth = 1.5;
+
+  function ronN(vsig, vt) {
+    var ov = VDD2 - vsig - vt;
+    if (ov <= 1 / (K * RCEIL)) return RCEIL;
+    return Math.min(RCEIL, 1 / (K * ov));
+  }
+  function ronP(vsig, vt) {
+    var ov = vsig - vt;
+    if (ov <= 1 / (K * RCEIL)) return RCEIL;
+    return Math.min(RCEIL, 1 / (K * ov));
+  }
+  function ronPair(vsig, vt) {
+    var n = ronN(vsig, vt), p = ronP(vsig, vt);
+    return (n * p) / (n + p);
+  }
+  function fmtR(r) { return r >= RCEIL ? "off (≥10 kΩ)" : HH.fmt(r, "Ω"); }
+
+  var ronMid = document.getElementById("ron-mid");
+  var errMid = document.getElementById("err-mid");
+  var ronNote = document.getElementById("ron-note");
+
+  var ronPlot = HH.plot(document.getElementById("ron-plot"), {
+    xlabel: "Signal voltage (V)   —   switch supply 0 to 5 V",
+    ylabel: "R_on (Ω)",
+    xmin: 0, xmax: 5, ymin: 0, ymax: 1000,
+    xticks: [0, 1, 2, 3, 4, 5],
+    yticks: [0, 200, 400, 600, 800, 1000],
+    xfmt: function (v) { return v + ""; },
+    yfmt: function (v) { return v + ""; },
+    hover: function (x) {
+      var n = ronN(x, vth), p = ronP(x, vth), pr = ronPair(x, vth);
+      var err = (pr / (pr + RLOAD)) * 100;
+      return [
+        { text: "Vsig = " + x.toFixed(2) + " V" },
+        { color: "--series-1", text: "N alone: " + fmtR(n) },
+        { color: "--series-3", text: "P alone: " + fmtR(p) },
+        { color: "--series-2", text: "pair: " + fmtR(pr) },
+        { text: "divider error into 100 kΩ: " + err.toFixed(2) + " %" }
+      ];
+    }
+  });
+
+  function ronDraw() {
+    var sN = [], sP = [], sPair = [];
+    for (var v = 0; v <= 5.0001; v += 0.02) {
+      sN.push([v, ronN(v, vth)]);
+      sP.push([v, ronP(v, vth)]);
+      sPair.push([v, ronPair(v, vth)]);
+    }
+    ronPlot.draw([
+      { pts: sN, color: "--series-1", width: 2 },
+      { pts: sP, color: "--series-3", width: 2 },
+      { pts: sPair, color: "--series-2", width: 3 }
+    ]);
+    var mid = ronPair(2.5, vth);
+    var err = (mid / (mid + RLOAD)) * 100;
+    ronMid.textContent = fmtR(mid);
+    errMid.textContent = mid >= RCEIL ? "> 9 %" : err.toFixed(2) + " %";
+    if (vth >= 2.45) {
+      ronNote.innerHTML = "⚠️ V<sub>th</sub> = V<sub>DD</sub>/2: at mid-scale <em>neither</em> " +
+        "device has any overdrive — even the complementary pair has a dead spot. This is why " +
+        "analog switches specify a minimum supply voltage: the transmission gate trick needs " +
+        "V<sub>th</sub> comfortably below V<sub>DD</sub>/2.";
+      ronNote.style.color = "var(--critical)";
+    } else if (vth >= 2.0) {
+      ronNote.innerHTML = "Both single devices are now dead across a band in the middle of the " +
+        "range — only the pair still covers it, and its bathtub is getting shallow-sided. " +
+        "Watch what happens at V<sub>th</sub> = 2.5 V.";
+      ronNote.style.color = "var(--muted)";
+    } else {
+      ronNote.innerHTML = "The pair's worst case is where the N and P curves cross — still a " +
+        "few hundred ohms while each single device is heading for cutoff at its bad end. Into " +
+        "a 100 kΩ load (Module 02: it's just a divider) that's a fraction of a percent.";
+      ronNote.style.color = "var(--muted)";
+    }
+  }
+  HH.slider("vth-slider", {
+    format: function (v) { return HH.fmt(v, "V", 2); },
+    onchange: function (v) { vth = v; ronDraw(); }
+  });
+  ronDraw();
+
+  /* ================= quiz ================= */
+  HH.quiz("quiz", [
+    {
+      q: "Why is a FET — and not a BJT — the device of choice for switching <em>analog signals</em>?",
+      opts: [
+        "FETs are faster than BJTs",
+        "The FET channel is a bidirectional resistor with no offset voltage; a saturated BJT stamps ~0.2 V onto everything it passes, one direction only",
+        "FETs handle more current",
+        "BJT switches cost more"
+      ],
+      answer: 1,
+      expl: "In triode the channel is just a resistor: zero volts at zero current, and current may flow either way. A BJT's V<sub>CE(sat)</sub> ≈ 0.1–0.2 V is a built-in error on every signal, and its collector–emitter path has a preferred direction. Speed, current, and cost aren't the issue — fidelity is."
+    },
+    {
+      q: "In the high-side P-FET switch, what gate voltage turns the load ON?",
+      opts: [
+        "Gate at the +12 V rail (V<sub>GS</sub> = 0)",
+        "Gate above the rail",
+        "Gate pulled LOW, several volts below the source (V<sub>GS</sub> strongly negative)",
+        "Gate at 3.3 V, matching the logic supply"
+      ],
+      answer: 2,
+      expl: "P-FET logic is inverted: gate at the rail means V<sub>GS</sub> = 0 — OFF. Pulling the gate down toward ground makes V<sub>GS</sub> ≈ −11.8 V — hard ON. (Gate at 3.3 V would give V<sub>GS</sub> = −8.7 V: actually on! Which is why the level shifter must swing the gate all the way to the rail to turn it off.)"
+    },
+    {
+      q: "Why bother with high-side switching at all, when low-side is simpler?",
+      opts: [
+        "High-side FETs have lower R<sub>DS(on)</sub>",
+        "So the load keeps a solid, permanent ground reference — a low-side switch lifts the load's ground and enables sneak current paths through its other connections",
+        "Low-side switches can't handle inductive loads",
+        "High-side switching is more efficient"
+      ],
+      answer: 1,
+      expl: "A low-side-switched load has its 'ground' bounced by I·R<sub>DS(on)</sub> when on and floating near the supply when off. Any load that shares signals with the rest of the system — sensors, modules with comm lines — needs its ground to be real ground. Efficiency, inductive handling, and R<sub>on</sub> are the same either side."
+    },
+    {
+      q: "A single N-FET analog switch, gate driven to V<sub>DD</sub>, fails near which end of the signal range?",
+      opts: [
+        "The bottom — signals near ground",
+        "The middle",
+        "The top — as V<sub>sig</sub> approaches V<sub>DD</sub> − V<sub>th</sub>, the gate overdrive vanishes",
+        "It works equally well everywhere"
+      ],
+      answer: 2,
+      expl: "The overdrive is V<sub>DD</sub> − V<sub>sig</sub> − V<sub>th</sub>: generous for low signals, gone when the signal climbs within a threshold of the gate drive. The P-FET is the mirror image — dead near ground. Hence the complementary pair."
+    },
+    {
+      q: "What problem does the complementary transmission gate (N + P in parallel, gates driven oppositely) actually fix?",
+      opts: [
+        "It doubles the current rating",
+        "It eliminates charge injection completely",
+        "It halves the switching time",
+        "Full-range coverage with flattish R<sub>on</sub>: wherever one device is starving for overdrive, the other is fully enhanced"
+      ],
+      answer: 3,
+      expl: "The parallel combination is dominated by whichever device is lower — a flattish bathtub across the whole supply range instead of a cliff at one end. (It also <em>reduces</em> charge injection, since the opposite-slewing gates partially cancel — but 'reduces' is not 'eliminates'.)"
+    },
+    {
+      q: "Charge injection in an analog switch: what is it, and what makes the resulting glitch smaller?",
+      opts: [
+        "Leakage through the off switch; smaller R<sub>on</sub> fixes it",
+        "Gate charge coupling capacitively into the signal path when the switch operates; a bigger hold capacitor (ΔV = Q/C) and complementary switches (opposite-phase cancellation) both help",
+        "Current drawn by the gate at DC; an insulated gate fixes it",
+        "Thermal noise in the channel; cooling fixes it"
+      ],
+      answer: 1,
+      expl: "The gate must slew rail-to-rail to operate the switch, and gate–channel capacitance squirts a picocoulomb or so into the signal. ΔV = Q/C, so bigger caps glitch less (but charge slower through R<sub>on</sub>), and the N and P gates of a transmission gate slew oppositely, partially cancelling. The gate draws no DC current — this is purely an edge effect."
+    },
+    {
+      q: "The efficiency argument for PWM over linear control, in one sentence?",
+      opts: [
+        "PWM uses less voltage",
+        "The FET switches so fast that no current flows",
+        "P = V·I in the switch is small in both the ON state (V ≈ 0) and the OFF state (I ≈ 0), and the switch only passes through the high-V·I middle for nanoseconds per edge",
+        "PWM recycles energy back into the supply"
+      ],
+      answer: 2,
+      expl: "Module 01's P = V·I, weaponized: hold the switch only in states where one factor is nearly zero. A linear element sits permanently in the middle — big V across it <em>and</em> big I through it — and pays for it in watts. Full current still flows in PWM; it just flows through a near-zero voltage drop."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

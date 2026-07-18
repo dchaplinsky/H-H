@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 · The Common-Emitter Amplifier — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part II · Module 10</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>The Common-Emitter Amplifier</h1>
+  <p class="subtitle">Ground the emitter, put a resistor in the collector, and the transistor
+  finally does what everyone expects of it: makes a signal <em>bigger</em>. Then tame it.
+  <em>AoE 3rd ed. §2.2–2.3.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Module&nbsp;09's emitter follower was a strange sort of amplifier: it gave you current muscle
+— a stiff copy of the input that could drive heavy loads — but the voltage gain was stuck at one.
+This module delivers the missing half. The <strong>common-emitter stage</strong> is the canonical
+single-transistor <em>voltage</em> amplifier: signal into the base, amplified (and inverted!) signal
+out of the collector. It is the circuit people mean when they say "a transistor amplifier," it is
+the front half of every op-amp you will ever use, and it introduces — in miniature — the deepest
+bargain in analog design: <strong>trading raw gain for predictability</strong>. Learn this stage
+honestly and Chapter&nbsp;4's op-amps will feel less like magic and more like a very good version
+of something you already built.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — the transconductance viewpoint</span>
+  <p>H&amp;H insist on a mental correction here, and it pays off for the rest of the book: the
+  bipolar transistor is not really a current amplifier, and not really a voltage amplifier. It is a
+  <strong>transconductance device</strong> — a voltage <em>in</em> controls a current <em>out</em>.
+  The Ebers–Moll equation (in its useful, stripped-down form) says the collector current depends
+  <em>exponentially</em> on the base–emitter voltage: I<sub>C</sub> ≈ I<sub>S</sub>·e<sup>V<sub>BE</sub>/V<sub>T</sub></sup>,
+  where V<sub>T</sub>&nbsp;=&nbsp;kT/q&nbsp;≈&nbsp;25&nbsp;mV at room temperature. An exponential is
+  ferociously steep: every 18&nbsp;mV of extra V<sub>BE</sub> <em>doubles</em> the collector
+  current; 60&nbsp;mV is a factor of ten.</p>
+  <p>Differentiate the exponential and you get the local steepness — the
+  <strong>transconductance</strong>: g<sub>m</sub>&nbsp;=&nbsp;dI<sub>C</sub>/dV<sub>BE</sub>&nbsp;=&nbsp;I<sub>C</sub>/V<sub>T</sub>&nbsp;=&nbsp;I<sub>C</sub>/25&nbsp;mV.
+  At 1&nbsp;mA that is 40&nbsp;mA per volt. Its reciprocal is an old friend from Module&nbsp;09,
+  the <em>intrinsic emitter resistance</em> r<sub>e</sub>&nbsp;=&nbsp;25&nbsp;mV/I<sub>C</sub>
+  (25&nbsp;Ω at 1&nbsp;mA, 12.5&nbsp;Ω at 2&nbsp;mA).</p>
+  <p>Now the whole amplifier falls out in one sentence: <em>a small wiggle in V<sub>BE</sub> wiggles
+  I<sub>C</sub> by g<sub>m</sub>·ΔV<sub>BE</sub>, and a collector resistor R<sub>C</sub> converts
+  that current wiggle back into a voltage wiggle of −g<sub>m</sub>R<sub>C</sub>·ΔV<sub>BE</sub>.</em>
+  Voltage → current → voltage. The minus sign is physical: more base voltage means more collector
+  current means more drop across R<sub>C</sub> means the collector <em>falls</em>.</p>
+</div>
+
+<h2>The naked CE stage — huge gain, ugly manners</h2>
+<p>Simplest version: emitter grounded, load resistor R<sub>C</sub> from the collector up to the
+supply, signal into the base (riding on a suitable DC bias), output taken at the collector. The
+gain is the transconductance argument made concrete:</p>
+<div class="formula">
+  G = −g<sub>m</sub>R<sub>C</sub> = −R<sub>C</sub>/r<sub>e</sub>
+  &nbsp;&nbsp;&nbsp; r<sub>e</sub> = 25 mV / I<sub>C</sub>
+  <small>grounded-emitter voltage gain; at I<sub>C</sub> = 1 mA with R<sub>C</sub> = 10 kΩ, G = −400</small>
+</div>
+<p>Gain of −400 from one transistor — impressive, and mostly useless as-is, for two connected
+reasons:</p>
+<ul>
+  <li><strong>Distortion.</strong> The gain is −R<sub>C</sub>/r<sub>e</sub>, but r<sub>e</sub>
+  depends on I<sub>C</sub> — and I<sub>C</sub> is exactly what the signal is wiggling. On the
+  half-cycle where current rises, r<sub>e</sub> shrinks and the gain grows; on the other half-cycle
+  the gain droops. The output isn't a scaled copy of the input; it's a scaled copy of the input
+  <em>seen through a gain that changes within each cycle</em>. Drive it with more than a few
+  millivolts and the waveform visibly bends (widget&nbsp;2 will show you).</li>
+  <li><strong>Bias drift.</strong> With the emitter grounded, the quiescent current is set by
+  V<sub>BE</sub> through that unforgiving exponential. V<sub>BE</sub> drifts about −2.1&nbsp;mV/°C
+  at fixed current — so a fixed base voltage means the current, and with it the operating point,
+  wanders with temperature. Warm the transistor with a fingertip and watch the collector voltage
+  walk away.</li>
+</ul>
+
+<h2>Emitter degeneration — the module's big idea</h2>
+<p>Now the fix, and it is worth reading slowly because it is the first appearance of the idea that
+powers the entire rest of analog electronics. Put a resistor R<sub>E</sub> between the emitter and
+ground. The input voltage now divides between the base–emitter junction and R<sub>E</sub>; the
+current wiggle it produces is ΔI ≈ Δv<sub>in</sub>/(R<sub>E</sub>&nbsp;+&nbsp;r<sub>e</sub>), and
+R<sub>C</sub> converts it to output as before:</p>
+<div class="formula">
+  G = −R<sub>C</sub> / (R<sub>E</sub> + r<sub>e</sub>) ≈ −R<sub>C</sub>/R<sub>E</sub>
+  <small>the degenerated CE stage; the approximation holds when R<sub>E</sub> ≫ r<sub>e</sub></small>
+</div>
+<div class="panel rule">
+  <span class="panel-label">The feedback bargain</span>
+  <p><strong>The gain is now set by a ratio of two resistors — not by the transistor.</strong>
+  r<sub>e</sub> still wiggles with signal, but it is buried under R<sub>E</sub>: if
+  R<sub>E</sub>&nbsp;=&nbsp;1&nbsp;kΩ and r<sub>e</sub>&nbsp;=&nbsp;17&nbsp;Ω, a 20% wiggle in
+  r<sub>e</sub> moves the gain by ~0.3%. Distortion drops by the same factor; so does temperature
+  drift of the bias point (V<sub>E</sub> is pinned near V<sub>B</sub>&nbsp;−&nbsp;0.6, so
+  I<sub>C</sub>&nbsp;=&nbsp;V<sub>E</sub>/R<sub>E</sub> barely cares what the transistor does).</p>
+  <p>What did it cost? Gain. −400 became −3 or −10. That is the bargain: <em>throw away raw gain
+  you can't trust, and buy precision, linearity, and stability you can.</em> R<sub>E</sub> is
+  performing <strong>negative feedback</strong> — the emitter voltage follows the input and
+  automatically subtracts from the drive — and this exact trade, made with far more surplus gain,
+  is what an op-amp circuit is. H&amp;H plant the flag here; Chapter&nbsp;4 waves it.</p>
+</div>
+<p>How it self-corrects, in slow motion: suppose I<sub>C</sub> tries to run too high (temperature,
+transistor swap, anything). More current through R<sub>E</sub> raises V<sub>E</sub>; with
+V<sub>B</sub> held fixed by the bias divider, that <em>squeezes</em> V<sub>BE</sub>, which
+exponentially throttles the current back down. The error fights itself. That loop — sample the
+output, subtract at the input — is feedback, done with one resistor.</p>
+
+<h2>Biasing — parking the transistor where it can swing</h2>
+<p>An amplifier spends its life around a quiescent operating point, and choosing that point
+<em>is</em> the design. The classic four-resistor bias (divider R1/R2 into the base, R<sub>E</sub>
+below, R<sub>C</sub> above) works because of the follower you already know: the emitter sits a
+diode drop below whatever the divider provides, so
+V<sub>E</sub>&nbsp;=&nbsp;V<sub>B</sub>&nbsp;−&nbsp;0.6&nbsp;V and
+I<sub>C</sub>&nbsp;≈&nbsp;I<sub>E</sub>&nbsp;=&nbsp;V<sub>E</sub>/R<sub>E</sub> — set by resistors,
+immune to β. The collector should rest near <strong>mid-supply</strong>, so the output can swing
+equally far up (toward the rail) and down (toward saturation) before clipping.</p>
+<p>The design recipe, in order — each step feeds the next:</p>
+<ol>
+  <li><strong>Pick the quiescent current I<sub>C</sub></strong> (1–2&nbsp;mA is the comfortable
+  default: r<sub>e</sub> small, power tiny, β healthy).</li>
+  <li><strong>Choose R<sub>C</sub> to put the collector at mid-supply:</strong>
+  R<sub>C</sub>&nbsp;=&nbsp;(V<sub>CC</sub>/2)/I<sub>C</sub>. Maximum symmetric swing.</li>
+  <li><strong>Choose R<sub>E</sub> for the gain you want:</strong>
+  R<sub>E</sub>&nbsp;≈&nbsp;R<sub>C</sub>/|G| (subtract r<sub>e</sub> if you're being fussy).
+  Check that V<sub>E</sub>&nbsp;=&nbsp;I<sub>C</sub>R<sub>E</sub> comes out at least a few tenths
+  of a volt — a volt or so is comfortable — or the bias stability you just bought evaporates.</li>
+  <li><strong>Design the divider stiff, per Module&nbsp;02's 10× rule:</strong> the base looks like
+  a load of roughly β·R<sub>E</sub>, so make the divider's Thévenin resistance no more than a tenth
+  of that (handy shortcut: R2&nbsp;≈&nbsp;β·R<sub>E</sub>/10, then R1 to place
+  V<sub>B</sub>&nbsp;=&nbsp;V<sub>E</sub>&nbsp;+&nbsp;0.6).</li>
+  <li><strong>Size the coupling caps per Module&nbsp;05's corner rule:</strong> each cap forms a
+  high-pass with the impedance it faces; put f<sub>3dB</sub>&nbsp;=&nbsp;1/(2πRC) below the lowest
+  frequency you care about.</li>
+</ol>
+
+<h2>The bypass capacitor — having it both ways</h2>
+<p>Degeneration bought stability by selling gain. The bypass capacitor buys some of the gain back
+without returning the stability: put a big capacitor C<sub>E</sub> <em>across</em> R<sub>E</sub>.
+At DC the cap is invisible, so the bias point is still set by R<sub>E</sub> — solid as before. But
+at signal frequencies the cap is a short to ground: the emitter is AC-grounded, and the stage
+becomes the naked CE amp again, gain −R<sub>C</sub>/r<sub>e</sub>, distortion included. The gain is
+now <strong>frequency-dependent</strong>: low gain (−R<sub>C</sub>/R<sub>E</sub>) at DC, full gain
+above a corner set by the cap working against the small resistance it sees at the emitter,
+roughly:</p>
+<div class="formula">
+  f<sub>corner</sub> ≈ 1 / (2π · r<sub>e</sub> · C<sub>E</sub>)
+  <small>full gain above this; e.g. r<sub>e</sub> = 17 Ω and C<sub>E</sub> = 100 µF → ≈ 95 Hz.
+  Because r<sub>e</sub> is small, C<sub>E</sub> must be big.</small>
+</div>
+<p>A common refinement — bypass only <em>part</em> of R<sub>E</sub> (two resistors in series, cap
+across the lower one) — keeps a chosen amount of AC degeneration and lands the gain anywhere
+between the two extremes. File that away; the widget below offers the all-or-nothing version.</p>
+
+<h2>Clipping — where the amplifier runs out of room</h2>
+<p>The output is a real voltage on a real collector, and it lives in a box. It cannot rise above
+the supply rail — at zero collector current the collector sits at V<sub>CC</sub>, full stop. And it
+cannot fall below the emitter: around
+V<sub>E</sub>&nbsp;+&nbsp;0.2&nbsp;V the transistor <strong>saturates</strong> (the collector–base
+junction forward-biases) and the output floor is reached. Ask for more swing than the box allows
+and the peaks simply flatten.</p>
+<p><strong>Asymmetric clipping is a diagnosis, not just a symptom.</strong> A well-biased stage
+clips both peaks at the same drive level. If <em>one</em> side flattens first, the quiescent
+collector voltage is off-center: resting too close to the rail flattens the output's top
+(transistor driven toward cutoff), resting too close to V<sub>E</sub>&nbsp;+&nbsp;0.2 flattens the
+bottom (driven into saturation). One glance at which peak died tells you which way the bias is
+wrong — Task&nbsp;2 makes you use it.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>Degenerated gain: G = −R<sub>C</sub>/R<sub>E</sub></strong> (more precisely
+        −R<sub>C</sub>/(R<sub>E</sub>&nbsp;+&nbsp;r<sub>e</sub>)). Naked / fully bypassed:
+        <strong>G = −g<sub>m</sub>R<sub>C</sub> = −R<sub>C</sub>/r<sub>e</sub></strong>.</li>
+    <li><strong>g<sub>m</sub> = I<sub>C</sub>/25 mV</strong>, r<sub>e</sub> = 25 mV/I<sub>C</sub>:
+        25 Ω at 1 mA, 12.5 Ω at 2 mA. Scale by decades in your head.</li>
+    <li><strong>Rest the collector at mid-supply</strong> for maximum symmetric swing; the usable
+        window is V<sub>E</sub>&nbsp;+&nbsp;0.2 up to V<sub>CC</sub>.</li>
+    <li><strong>Bias divider 10× stiffer than the base load</strong> (Thévenin resistance ≤
+        β·R<sub>E</sub>/10) so the operating point doesn't depend on β.</li>
+    <li><strong>The signal inverts.</strong> That minus sign is real — a rising base is a falling
+        collector. It matters the moment you cascade stages or close a feedback loop.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Lever analogy</span>
+  <p>A common-emitter stage is a <strong>first-class lever</strong> — a seesaw with the fulcrum
+  between effort and load:</p>
+  <ul>
+    <li><strong>The fulcrum position is R<sub>E</sub>&nbsp;:&nbsp;R<sub>C</sub>.</strong> Push the
+    short arm (the base side, length R<sub>E</sub>) down a little and the long arm (the collector
+    side, length R<sub>C</sub>) swings up a lot — mechanical advantage R<sub>C</sub>/R<sub>E</sub>,
+    exactly the gain formula. Slide the fulcrum (change the ratio) and the advantage follows,
+    without ever caring what the lever is made of.</li>
+    <li><strong>The two arms move in opposite directions.</strong> Push down, the far end goes up:
+    the inversion isn't a quirk of transistor physics, it's the geometry of the mechanism. Rising
+    input, falling output.</li>
+    <li><strong>Degeneration = lengthening the short arm.</strong> A very short input arm
+    (small R<sub>E</sub> → the naked stage) gives spectacular advantage but every imperfection in
+    the pivot (r<sub>e</sub>'s wiggling) shows up magnified. Lengthen the input arm and the pivot's
+    quirks disappear into the geometry — less advantage, far more fidelity.</li>
+  </ul>
+  <p>Where the analogy fails: a lever is linear forever — swing it as far as you like, the ratio
+  holds. The transistor's lever is bolted inside a box: the long arm slams into the ceiling
+  (V<sub>CC</sub>) and the floor (saturation), and near the extremes the pivot itself flexes
+  (r<sub>e</sub> changes with current), bending the motion before it clips.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the CE amp bench</div>
+  <div class="widget-hint">A 12 V common-emitter stage with automatic sensible bias: the divider is
+  recomputed for V<sub>E</sub> = 1.5 V at your chosen R<sub>E</sub> (so I<sub>C</sub> =
+  1.5&nbsp;V/R<sub>E</sub>, and R2 = β·R<sub>E</sub>/10 per the 10× rule, β = 100). Drag
+  R<sub>C</sub> and R<sub>E</sub> and watch the gain and the collector's resting voltage fight over
+  headroom; tick the bypass box to trade linearity back for gain. Notice something built-in: with
+  V<sub>E</sub> pinned at 1.5 V, mid-supply rest caps the degenerated gain near −3.5 — precisely
+  why the bypass cap (or a smaller V<sub>E</sub>, as in Task 1) exists.</div>
+
+  <div class="viz-row">
+    <svg id="ce-sch" class="schematic" viewBox="0 0 440 262" width="440" height="262" role="img"
+         aria-label="Common-emitter amplifier: divider bias, emitter resistor with optional bypass capacitor, collector resistor, coupling capacitors">
+      <!-- supply rail -->
+      <path class="wire" d="M 120 30 L 300 30"/>
+      <text x="70" y="34" class="lbl big vplus">+12 V</text>
+      <!-- ground rail -->
+      <path class="wire" d="M 120 232 L 320 232"/>
+      <path class="gnd" d="M 218 232 L 218 240 M 208 240 L 228 240 M 212 245 L 224 245 M 216 250 L 220 250"/>
+      <!-- R1: rail to base node -->
+      <path class="wire" d="M 150 30 L 150 66"/>
+      <path class="comp" d="M 150 66 l 0 4 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 3 l 0 4"/>
+      <path class="wire" d="M 150 115 L 150 138"/>
+      <text x="108" y="94" class="lbl big" id="ce-r1-lbl">47 kΩ</text>
+      <text x="112" y="110" class="lbl">R1</text>
+      <!-- R2: base node to ground -->
+      <path class="wire" d="M 150 138 L 150 158"/>
+      <path class="comp" d="M 150 158 l 0 4 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 3 l 0 4"/>
+      <path class="wire" d="M 150 207 L 150 232"/>
+      <text x="108" y="186" class="lbl big" id="ce-r2-lbl">10 kΩ</text>
+      <text x="112" y="202" class="lbl">R2</text>
+      <circle cx="150" cy="138" r="3.5" class="node"/>
+      <!-- source + input coupling cap -->
+      <circle cx="34" cy="170" r="14" class="comp"/>
+      <path class="comp" d="M 25 170 q 4.5 -8 9 0 q 4.5 8 9 0"/>
+      <text x="8" y="200" class="lbl big">v<tspan dy="3" font-size="10">in</tspan></text>
+      <path class="wire" d="M 34 156 L 34 138 L 74 138"/>
+      <path class="wire" d="M 34 184 L 34 232 L 120 232"/>
+      <line x1="74" y1="128" x2="74" y2="148" class="comp" stroke-width="3"/>
+      <line x1="82" y1="128" x2="82" y2="148" class="comp" stroke-width="3"/>
+      <text x="58" y="120" class="lbl">C<tspan dy="3" font-size="10">in</tspan></text>
+      <path class="wire" d="M 82 138 L 150 138"/>
+      <!-- base wire into transistor -->
+      <path class="wire" d="M 150 138 L 228 138"/>
+      <!-- transistor -->
+      <line x1="228" y1="122" x2="228" y2="154" class="comp" stroke-width="3.5"/>
+      <path class="wire" d="M 228 130 L 254 112"/>
+      <path class="wire" d="M 228 146 L 254 164"/>
+      <path class="comp" d="M 254 164 l -10 -2 m 10 2 l -3 -9" stroke-width="1.8"/>
+      <circle cx="241" cy="138" r="20" class="comp" fill="none" opacity="0.55"/>
+      <!-- Rc: rail to collector -->
+      <path class="wire" d="M 254 30 L 254 52"/>
+      <path class="comp" d="M 254 52 l 0 4 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 3 l 0 4"/>
+      <path class="wire" d="M 254 101 L 254 112"/>
+      <text x="268" y="76" class="lbl big" id="ce-rc-lbl">3.3 kΩ</text>
+      <text x="270" y="92" class="lbl">R<tspan dy="3" font-size="10">C</tspan></text>
+      <!-- output node + coupling cap -->
+      <circle cx="254" cy="106" r="3.5" class="node"/>
+      <path class="wire" d="M 254 106 L 340 106"/>
+      <line x1="340" y1="96" x2="340" y2="116" class="comp" stroke-width="3"/>
+      <line x1="348" y1="96" x2="348" y2="116" class="comp" stroke-width="3"/>
+      <text x="330" y="88" class="lbl">C<tspan dy="3" font-size="10">out</tspan></text>
+      <path class="wire" d="M 348 106 L 396 106"/>
+      <circle cx="396" cy="106" r="3.5" class="node"/>
+      <text x="378" y="128" class="lbl big">v<tspan dy="3" font-size="10">out</tspan></text>
+      <text x="360" y="144" class="lbl">(load open)</text>
+      <!-- RE: emitter to ground -->
+      <path class="wire" d="M 254 164 L 254 174"/>
+      <circle cx="254" cy="174" r="3.5" class="node"/>
+      <path class="comp" d="M 254 174 l 0 3 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 3 l 0 3"/>
+      <path class="wire" d="M 254 221 L 254 232"/>
+      <text x="212" y="200" class="lbl big" id="ce-re-lbl">1 kΩ</text>
+      <text x="218" y="216" class="lbl">R<tspan dy="3" font-size="10">E</tspan></text>
+      <!-- bypass cap CE (toggled) -->
+      <g id="ce-bypass-g" opacity="0.18">
+        <path class="wire" d="M 254 174 L 306 174 L 306 192"/>
+        <line x1="296" y1="192" x2="316" y2="192" class="comp" stroke-width="3"/>
+        <line x1="296" y1="201" x2="316" y2="201" class="comp" stroke-width="3"/>
+        <path class="wire" d="M 306 201 L 306 232"/>
+        <text x="322" y="200" class="lbl">C<tspan dy="3" font-size="10">E</tspan> 100 µF</text>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="ce-rc">Collector resistor R<sub>C</sub> <span class="val"></span></label>
+          <!-- log: 470 Ω .. 47 kΩ -->
+          <input type="range" id="ce-rc" min="2.672" max="4.672" step="0.01" value="3.519">
+        </div>
+        <div class="control">
+          <label for="ce-re">Emitter resistor R<sub>E</sub> <span class="val"></span></label>
+          <!-- log: 47 Ω .. 4.7 kΩ -->
+          <input type="range" id="ce-re" min="1.672" max="3.672" step="0.01" value="3">
+        </div>
+        <div class="control">
+          <label for="ce-amp">Input amplitude <span class="val"></span></label>
+          <!-- log: 1 mV .. 1 V -->
+          <input type="range" id="ce-amp" min="-3" max="0" step="0.01" value="-1">
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; color:var(--ink-2); cursor:pointer">
+          <input type="checkbox" id="ce-bypass" style="width:17px; height:17px; accent-color:var(--accent)">
+          Bypass R<sub>E</sub> with C<sub>E</sub> (AC gain → −R<sub>C</sub>/r<sub>e</sub>)
+        </label>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">I<sub>C</sub> = 1.5 V / R<sub>E</sub></div><div class="v" id="ce-ic">—</div></div>
+        <div class="readout"><div class="k">Gain</div><div class="v" id="ce-gain">—</div></div>
+        <div class="readout"><div class="k">Collector rest</div><div class="v" id="ce-vrest">—</div></div>
+        <div class="readout"><div class="k">Output amplitude</div><div class="v" id="ce-vout">—</div></div>
+      </div>
+      <p class="widget-hint" id="ce-status" style="margin-top:10px"></p>
+    </div>
+  </div>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: see the signal (and the clipping)</div>
+  <div class="widget-hint">Two cycles through the stage above — the sliders up there drive this
+  plot. Dashed grey: the input sine, drawn at a fixed display height for shape comparison (its true
+  amplitude is on the slider; hover to read real values). Blue: the output, computed from the
+  large-signal exponential — not just gain-times-input — so you get honest curvature, then hard
+  limits at the 12 V rail and the V<sub>E</sub>&nbsp;+&nbsp;0.2 saturation floor. Try: bypass off,
+  amplitude up until it clips; then bypass on at ~25 mV and watch the exponential bend the wave
+  long before the rails do.</div>
+  <canvas id="ce-wave" class="hh-plot" data-height="320"></canvas>
+  <p class="widget-hint" id="ce-wave-caption" style="margin-top:10px"></p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil and paper, the recipe, and the anchors r<sub>e</sub> = 25 mV/I<sub>C</sub> and
+G&nbsp;=&nbsp;−R<sub>C</sub>/R<sub>E</sub>. Check the box when you've done it and verified against
+the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — a gain-of-−10 stage, by the book</label>
+  </div>
+  <p>Design a common-emitter amplifier: 12&nbsp;V supply, I<sub>C</sub>&nbsp;=&nbsp;2&nbsp;mA,
+  voltage gain −10, output resting at mid-supply. Find R<sub>C</sub>, R<sub>E</sub>, the bias
+  divider (take β&nbsp;=&nbsp;100), and the input coupling cap for a 20&nbsp;Hz corner. Run the
+  checks: does the gain actually come out near −10, and is the divider stiff enough?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Step 1–2, R<sub>C</sub>:</strong> mid-supply rest means 6&nbsp;V across
+      R<sub>C</sub> at 2&nbsp;mA → R<sub>C</sub>&nbsp;=&nbsp;6/0.002&nbsp;=&nbsp;<strong>3&nbsp;kΩ</strong>
+      (an E24 value; 3.3&nbsp;kΩ from the E12 drawer rests at 5.4&nbsp;V — also fine).</p>
+      <p><strong>Step 3, R<sub>E</sub>:</strong> for |G| = 10 you want
+      R<sub>E</sub>&nbsp;+&nbsp;r<sub>e</sub>&nbsp;=&nbsp;300&nbsp;Ω. At 2&nbsp;mA,
+      r<sub>e</sub>&nbsp;=&nbsp;25/2&nbsp;=&nbsp;12.5&nbsp;Ω, so R<sub>E</sub>&nbsp;=&nbsp;287.5 →
+      <strong>300&nbsp;Ω</strong> standard, giving G&nbsp;=&nbsp;−3000/312.5&nbsp;=&nbsp;<strong>−9.6</strong>
+      (270&nbsp;Ω would give −10.6; take your pick of which side of −10 to miss on). Check
+      V<sub>E</sub>&nbsp;=&nbsp;2&nbsp;mA&nbsp;×&nbsp;300&nbsp;Ω&nbsp;=&nbsp;0.6&nbsp;V — on the low
+      side of comfortable, the price of demanding gain 10 <em>and</em> mid-supply rest from an
+      unbypassed stage. (The alternative: bigger R<sub>E</sub> for solid bias, bypassed down to the
+      gain you want.)</p>
+      <p><strong>Step 4, divider:</strong> V<sub>B</sub>&nbsp;=&nbsp;0.6&nbsp;+&nbsp;0.6&nbsp;=&nbsp;1.2&nbsp;V.
+      Base load ≈ β·R<sub>E</sub>&nbsp;=&nbsp;30&nbsp;kΩ, so the divider Thévenin must be ≤&nbsp;3&nbsp;kΩ:
+      take <strong>R2&nbsp;=&nbsp;3.3&nbsp;kΩ</strong>, and
+      R1&nbsp;=&nbsp;R2·(12&nbsp;−&nbsp;1.2)/1.2&nbsp;=&nbsp;<strong>30&nbsp;kΩ</strong>. Checks:
+      V<sub>B</sub>&nbsp;=&nbsp;12·3.3/33.3&nbsp;=&nbsp;1.19&nbsp;V ✓; Thévenin
+      30k∥3.3k&nbsp;=&nbsp;2.97&nbsp;kΩ&nbsp;≤&nbsp;3&nbsp;kΩ ✓; divider current 360&nbsp;µA ≈ 18×
+      the 20&nbsp;µA base current ✓.</p>
+      <p><strong>Step 5, C<sub>in</sub>:</strong> the cap sees the stage's input impedance:
+      R1∥R2∥β(R<sub>E</sub>+r<sub>e</sub>)&nbsp;=&nbsp;2.97k∥31.3k&nbsp;≈&nbsp;2.7&nbsp;kΩ. For
+      20&nbsp;Hz: C&nbsp;=&nbsp;1/(2π·2.7k·20)&nbsp;≈&nbsp;2.9&nbsp;µF →
+      <strong>3.3&nbsp;µF</strong> (or 4.7&nbsp;µF; round the corner away from the music, per
+      Module&nbsp;05).</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — diagnose: "the top half of my sine is flattened"</label>
+  </div>
+  <p>A friend's stage: 12&nbsp;V supply, R<sub>C</sub>&nbsp;=&nbsp;4.7&nbsp;kΩ,
+  R<sub>E</sub>&nbsp;=&nbsp;3&nbsp;kΩ, divider setting V<sub>E</sub>&nbsp;=&nbsp;1.5&nbsp;V. They
+  want ±3&nbsp;V of output swing, but the scope shows the <em>top</em> of the output sine shaved
+  flat while the bottom is fine. Walk the reasoning: what does a flattened top tell you about where
+  the collector is resting? Confirm with numbers, then fix it with one resistor change.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Read the symptom first.</strong> The output's top flattening means the collector
+      is hitting the <em>rail</em> — it ran out of room going up, i.e. toward cutoff. (Remember the
+      inversion: this happens on the input's <em>negative</em> peaks.) Ceiling clipping means the
+      collector is <strong>resting too high</strong> — too little quiescent drop across
+      R<sub>C</sub>, so too little I<sub>C</sub>.</p>
+      <p><strong>Numbers agree:</strong> I<sub>C</sub>&nbsp;=&nbsp;1.5/3k&nbsp;=&nbsp;0.5&nbsp;mA;
+      rest&nbsp;=&nbsp;12&nbsp;−&nbsp;0.5&nbsp;mA·4.7&nbsp;kΩ&nbsp;=&nbsp;<strong>9.65&nbsp;V</strong>.
+      Upward headroom is only 2.35&nbsp;V — a ±3&nbsp;V request clips at the top
+      (9.65&nbsp;+&nbsp;3&nbsp;=&nbsp;12.65&nbsp;&gt;&nbsp;12) while downward there's
+      9.65&nbsp;−&nbsp;1.7&nbsp;=&nbsp;7.95&nbsp;V to spare. Classic asymmetric clipping: the bias,
+      not the drive, is the culprit.</p>
+      <p><strong>Fix:</strong> pull the rest voltage down toward mid-supply by raising
+      I<sub>C</sub>. Drop R<sub>E</sub> to <strong>1.2&nbsp;kΩ</strong> (same divider, so
+      V<sub>E</sub> stays ≈1.5&nbsp;V): I<sub>C</sub>&nbsp;=&nbsp;1.25&nbsp;mA,
+      rest&nbsp;=&nbsp;12&nbsp;−&nbsp;5.875&nbsp;=&nbsp;<strong>6.1&nbsp;V</strong>. Headroom:
+      5.9&nbsp;V up, 4.4&nbsp;V down — ±3&nbsp;V now fits with margin both ways. (Note the gain
+      changed too, −1.6 → −3.9; if the gain was sacred you'd adjust R<sub>C</sub> and the divider
+      together instead. Every knob touches every spec — that's amplifier design.)</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — cascade two stages for gain 100</label>
+  </div>
+  <p>One −10 stage is easy; you need gain 100 for a small microphone signal, so: two −10 stages in
+  a row (net gain +100 — the inversions cancel). Thought-design it: what goes wrong if you wire the
+  first collector straight to the second base (DC coupling, no cap)? Use Task&nbsp;1's stage
+  (collector resting near 6&nbsp;V, R<sub>E</sub>&nbsp;=&nbsp;300&nbsp;Ω) to make it concrete.
+  Then: what value of interstage coupling cap keeps the response flat down to 20&nbsp;Hz?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The DC-coupling disaster.</strong> Stage 2's bias recipe assumed its base sits at
+      V<sub>B</sub>&nbsp;≈&nbsp;1.2&nbsp;V. Wire it to stage 1's collector and its base is dragged
+      to ~6&nbsp;V: the emitter follows to 5.4&nbsp;V, and R<sub>E</sub>&nbsp;=&nbsp;300&nbsp;Ω
+      demands I<sub>C</sub>&nbsp;=&nbsp;5.4/300&nbsp;=&nbsp;<strong>18&nbsp;mA</strong> — which
+      would need 54&nbsp;V across a 3&nbsp;kΩ collector resistor. Impossible: the transistor slams
+      into saturation, the collector parks at V<sub>E</sub>&nbsp;+&nbsp;0.2&nbsp;≈&nbsp;5.6&nbsp;V,
+      and stage 2 amplifies nothing. Worse, the 18&nbsp;mA also loads stage 1's bias. Two
+      separately-perfect stages, ruined by a wire.</p>
+      <p><strong>The cap fixes it by separating jobs:</strong> each stage keeps its own DC bias
+      (the cap is an open at DC), while the signal — which lives above 20&nbsp;Hz — sails through
+      (Module&nbsp;05's high-pass, corner below the band). The cap faces stage 2's input impedance,
+      ≈&nbsp;3&nbsp;kΩ from Task&nbsp;1, so
+      C&nbsp;=&nbsp;1/(2π·3&nbsp;kΩ·20&nbsp;Hz)&nbsp;≈&nbsp;2.7&nbsp;µF →
+      <strong>4.7&nbsp;µF</strong>, corner ≈ 11&nbsp;Hz, safely under the band.</p>
+      <p><strong>One honest footnote:</strong> stage 2's ~3&nbsp;kΩ input impedance loads stage 1's
+      3&nbsp;kΩ collector (they form a divider at AC), roughly halving stage 1's gain — the cascade
+      lands nearer ×50 than ×100 unless you account for loading (Module&nbsp;02, forever). Getting
+      big, predictable gain without this bookkeeping is exactly what differential pairs and op-amps
+      are for — next module.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="09-followers-current-sources.html"><span class="dir">Previous</span><span class="name">09 · Emitter Followers &amp; Current Sources</span></a>
+  <a href="11-diffpairs-mirrors.html"><span class="dir">Next</span><span class="name">11 · Differential Pairs, Mirrors &amp; Push-Pull</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("10");
+
+  /* ---------- shared amplifier state & math ----------
+     Auto-bias: V_E = 1.5 V ⇒ Ic0 = 1.5/RE, Vrest = 12 − Ic0·Rc.
+     Divider per the 10× rule: R2 = β·RE/10, R1 = R2·(VCC−VB)/VB, β = 100.
+     Small-signal: G = −Rc/(RE+re), bypassed G = −Rc/re, re = VT/Ic0.
+     Large-signal (widget 2):
+       bypassed: emitter AC-grounded ⇒ Ic(t) = Ic0·exp(vin/VT)  (Ebers–Moll)
+       degenerated: solve vin = VT·ln(Ic/Ic0) + (Ic−Ic0)·RE by bisection
+     then Vc = 12 − Ic·Rc, clamped at the saturation floor Ve+0.2.
+     Verified numerically: the model's small-signal slope matches −Rc/(RE+re). */
+  var VCC = 12, VT = 0.025, VE0 = 1.5, BETA = 100, VSAT = 0.2;
+  var state = { Rc: 3300, RE: 1000, amp: 0.1, bypass: false };
+
+  function bias() {
+    var Ic0 = VE0 / state.RE;
+    var re = VT / Ic0;
+    var Vrest = VCC - Ic0 * state.Rc;
+    var VB = VE0 + 0.6;
+    var R2 = (BETA * state.RE) / 10;
+    var R1 = (R2 * (VCC - VB)) / VB;
+    return { Ic0: Ic0, re: re, Vrest: Vrest, R1: R1, R2: R2,
+             Gdeg: -state.Rc / (state.RE + re),
+             Gbyp: -state.Rc / re };
+  }
+
+  /* ---------- widget 1: bench ---------- */
+  var icRead = document.getElementById("ce-ic");
+  var gainRead = document.getElementById("ce-gain");
+  var vrestRead = document.getElementById("ce-vrest");
+  var voutRead = document.getElementById("ce-vout");
+  var statusEl = document.getElementById("ce-status");
+  var r1Lbl = document.getElementById("ce-r1-lbl");
+  var r2Lbl = document.getElementById("ce-r2-lbl");
+  var rcLbl = document.getElementById("ce-rc-lbl");
+  var reLbl = document.getElementById("ce-re-lbl");
+  var bypassG = document.getElementById("ce-bypass-g");
+
+  HH.slider("ce-rc", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.Rc = r; update(); }
+  });
+  HH.slider("ce-re", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.RE = r; update(); }
+  });
+  HH.slider("ce-amp", {
+    log: true,
+    format: function (a) { return HH.fmt(a, "V"); },
+    onchange: function (a) { state.amp = a; update(); }
+  });
+  document.getElementById("ce-bypass").addEventListener("change", function () {
+    state.bypass = this.checked;
+    bypassG.setAttribute("opacity", state.bypass ? "1" : "0.18");
+    update();
+  });
+
+  /* ---------- widget 2: waveform ---------- */
+  var waveCaption = document.getElementById("ce-wave-caption");
+  var lastWave = { inPts: [], outPts: [] }; // for hover readout
+
+  function solveIcDeg(vin, Ic0, RE) {
+    /* monotonic in Ic ⇒ bisection is unconditionally safe */
+    var lo = Ic0 * 1e-9;
+    var hi = Ic0 + Math.max(0, vin) / RE + Ic0 * 1e-6;
+    for (var i = 0; i < 44; i++) {
+      var m = (lo + hi) / 2;
+      var f = VT * Math.log(m / Ic0) + (m - Ic0) * RE - vin;
+      if (f > 0) hi = m; else lo = m;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function largeSignal(vin, b) {
+    /* returns { vc, ve } with saturation clamp */
+    var Ic, ve;
+    if (state.bypass) {
+      Ic = b.Ic0 * Math.exp(Math.min(vin, 1) / VT); /* cap holds the emitter at VE0 */
+      ve = VE0;
+    } else {
+      Ic = solveIcDeg(vin, b.Ic0, state.RE);
+      ve = VE0 + (Ic - b.Ic0) * state.RE;
+    }
+    var vc = VCC - Ic * state.Rc;
+    var floor = ve + VSAT;
+    if (vc < floor) vc = floor;      /* saturation */
+    if (vc > VCC) vc = VCC;          /* cutoff can't exceed the rail */
+    return { vc: vc, ve: ve };
+  }
+
+  var wavePlot = HH.plot(document.getElementById("ce-wave"), {
+    xlabel: "time (cycles)",
+    ylabel: "collector voltage (V)",
+    xmin: 0, xmax: 2, ymin: -0.5, ymax: 12.8,
+    xticks: [0, 0.5, 1, 1.5, 2],
+    yticks: [0, 2, 4, 6, 8, 10, 12],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var vin = state.amp * Math.sin(2 * Math.PI * x);
+      var out = largeSignal(vin, bias()).vc;
+      return [
+        { text: "t = " + x.toFixed(2) + " cycles" },
+        { color: "--muted", text: "vin = " + HH.fmt(vin, "V") + " (real)" },
+        { color: "--series-1", text: "Vout = " + out.toFixed(2) + " V" }
+      ];
+    }
+  });
+
+  function drawWave(b) {
+    var N = 420;
+    var inPts = [], outPts = [];
+    var floor0 = VE0 + VSAT;
+    var topClip = false, botClip = false;
+    for (var i = 0; i <= N; i++) {
+      var t = (2 * i) / N; /* cycles */
+      var vin = state.amp * Math.sin(2 * Math.PI * t);
+      var ls = largeSignal(vin, b);
+      /* input drawn at fixed display height (±1.4 V) centered at 6 V — shape only */
+      inPts.push([t, 6 + 1.4 * Math.sin(2 * Math.PI * t)]);
+      outPts.push([t, ls.vc]);
+      if (ls.vc >= VCC - 0.005) topClip = true;
+      if (ls.vc <= ls.ve + VSAT + 0.005) botClip = true;
+    }
+    wavePlot.draw([
+      { pts: [[0, VCC], [2, VCC]], color: topClip ? "--critical" : "--axis", width: 1.2, dash: [5, 4] },
+      { pts: [[0, floor0], [2, floor0]], color: botClip ? "--critical" : "--axis", width: 1.2, dash: [5, 4] },
+      { pts: inPts, color: "--muted", width: 1.2, dash: [4, 4] },
+      { pts: outPts, color: "--series-1", width: 2.4 }
+    ]);
+    lastWave.topClip = topClip;
+    lastWave.botClip = botClip;
+
+    var G = state.bypass ? b.Gbyp : b.Gdeg;
+    var cap;
+    if (b.Vrest <= VE0 + VSAT) {
+      cap = "The transistor is saturated at rest (collector pinned at V_E + 0.2 ≈ " +
+        (VE0 + VSAT).toFixed(1) + " V) — this isn't an amplifier at all. Reduce R_C or raise R_E.";
+    } else if (topClip && botClip) {
+      cap = "Clipping both ways: the drive asks for more swing than the whole " +
+        (VCC - VE0 - VSAT).toFixed(1) + " V window. Turn the amplitude down — no bias change can fix this.";
+    } else if (topClip) {
+      cap = "Top flattened at the 12 V rail: the transistor is driven toward cutoff on the input's " +
+        "negative peaks (inversion!). The rest voltage (" + b.Vrest.toFixed(1) +
+        " V) sits too close to the rail for this drive.";
+    } else if (botClip) {
+      cap = "Bottom flattened at the saturation floor: the rest voltage (" + b.Vrest.toFixed(1) +
+        " V) sits too close to V_E + 0.2 for this drive. Asymmetric clipping = off-center bias.";
+    } else if (state.bypass && state.amp > 0.01) {
+      cap = "No hard clipping, but look at the shape: the bypassed stage runs at gain −R_C/r_e, and " +
+        "r_e changes within each cycle — the exponential stretches the upward (cutoff-side) half and " +
+        "compresses the downward half. That asymmetry is distortion you can see.";
+    } else {
+      cap = "Clean amplification: output ≈ " + Math.abs(G).toFixed(1) +
+        "× the input, inverted (compare peaks against the dashed input), riding on the " +
+        b.Vrest.toFixed(1) + " V rest point.";
+    }
+    waveCaption.textContent = cap;
+  }
+
+  /* ---------- master update ---------- */
+  function update() {
+    var b = bias();
+    var G = state.bypass ? b.Gbyp : b.Gdeg;
+    var predAmp = Math.abs(G) * state.amp;
+
+    icRead.innerHTML = HH.fmt(b.Ic0, "A");
+    gainRead.innerHTML = G.toFixed(Math.abs(G) >= 100 ? 0 : 1) + "<small>×</small>";
+    vrestRead.innerHTML = b.Vrest.toFixed(2) + "<small> V</small>";
+    voutRead.innerHTML = "±" + HH.fmt(predAmp, "V");
+
+    rcLbl.textContent = HH.fmt(state.Rc, "Ω");
+    reLbl.textContent = HH.fmt(state.RE, "Ω");
+    r1Lbl.textContent = HH.fmt(b.R1, "Ω");
+    r2Lbl.textContent = HH.fmt(b.R2, "Ω");
+
+    var headTop = VCC - b.Vrest;
+    var headBot = b.Vrest - (VE0 + VSAT);
+    if (b.Vrest <= VE0 + VSAT) {
+      statusEl.innerHTML = "⚠️ Saturated at rest: I<sub>C</sub>·R<sub>C</sub> = " +
+        HH.fmt(b.Ic0 * state.Rc, "V") + " of drop doesn't fit under 12 V. The collector is pinned at " +
+        (VE0 + VSAT).toFixed(1) + " V — reduce R<sub>C</sub> or raise R<sub>E</sub>.";
+      statusEl.style.color = "var(--critical)";
+    } else if (predAmp > headTop || predAmp > headBot) {
+      statusEl.innerHTML = "⚠️ Clipping: the predicted ±" + HH.fmt(predAmp, "V") +
+        " exceeds the headroom (" + headTop.toFixed(1) + " V to the rail, " +
+        headBot.toFixed(1) + " V to the V<sub>E</sub>+0.2 floor). " +
+        (predAmp > headTop && predAmp > headBot ? "Both peaks flatten."
+          : predAmp > headTop ? "The top flattens first — rest is above center."
+          : "The bottom flattens first — rest is below center.");
+      statusEl.style.color = "var(--critical)";
+    } else if (headTop < 1 || headBot < 1) {
+      statusEl.innerHTML = "Rest voltage is off-center (" + headTop.toFixed(1) + " V up, " +
+        headBot.toFixed(1) + " V down) — it amplifies, but one more dB of drive will clip one-sided.";
+      statusEl.style.color = "var(--warning)";
+    } else {
+      statusEl.innerHTML = "Healthy bias: " + headTop.toFixed(1) + " V of headroom to the rail, " +
+        headBot.toFixed(1) + " V to the saturation floor. Divider R1/R2 shown on the schematic " +
+        "(recomputed for V<sub>E</sub> = 1.5 V, 10× rule).";
+      statusEl.style.color = "var(--muted)";
+    }
+
+    drawWave(b);
+  }
+  update();
+
+  /* ---------- quiz ---------- */
+  HH.quiz("quiz", [
+    {
+      q: "The input to a common-emitter stage swings upward. What does the output do?",
+      opts: [
+        "Swings upward, amplified",
+        "Swings downward — the CE stage inverts",
+        "Stays fixed; only the current changes",
+        "Depends on whether R<sub>E</sub> is bypassed"
+      ],
+      answer: 1,
+      expl: "More base voltage → exponentially more collector current → more drop across R<sub>C</sub> → the collector <em>falls</em>. The minus sign in −R<sub>C</sub>/R<sub>E</sub> is physical, not bookkeeping, and no bypass cap changes it. It matters the moment you cascade stages or wrap feedback around one."
+    },
+    {
+      q: "R<sub>C</sub> = 10 kΩ, R<sub>E</sub> = 1 kΩ (no bypass). The voltage gain is…",
+      opts: ["About +10", "About −10 (precisely −10k/(1k + r<sub>e</sub>), a shade less)", "About −400", "Exactly −11"],
+      answer: 1,
+      expl: "G = −R<sub>C</sub>/(R<sub>E</sub> + r<sub>e</sub>). With r<sub>e</sub> a couple dozen ohms buried under 1 kΩ, that's −10k/1.02k ≈ −9.8 — call it −10. The resistor ratio sets the gain; the transistor only contributes the small r<sub>e</sub> correction (and the minus sign)."
+    },
+    {
+      q: "What is r<sub>e</sub> for a transistor running at I<sub>C</sub> = 2 mA?",
+      opts: ["25 Ω", "12.5 Ω", "50 Ω", "2.5 kΩ"],
+      answer: 1,
+      expl: "r<sub>e</sub> = 25 mV/I<sub>C</sub> = 25 mV/2 mA = 12.5 Ω. The anchor is 25 Ω at 1 mA; it scales inversely with current (250 Ω at 100 µA, 2.5 Ω at 10 mA). This one number is the bridge between the exponential physics and resistor-ratio design."
+    },
+    {
+      q: "Why does adding R<sub>E</sub> make the amplifier more linear?",
+      opts: [
+        "It filters out the harmonics that cause distortion",
+        "It reduces the signal current so the transistor stays cooler",
+        "The gain becomes −R<sub>C</sub>/(R<sub>E</sub>+r<sub>e</sub>), so r<sub>e</sub>'s signal-dependent wiggling is diluted by the fixed R<sub>E</sub>",
+        "It increases β, which straightens the transfer curve"
+      ],
+      answer: 2,
+      expl: "Distortion in the naked stage comes from the gain itself changing during the cycle, because r<sub>e</sub> = 25 mV/I<sub>C</sub> moves with the signal. Put a fixed R<sub>E</sub> in series and r<sub>e</sub> becomes a small correction to a constant: a 20% wiggle in 17 Ω under 1 kΩ moves the gain 0.3%. That's negative feedback linearizing a crooked device — the module's big idea."
+    },
+    {
+      q: "Where should the collector rest, and why?",
+      opts: [
+        "As close to the rail as possible, to maximize gain",
+        "Near mid-supply, so the output can swing equally far toward the rail and toward saturation",
+        "At exactly V<sub>E</sub> + 0.2, for maximum efficiency",
+        "At 0.6 V, one diode drop above ground"
+      ],
+      answer: 1,
+      expl: "The output lives between V<sub>CC</sub> (cutoff) and V<sub>E</sub> + 0.2 (saturation). Resting mid-window buys the largest symmetric swing before either edge clips. Gain doesn't depend on where you rest — headroom does. Design order: pick I<sub>C</sub>, then R<sub>C</sub> = (V<sub>CC</sub>/2)/I<sub>C</sub>."
+    },
+    {
+      q: "Your amplifier clips only the bottom of the output sine; the top is clean. What's wrong?",
+      opts: [
+        "The input amplitude is simply too large",
+        "The coupling capacitor is too small",
+        "The collector is resting too low — too close to the saturation floor — so the bias point is off-center",
+        "The transistor's β is too low"
+      ],
+      answer: 2,
+      expl: "Symmetric clipping blames the drive; <em>asymmetric</em> clipping blames the bias. Bottom-only clipping means the collector rests too near V<sub>E</sub> + 0.2 (quiescent I<sub>C</sub>·R<sub>C</sub> drop too big). Top-only means it rests too near the rail. Which peak dies first tells you which way to move the operating point — a free diagnostic on every scope trace."
+    },
+    {
+      q: "What does a bypass capacitor across R<sub>E</sub> do, and what's the trade?",
+      opts: [
+        "Raises the AC gain to −R<sub>C</sub>/r<sub>e</sub> while R<sub>E</sub> still sets the DC bias — at the cost of the linearity (and gain flatness vs frequency) that degeneration bought",
+        "Stabilizes the bias point even further, at the cost of gain",
+        "Blocks DC from reaching the emitter so the transistor can't saturate",
+        "Filters power-supply ripple out of the output"
+      ],
+      answer: 0,
+      expl: "At DC the cap is open: bias is still I<sub>C</sub> = V<sub>E</sub>/R<sub>E</sub>, rock solid. At signal frequencies it grounds the emitter: full −R<sub>C</sub>/r<sub>e</sub> gain — along with the naked stage's distortion, and a gain that now depends on frequency (corner ≈ 1/(2π·r<sub>e</sub>·C<sub>E</sub>); r<sub>e</sub> is small, so C<sub>E</sub> is big). You un-made the feedback bargain, but only for AC."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

@@ -193,6 +193,53 @@ absent, tri-stated, or still booting.</p>
 <p><strong>3. The oxide is nanometres thick.</strong> A static zap that a BJT wouldn't notice
 punches a permanent hole in a MOSFET gate. Ground yourself before handling bare parts, and
 touch the package tab rather than the pins.</p>
+
+<div style="margin:1.4em 0">
+  <svg class="schematic" viewBox="0 0 380 250" width="380" height="250" role="img"
+       aria-label="Canonical low-side switch: load from +12 V to the drain of an n-channel MOSFET, source grounded, gate driven from a microcontroller pin through 100 ohms, with a 100 k pull-down from gate to ground">
+    <!-- supply rail and load -->
+    <text x="150" y="22" class="lbl big" text-anchor="middle">+12 V</text>
+    <path class="wire" d="M 150 28 L 150 42"/>
+    <path class="comp" d="M 150 42 L 150 46 L 140 50 L 160 58 L 140 66 L 160 74 L 140 82 L 160 90 L 150 94 L 150 98"/>
+    <text x="170" y="72" class="lbl">load</text>
+    <path class="wire" d="M 150 98 L 150 122"/>
+    <text x="158" y="118" class="lbl">D</text>
+    <!-- n-channel enhancement MOSFET: gate plate, segmented channel, leads -->
+    <line x1="136" y1="118" x2="136" y2="146" class="comp"/>
+    <line x1="144" y1="116" x2="144" y2="124" class="comp"/>
+    <line x1="144" y1="128" x2="144" y2="136" class="comp"/>
+    <line x1="144" y1="140" x2="144" y2="148" class="comp"/>
+    <path class="wire" d="M 150 122 L 144 122"/>
+    <path class="wire" d="M 144 132 L 150 132 L 150 142 L 144 142"/>
+    <path d="M 144 132 L 152 128 L 152 136 Z" fill="var(--ink)"/>
+    <path class="wire" d="M 150 142 L 150 196"/>
+    <text x="158" y="156" class="lbl">S</text>
+    <!-- gate drive: pin, series 100 Ω, node, pull-down -->
+    <path class="wire" d="M 136 132 L 118 132"/>
+    <text x="126" y="126" class="lbl">G</text>
+    <circle cx="112" cy="132" r="3.5" class="node"/>
+    <path class="wire" d="M 112 132 L 104 132"/>
+    <path class="comp" d="M 104 132 L 100 132 L 96 122 L 88 142 L 80 122 L 72 142 L 64 122 L 56 142 L 52 132 L 48 132"/>
+    <text x="76" y="112" class="lbl" text-anchor="middle">100 Ω</text>
+    <path class="wire" d="M 48 132 L 30 132"/>
+    <text x="28" y="136" class="lbl" text-anchor="end">µC pin</text>
+    <!-- pull-down from gate node to ground -->
+    <path class="wire" d="M 112 132 L 112 150"/>
+    <path class="comp" d="M 112 150 L 112 154 L 102 158 L 122 166 L 102 174 L 122 182 L 102 190 L 122 198 L 112 202 L 112 206"/>
+    <text x="130" y="182" class="lbl">100 k</text>
+    <path class="wire" d="M 112 206 L 112 216 L 150 216 L 150 196"/>
+    <!-- ground -->
+    <g class="gnd">
+      <line x1="131" y1="216" x2="131" y2="224"/>
+      <line x1="121" y1="224" x2="141" y2="224"/>
+      <line x1="125" y1="229" x2="137" y2="229"/>
+      <line x1="129" y1="234" x2="133" y2="234"/>
+    </g>
+  </svg>
+  <p class="widget-hint" style="text-align:center; margin-top:8px">The canonical low-side switch —
+  Design bench Task 1 builds exactly this. The 100&nbsp;Ω tames the gate-charging spike; the
+  100&nbsp;k guarantees "off" whenever the pin isn't actively driving.</p>
+</div>
 <p>And one datasheet trap that earns its own widget: <strong>logic-level versus standard
 gates</strong>. V<sub>th</sub> is where the channel <em>barely begins</em> — the datasheet
 defines it at some token current like 250&nbsp;µA. A FET driven just above threshold is not

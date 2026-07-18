@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · Emitter Followers &amp; Current Sources — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part II · Module 09</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Emitter Followers &amp; Current Sources</h1>
+  <p class="subtitle">A transistor circuit with a voltage gain of one sounds useless — until you
+  notice what it does to <em>impedance</em>. Plus the circuit that holds a current steady no
+  matter what you hang on it. <em>AoE 3rd ed. §2.2–2.3.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>The emitter follower has a voltage gain of one. The output is a faithful copy of the input,
+minus a diode drop. And yet it is everywhere — inside op-amps, at the output of every audio
+amplifier, buffering every reference voltage that has real work to do. Why would anyone build an
+amplifier that doesn't amplify? Because <strong>voltage was never the problem</strong>. Module 02
+ended with a sensor whose signal collapsed to 9% the moment a load touched it — not because the
+voltage was too small, but because the source was too <em>weak</em>. What the follower transforms
+is <strong>impedance</strong>: it takes a feeble, high-impedance source and re-issues the same
+voltage from a stiff, low-impedance one. Module 02 taught you why stiff sources matter; this
+module finally builds one.</p>
+<p>The second half of the module is the other great trick a transistor plays: the
+<strong>current source</strong> — a two-terminal-ish circuit that pushes a fixed current through
+whatever you connect, the exact dual of the voltage sources we've leaned on so far. Current
+sources are analog design's other plumbing: they bias amplifiers, drive LEDs, charge capacitors
+into clean ramps, and (as "active loads") quietly make most of the gain inside every op-amp
+you'll ever use.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — why the emitter follows</span>
+  <p>Module 08 established the transistor rules: the base–emitter junction is a diode, and once
+  it conducts, <code>V<sub>BE</sub></code> sits pinned near 0.6&nbsp;V — the exponential diode law
+  means large swings of collector current cost only tens of millivolts of
+  <code>V<sub>BE</sub></code>. So if the base moves, the emitter has no choice: with
+  <code>V<sub>BE</sub></code> effectively constant, <strong>the emitter tracks the base, 0.6&nbsp;V
+  below it</strong>. Wire the collector straight to the positive rail, put a resistor
+  <code>R<sub>E</sub></code> from emitter to ground, drive the base — that's the whole circuit.</p>
+  <p>There is feedback hiding inside, and it's worth seeing because it previews every feedback
+  circuit to come. Suppose a load tugs the emitter downward. The base hasn't moved, so
+  <code>V<sub>BE</sub> = V<sub>B</sub> − V<sub>E</sub></code> <em>grows</em> — and collector
+  current rises exponentially with <code>V<sub>BE</sub></code>, so the transistor pulls up harder,
+  lifting the emitter right back. The circuit actively fights any attempt to move its output.
+  That's why the output is stiff: not because the transistor is strong, but because it
+  <em>corrects</em>.</p>
+  <p>Now the impedance arithmetic, gently. Base current is emitter current divided by
+  (β&nbsp;+&nbsp;1) — the transistor supplies the rest from the collector rail. So if a load draws
+  <code>ΔI</code> from the emitter, the source driving the base only has to supply
+  <code>ΔI/(β+1)</code>: <strong>the base sees the load magnified ×(β+1)</strong>, roughly
+  <code>Z<sub>in</sub> ≈ β·Z<sub>load</sub></code>. Run the same argument backwards: any resistance
+  <code>R<sub>source</sub></code> in the base circuit only carries base current, so from the
+  emitter's side it looks (β+1)× <em>smaller</em>: <strong>the load sees the source shrunk
+  ÷(β+1)</strong>. One transistor, and impedances are transformed by a factor of a hundred in
+  whichever direction helps you.</p>
+</div>
+
+<h2>The emitter follower</h2>
+<p>Collector to the positive rail, <code>R<sub>E</sub></code> from emitter to ground, signal into
+the base. The DC story is one line:</p>
+<div class="formula">
+  V<sub>out</sub> = V<sub>in</sub> − 0.6 V &nbsp;&nbsp;&nbsp; gain ≈ 1
+  <small>the emitter follows the base, one diode drop below — hence the name</small>
+</div>
+<p>The impedance story is where the value lives:</p>
+<div class="formula">
+  Z<sub>in</sub> ≈ β · (R<sub>E</sub> ∥ R<sub>load</sub>) &nbsp;&nbsp;&nbsp;&nbsp;
+  Z<sub>out</sub> ≈ R<sub>source</sub>/β + r<sub>e</sub>
+  <small>the base sees the load ×(β+1); the load sees the source ÷(β+1), plus a little re</small>
+</div>
+<p>What is that <code>r<sub>e</sub></code>? Honesty time. Even with a perfectly stiff source
+driving the base, the emitter isn't a perfect voltage source, because <code>V<sub>BE</sub></code>
+isn't perfectly constant — it creeps slightly as current changes, and the diode law says exactly
+how much. The slope works out to a beautifully simple effective resistance in series with the
+emitter, the <strong>intrinsic emitter resistance</strong>, "the little re":</p>
+<div class="formula">
+  r<sub>e</sub> = 25 mV / I<sub>C</sub>
+  <small>25 Ω at 1 mA, 2.5 Ω at 10 mA — a real, physical resistance you never soldered in</small>
+</div>
+<p>It isn't a component; it's the diode law differentiated (the 25&nbsp;mV is
+<code>kT/q</code>, thermal physics, the same for every silicon transistor ever made). At
+1&nbsp;mA it's 25&nbsp;Ω, and it sets the floor on how stiff a follower's output can get: however
+large β is, <code>Z<sub>out</sub></code> never drops below <code>r<sub>e</sub></code>. Run more
+current, get a stiffer output — one of the recurring bargains of analog design. The little re
+will matter even more in Module 10, where it sets the gain of the common-emitter amplifier.</p>
+
+<div class="panel analogy">
+  <span class="panel-label">Analogy — power steering and pumps</span>
+  <p>An emitter follower is <strong>power steering</strong>. Your hands on the wheel (the input)
+  do almost no work — they just indicate a position. The hydraulic booster (the transistor,
+  fed from the collector rail) does the actual shoving, and the road wheels (the load) get full
+  force. Crucially, the position <em>faithfully follows</em> the wheel: gain one, muscle many.
+  The 0.6&nbsp;V drop is the little bit of slack in the linkage — a fixed dead travel you learn
+  to expect, and the follower's version of it is at least constant enough to design around.</p>
+  <p>For the second half of the module: a <strong>voltage source is a pressurized tank</strong> —
+  fixed pressure, and it will supply any flow the plumbing demands. A <strong>current source is a
+  positive-displacement pump</strong> — fixed litres per minute, regardless of back-pressure.
+  Narrow the pipe (raise the load resistance) and the pump just develops more pressure to keep
+  the same flow moving. Where the analogy fails, it fails instructively: a real pump stalls when
+  the back-pressure exceeds what its motor can develop. A real current source does exactly the
+  same — run out of supply-rail "pressure" and the current collapses. That stall point is called
+  the <strong>compliance limit</strong>, and we'll measure it below.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the impedance transformer</div>
+  <div class="widget-hint">A weak source (V<sub>s</sub> behind R<sub>s</sub>) drives a load
+  R<sub>L</sub> — either directly, or through an emitter follower (β&nbsp;=&nbsp;100, biased at
+  I<sub>C</sub>&nbsp;≈&nbsp;5&nbsp;mA so r<sub>e</sub>&nbsp;≈&nbsp;5&nbsp;Ω). Compare the two
+  delivered fractions. Try the Module-02 disaster: R<sub>s</sub>&nbsp;=&nbsp;100&nbsp;kΩ into
+  R<sub>L</sub>&nbsp;=&nbsp;1&nbsp;kΩ.</div>
+
+  <div class="viz-row">
+    <svg id="follower-svg" class="schematic" viewBox="0 0 400 240" width="400" height="240" role="img"
+         aria-label="Signal source with source resistance Rs driving an emitter follower: NPN with collector to +12 V, emitter resistor RE to ground, load RL from emitter to ground">
+      <!-- ground rail -->
+      <path class="wire" d="M 52 214 L 300 214"/>
+      <g class="gnd">
+        <line x1="176" y1="214" x2="176" y2="222"/>
+        <line x1="166" y1="222" x2="186" y2="222"/>
+        <line x1="170" y1="227" x2="182" y2="227"/>
+        <line x1="174" y1="232" x2="178" y2="232"/>
+      </g>
+      <!-- signal source -->
+      <circle cx="52" cy="150" r="16" class="comp"/>
+      <path class="comp" d="M 44 150 q 4 -8 8 0 q 4 8 8 0"/>
+      <text x="20" y="154" class="lbl">Vs</text>
+      <path class="wire" d="M 52 134 L 52 84 L 70 84"/>
+      <path class="wire" d="M 52 166 L 52 214"/>
+      <!-- Rs zigzag (horizontal) -->
+      <path class="comp" d="M 70 84 L 74 84 L 78 76 L 86 92 L 94 76 L 102 92 L 110 76 L 118 92 L 122 84 L 126 84"/>
+      <text x="88" y="68" class="lbl">Rs</text>
+      <text x="76" y="108" class="lbl big" id="rs-lbl">10 kΩ</text>
+      <!-- base wire to transistor -->
+      <path class="wire" d="M 126 84 L 200 84"/>
+      <!-- NPN: base bar, collector up, emitter down with arrow -->
+      <line x1="200" y1="66" x2="200" y2="102" class="comp" stroke-width="3.5"/>
+      <path class="comp" d="M 200 76 L 224 62 L 224 44"/>
+      <path class="comp" d="M 200 92 L 224 106 L 224 136"/>
+      <polygon points="224,106 214,104 217,97" class="node"/>
+      <text x="212" y="36" class="lbl big">+12 V</text>
+      <text x="240" y="66" class="lbl">β = 100</text>
+      <text x="240" y="82" class="lbl">Ic ≈ 5 mA</text>
+      <!-- emitter node -->
+      <circle cx="224" cy="140" r="4" class="node"/>
+      <text x="182" y="130" class="lbl big" fill="var(--series-1)">Vout</text>
+      <!-- RE to ground -->
+      <path class="comp" d="M 224 148 L 224 152 L 214 156 L 234 164 L 214 172 L 234 180 L 214 188 L 234 196 L 224 200 L 224 202"/>
+      <path class="wire" d="M 224 140 L 224 148 M 224 202 L 224 214"/>
+      <text x="196" y="178" class="lbl">RE</text>
+      <text x="240" y="192" class="lbl">1.2 kΩ</text>
+      <!-- load branch -->
+      <path class="wire" d="M 228 140 L 300 140 L 300 148"/>
+      <path class="comp" d="M 300 148 L 300 152 L 290 156 L 310 164 L 290 172 L 310 180 L 290 188 L 310 196 L 300 200 L 300 202"/>
+      <path class="wire" d="M 300 202 L 300 214"/>
+      <text x="318" y="172" class="lbl">RL</text>
+      <text x="318" y="188" class="lbl big" id="rl-lbl">1 kΩ</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="rs-slider">Source resistance Rs <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^5  (100 Ω .. 100 kΩ) -->
+          <input type="range" id="rs-slider" min="2" max="5" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="rl-slider">Load RL <span class="val"></span></label>
+          <!-- log: 10^1 .. 10^4  (10 Ω .. 10 kΩ) -->
+          <input type="range" id="rl-slider" min="1" max="4" step="0.01" value="3">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Direct connection</div><div class="v" id="direct-read">—</div></div>
+        <div class="readout"><div class="k">With follower</div><div class="v" id="buff-read">—</div></div>
+        <div class="readout"><div class="k">Zin the source sees</div><div class="v" id="zin-read">—</div></div>
+        <div class="readout"><div class="k">Zout ≈ Rs/β + re</div><div class="v" id="zout-read">—</div></div>
+      </div>
+      <p class="widget-hint" id="follower-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <div class="widget-hint" style="margin-top:16px">The money plot: fraction of the source voltage
+  actually delivered to the load, as RL sweeps (log axis). Orange: wired directly — the Module-02
+  divider sag. Blue: through the follower. The dots mark the RL slider. Hover to read values.</div>
+  <canvas id="follower-plot" class="hh-plot" data-height="320"></canvas>
+</div>
+
+<h2>Biasing a follower for AC signals</h2>
+<p>The follower above assumed the input signal already sits at a friendly DC level. Real signals —
+audio, sensor wiggles — are often centered on zero, and a follower running from a single positive
+supply can't follow anything below ground (the transistor would just turn off). The fix is the
+standard single-supply ritual, and every piece of it is an old friend:</p>
+<ul>
+  <li><strong>Set the emitter near mid-supply</strong> with DC bias, so the output can swing
+  equally far up and down before hitting a rail. Emitter at mid-supply means the base sits at
+  mid-supply + 0.6&nbsp;V.</li>
+  <li><strong>Make that base voltage with a divider</strong> — Module 02's circuit, doing its most
+  common job. Stiff enough that the base current doesn't sag it: the 10× rule, applied against the
+  follower's own <code>Z<sub>in</sub> ≈ βR<sub>E</sub></code>, wants
+  R<sub>Th</sub>&nbsp;of&nbsp;the&nbsp;divider&nbsp;≤&nbsp;βR<sub>E</sub>/10.</li>
+  <li><strong>Couple the signal in and out through capacitors</strong> — Modules 03 and 05:
+  a capacitor passes the wiggle and blocks the DC level, forming a high-pass with whatever
+  impedance it faces. Size each cap so the corner frequency 1/2πRC sits well below the lowest
+  frequency you care about.</li>
+</ul>
+<p><strong>Worked design — a 12&nbsp;V audio buffer.</strong> Choose a healthy bias current,
+I<sub>E</sub>&nbsp;≈&nbsp;5&nbsp;mA (re&nbsp;≈&nbsp;5&nbsp;Ω, nicely stiff). Emitter at
+mid-supply, 6&nbsp;V, so R<sub>E</sub>&nbsp;=&nbsp;6&nbsp;V&nbsp;/&nbsp;5&nbsp;mA&nbsp;=&nbsp;1.2&nbsp;kΩ.
+Base needs 6.6&nbsp;V: the divider ratio is 6.6/12&nbsp;=&nbsp;0.55, and
+R1&nbsp;=&nbsp;10&nbsp;kΩ over R2&nbsp;=&nbsp;12&nbsp;kΩ gives 12&nbsp;×&nbsp;12/22&nbsp;=&nbsp;6.55&nbsp;V
+— close enough (V<sub>E</sub>&nbsp;≈&nbsp;5.95&nbsp;V, I<sub>E</sub>&nbsp;≈&nbsp;5.0&nbsp;mA).
+Check the stiffness: divider R<sub>Th</sub>&nbsp;=&nbsp;10k∥12k&nbsp;≈&nbsp;5.5&nbsp;kΩ, versus
+βR<sub>E</sub>&nbsp;≈&nbsp;120&nbsp;kΩ looking into the base — better than 10× with room to spare.
+Input cap: the signal sees the divider R<sub>Th</sub> in parallel with the base's
+Z<sub>in</sub>, about 5&nbsp;kΩ; 1&nbsp;µF gives a corner near 30&nbsp;Hz. This exact bias point —
+5&nbsp;mA into 1.2&nbsp;kΩ — is the one running in the widget above.</p>
+
+<h2>Limits — the follower only pushes</h2>
+<p>Look at the circuit again and notice the asymmetry. On upward swings the transistor
+<strong>pulls the output up</strong> actively — through the collector, from the rail, with as much
+current as β allows. On downward swings the transistor can't help at all: a transistor only
+conducts one way, and the most it can do is back off toward zero current. Everything that pulls
+the output <em>down</em> is plain old <code>R<sub>E</sub></code>, a passive resistor doing its
+best.</p>
+<p>Into a light load, no one notices. Into a heavy or capacitive load, the down-swing is limited
+to the current R<sub>E</sub> can sink — and if the signal dives faster than R<sub>E</sub> can drag
+the load down, the transistor simply <strong>cuts off</strong>: V<sub>BE</sub> collapses below
+0.6&nbsp;V, the emitter stops following, and the output waveform's bottom half gets sliced off
+while R<sub>E</sub> and the load lazily discharge on their own schedule. You can throw current at
+the problem (smaller R<sub>E</sub>, more standing power), but the elegant fix is a second,
+upside-down (PNP) follower to do the pulling down — a <em>push–pull</em> output stage, which is
+exactly where Module 11 picks up the story.</p>
+
+<h2>Current sources — the recipe</h2>
+<p>Here's the beautiful part: you already know this circuit. Take the biased follower and shift
+your attention from the emitter to the <strong>collector</strong>. Fix the base voltage
+<code>V<sub>B</sub></code> — with a divider, a Zener, a reference, anything stiff. The emitter
+obediently sits at <code>V<sub>B</sub> − 0.6</code>, so the current through
+<code>R<sub>E</sub></code> is nailed down:</p>
+<div class="formula">
+  I = (V<sub>B</sub> − 0.6 V) / R<sub>E</sub>
+  <small>and collector current ≈ emitter current — set by VB and RE, not by the load</small>
+</div>
+<p>Now the punchline. That current has nowhere to come from but the collector (base current is a
+β-fold smaller correction). So <em>whatever</em> sits in the collector path — an LED string, a
+resistor, an amplifier stage — gets that current forced through it. The load doesn't set the
+current; the emitter side already did. Change the load and the collector <em>voltage</em> moves
+to whatever value pushes the same current — the positive-displacement pump, developing however
+much pressure the pipe demands.</p>
+<p><strong>Compliance — check it before celebrating.</strong> The transistor needs
+<code>V<sub>CE</sub></code> above about 0.2&nbsp;V to keep transistor-ing; push it lower and it
+saturates (Module 08) and becomes a sad closed switch. So the collector may sit anywhere from
+about 0.2&nbsp;V above the emitter up to near the positive rail — that window is the
+<strong>compliance range</strong>, the span of load voltage over which the "fixed litres per
+minute" promise holds. Demand a load drop bigger than the window and the current collapses to
+whatever Ohm's law allows with the transistor fully on.</p>
+<p><strong>Why bother?</strong> Because so many things are current-shaped problems:
+<em>LED strings</em> — brightness is set by current, and an LED's steep V–I curve makes voltage
+drive a thermal gamble (the design bench quantifies it); <em>biasing</em> — a current source
+holds an amplifier's operating point steady against supply and temperature wobble;
+<em>active loads</em> — replace a collector resistor with a current source and an amplifier's
+gain multiplies enormously (a Module-10 punchline); <em>ramp generators</em> — constant current
+into a capacitor gives a perfectly straight voltage ramp, the heart of every classic
+oscilloscope sweep.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: current source &amp; compliance</div>
+  <div class="widget-hint">A divider holds V<sub>B</sub>&nbsp;=&nbsp;2.6&nbsp;V, so
+  V<sub>E</sub>&nbsp;=&nbsp;2.0&nbsp;V and I&nbsp;=&nbsp;2&nbsp;V&nbsp;/&nbsp;R<sub>E</sub>. The
+  load hangs between the collector and the 12&nbsp;V rail. Sweep the load and watch the current
+  hold rock-steady — until the load drop eats the compliance window
+  (12&nbsp;−&nbsp;2.0&nbsp;−&nbsp;0.2&nbsp;=&nbsp;9.8&nbsp;V) and the pump stalls.</div>
+
+  <div class="viz-row">
+    <svg id="csource-svg" class="schematic" viewBox="0 0 400 250" width="400" height="250" role="img"
+         aria-label="Current source: divider fixes the base at 2.6 V, emitter resistor RE to ground sets the current, load resistor from collector to the 12 V rail">
+      <!-- rails -->
+      <path class="wire" d="M 60 34 L 320 34"/>
+      <text x="30" y="30" class="lbl big">+12 V</text>
+      <path class="wire" d="M 60 210 L 320 210"/>
+      <g class="gnd">
+        <line x1="156" y1="210" x2="156" y2="218"/>
+        <line x1="146" y1="218" x2="166" y2="218"/>
+        <line x1="150" y1="223" x2="162" y2="223"/>
+        <line x1="154" y1="228" x2="158" y2="228"/>
+      </g>
+      <!-- divider left leg -->
+      <path class="wire" d="M 90 34 L 90 44"/>
+      <path class="comp" d="M 90 44 L 90 48 L 80 52 L 100 60 L 80 68 L 100 76 L 80 84 L 100 92 L 90 96 L 90 100"/>
+      <text x="58" y="74" class="lbl">R1</text>
+      <text x="104" y="60" class="lbl">36 kΩ</text>
+      <path class="wire" d="M 90 100 L 90 134"/>
+      <circle cx="90" cy="118" r="4" class="node"/>
+      <text x="6" y="114" class="lbl big" fill="var(--series-1)">VB 2.6 V</text>
+      <path class="comp" d="M 90 134 L 90 138 L 80 142 L 100 150 L 80 158 L 100 166 L 80 174 L 100 182 L 90 186 L 90 190"/>
+      <text x="58" y="164" class="lbl">R2</text>
+      <text x="104" y="176" class="lbl">10 kΩ</text>
+      <path class="wire" d="M 90 190 L 90 210"/>
+      <!-- base wire -->
+      <path class="wire" d="M 94 118 L 204 118"/>
+      <!-- NPN -->
+      <line x1="204" y1="100" x2="204" y2="136" class="comp" stroke-width="3.5"/>
+      <path class="comp" d="M 204 110 L 228 96"/>
+      <path class="comp" d="M 204 126 L 228 140 L 228 148"/>
+      <polygon points="228,140 218,138 221,131" class="node"/>
+      <!-- load between rail and collector -->
+      <path class="wire" d="M 228 34 L 228 38"/>
+      <path class="comp" d="M 228 38 L 228 42 L 218 46 L 238 54 L 218 62 L 238 70 L 218 78 L 238 86 L 228 90 L 228 94"/>
+      <path class="wire" d="M 228 94 L 228 96"/>
+      <text x="246" y="58" class="lbl">load</text>
+      <text x="246" y="74" class="lbl big" id="rload-lbl">1 kΩ</text>
+      <!-- current arrow beside load -->
+      <path class="comp" d="M 300 44 l 0 22 m 0 0 l -5 -7 m 5 7 l 5 -7" stroke="var(--series-2)"/>
+      <text x="290" y="84" class="lbl" fill="var(--series-2)" id="iload-lbl">2 mA</text>
+      <!-- VC label -->
+      <text x="238" y="112" class="lbl" id="vc-lbl">Vc = 10 V</text>
+      <!-- emitter leg -->
+      <circle cx="228" cy="152" r="3" class="node"/>
+      <text x="238" y="152" class="lbl">VE 2.0 V</text>
+      <path class="comp" d="M 228 152 L 228 156 L 218 160 L 238 168 L 218 176 L 238 184 L 228 188 L 228 192"/>
+      <path class="wire" d="M 228 192 L 228 210"/>
+      <text x="196" y="176" class="lbl">RE</text>
+      <text x="244" y="180" class="lbl big" id="rese-lbl">1 kΩ</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="re-slider">Emitter resistor RE (sets I) <span class="val"></span></label>
+          <!-- log: 10^1 .. 10^4  (10 Ω .. 10 kΩ → 200 mA .. 200 µA) -->
+          <input type="range" id="re-slider" min="1" max="4" step="0.01" value="3">
+        </div>
+        <div class="control">
+          <label for="rload-slider">Load resistance <span class="val"></span></label>
+          <!-- log: 10^1 .. 10^5  (10 Ω .. 100 kΩ) -->
+          <input type="range" id="rload-slider" min="1" max="5" step="0.01" value="3">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Set current 2 V / RE</div><div class="v" id="iset-read">—</div></div>
+        <div class="readout"><div class="k">Actual current</div><div class="v" id="iact-read">—</div></div>
+        <div class="readout"><div class="k">Compliance headroom</div><div class="v" id="head-read">—</div></div>
+      </div>
+      <p class="widget-hint" id="cs-warning" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <div class="widget-hint" style="margin-top:16px">Load current versus load resistance (log axis).
+  Dashed: the set current. Solid: what actually flows — flat across the whole compliance range,
+  then collapsing as 9.8&nbsp;V&nbsp;/&nbsp;R<sub>load</sub> once the transistor saturates. The dot
+  is the load slider. Hover to read values.</div>
+  <canvas id="csource-plot" class="hh-plot" data-height="320"></canvas>
+</div>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li>A follower drops 0.6&nbsp;V, always. Budget for it; don't be surprised by it.</li>
+    <li>Impedance transformation: <strong>Z<sub>in</sub> ≈ β·Z<sub>load</sub></strong> looking into
+    the base, <strong>Z<sub>out</sub> ≈ Z<sub>source</sub>/β</strong> looking into the emitter —
+    plus the little re.</li>
+    <li><strong>r<sub>e</sub> = 25 mV / I<sub>C</sub></strong>: 25&nbsp;Ω at 1&nbsp;mA. It's the
+    floor under every follower's output impedance; more bias current buys a stiffer output.</li>
+    <li>A follower pulls <em>up</em> through the transistor but only pulls <em>down</em> through
+    R<sub>E</sub> — expect asymmetric drive into heavy loads.</li>
+    <li>A current source's current is set by <strong>V<sub>B</sub> and R<sub>E</sub></strong>,
+    NOT by the load: I&nbsp;=&nbsp;(V<sub>B</sub>&nbsp;−&nbsp;0.6)/R<sub>E</sub>.</li>
+    <li><strong>Check compliance before celebrating</strong>: the load may drop from ~0 up to
+    (V<sub>supply</sub>&nbsp;−&nbsp;V<sub>E</sub>&nbsp;−&nbsp;0.2&nbsp;V). Past that, the
+    transistor saturates and the "constant" current quietly becomes Ohm's law.</li>
+  </ul>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the two recipes. Check the box once you've worked each one and compared
+against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — rescue the Module-02 sensor</label>
+  </div>
+  <p>The sensor from Module 02: a signal source with 100&nbsp;kΩ output impedance, which must
+  drive a 1&nbsp;kΩ load. Wired directly it delivers about 1% of its signal. Design a
+  single-supply (12&nbsp;V) AC-coupled follower to fix it — bias point, all resistor values,
+  coupling — and estimate the delivered fraction. How close to 95%+ can you get, and what does it
+  take?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Direct: 1k/(100k&nbsp;+&nbsp;1k) ≈ <strong>0.99%</strong>. Garbage, as before.</p>
+      <p><strong>First attempt, one transistor</strong> (β&nbsp;=&nbsp;100): bias as in the worked
+      design — emitter at 6&nbsp;V, R<sub>E</sub>&nbsp;=&nbsp;1.2&nbsp;kΩ (≈5&nbsp;mA,
+      re&nbsp;≈&nbsp;5&nbsp;Ω), coupling caps in and out. The AC emitter load is
+      R<sub>E</sub>∥R<sub>L</sub>&nbsp;≈&nbsp;545&nbsp;Ω, so the delivered fraction is roughly
+      545/(545&nbsp;+&nbsp;5&nbsp;+&nbsp;100k/101)&nbsp;≈&nbsp;<strong>35%</strong>. A 35-fold
+      improvement — but capped well short of 95%, because 100&nbsp;kΩ/β&nbsp;≈&nbsp;1&nbsp;kΩ of
+      transformed source impedance is still comparable to the load. One β of 100 isn't enough
+      transformation for this job.</p>
+      <p><strong>Real fix: two followers in cascade — a Darlington</strong>, β&nbsp;≈&nbsp;100&nbsp;×&nbsp;100&nbsp;=&nbsp;10⁴
+      (it drops 2&nbsp;×&nbsp;0.6&nbsp;=&nbsp;1.2&nbsp;V; budget it). Emitter at ~5.5&nbsp;V,
+      R<sub>E</sub>&nbsp;=&nbsp;1&nbsp;kΩ (5.5&nbsp;mA, re&nbsp;≈&nbsp;4.5&nbsp;Ω). Base needs
+      5.5&nbsp;+&nbsp;1.2&nbsp;=&nbsp;6.7&nbsp;V: R1&nbsp;=&nbsp;1&nbsp;MΩ over
+      R2&nbsp;=&nbsp;1.3&nbsp;MΩ gives 6.78&nbsp;V (base current is only
+      5.5&nbsp;mA/10⁴&nbsp;≈&nbsp;0.55&nbsp;µA, sagging the 565&nbsp;kΩ divider by ~0.3&nbsp;V —
+      acceptable, or trim R2). Now Z<sub>in</sub> at the base is
+      10⁴&nbsp;×&nbsp;(1k∥1k)&nbsp;≈&nbsp;5&nbsp;MΩ… but the <em>divider</em> R<sub>Th</sub> of
+      565&nbsp;kΩ sits in parallel, so the source sees ≈&nbsp;508&nbsp;kΩ and the total delivered
+      fraction is ≈&nbsp;<strong>81%</strong>. The transistor is no longer the bottleneck — the
+      bias network is.</p>
+      <p><strong>The last 15%:</strong> bootstrap the bias (AoE §2.4.3): feed the divider tap to
+      the base through a series resistor and tie a capacitor from the emitter back to that tap.
+      Since the emitter follows the base, the AC voltage across the series resistor is nearly
+      zero, so almost no signal current flows into the bias network — its effective AC impedance
+      soars, the source sees the full ~5&nbsp;MΩ, and the delivered fraction lands at
+      ≈&nbsp;<strong>95%</strong>. From 1% to 95%: that is what "impedance transformer" means.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — a 10 mA source with 10 V of compliance</label>
+  </div>
+  <p>From a 15&nbsp;V supply, design a 10&nbsp;mA current source whose load (returned to the
+  15&nbsp;V rail) may drop anywhere from 0 to at least 10&nbsp;V. Choose V<sub>B</sub>, the
+  divider, and R<sub>E</sub>; then verify the compliance arithmetic explicitly.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Keep V<sub>E</sub> low</strong> — every volt on the emitter is a volt stolen from
+      compliance. But not too low: V<sub>E</sub> around 1–2&nbsp;V keeps the current insensitive
+      to V<sub>BE</sub>'s ±tens-of-mV wobble. Choose <strong>V<sub>B</sub>&nbsp;=&nbsp;2.6&nbsp;V</strong>,
+      so V<sub>E</sub>&nbsp;=&nbsp;2.0&nbsp;V and
+      <strong>R<sub>E</sub>&nbsp;=&nbsp;2.0&nbsp;V&nbsp;/&nbsp;10&nbsp;mA&nbsp;=&nbsp;200&nbsp;Ω</strong>
+      (an E24 value; drops 20&nbsp;mW — any ¼&nbsp;W part).</p>
+      <p><strong>Divider:</strong> base current is 10&nbsp;mA/β&nbsp;≈&nbsp;100&nbsp;µA, so run
+      ≥&nbsp;10× that through the divider — 2&nbsp;mA, i.e. about 7.5&nbsp;kΩ total.
+      <strong>R1&nbsp;=&nbsp;6.2&nbsp;kΩ, R2&nbsp;=&nbsp;1.3&nbsp;kΩ</strong> (both E24):
+      15&nbsp;×&nbsp;1.3/7.5&nbsp;=&nbsp;2.60&nbsp;V exactly. (Pedant's check: 100&nbsp;µA through
+      R<sub>Th</sub>&nbsp;=&nbsp;6.2k∥1.3k&nbsp;≈&nbsp;1.1&nbsp;kΩ sags the base ~0.11&nbsp;V,
+      landing near 9.5&nbsp;mA — trim R<sub>E</sub> to 180&nbsp;Ω or stiffen the divider if the
+      last 5% matters.)</p>
+      <p><strong>Compliance, explicitly:</strong> the collector must stay above
+      V<sub>E</sub>&nbsp;+&nbsp;0.2&nbsp;=&nbsp;2.2&nbsp;V, so the load may drop up to
+      15&nbsp;−&nbsp;2.2&nbsp;=&nbsp;<strong>12.8&nbsp;V</strong>. Requirement was 10&nbsp;V:
+      met, with 2.8&nbsp;V of margin. Worst-case transistor dissipation is with the load shorted:
+      V<sub>CE</sub>&nbsp;=&nbsp;13&nbsp;V at 10&nbsp;mA = 130&nbsp;mW — fine for a small
+      transistor, but the habit of checking is the point.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — the wobbly backlight</label>
+  </div>
+  <p>An LED backlight string: three red LEDs (V<sub>f</sub>&nbsp;≈&nbsp;2.0&nbsp;V each) at
+  20&nbsp;mA, from a nominally 12&nbsp;V supply that actually wobbles between 10 and 14&nbsp;V.
+  Design the drive twice — (a) a plain series resistor, (b) a transistor current source — and
+  compute the brightness (current) variation both ways across the supply range.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>(a) Series resistor.</strong> The string drops 3&nbsp;×&nbsp;2.0&nbsp;=&nbsp;6&nbsp;V.
+      At nominal 12&nbsp;V the resistor sees 6&nbsp;V, so
+      R&nbsp;=&nbsp;6&nbsp;V&nbsp;/&nbsp;20&nbsp;mA&nbsp;=&nbsp;<strong>300&nbsp;Ω</strong>. Now
+      wobble the supply: at 10&nbsp;V, I&nbsp;=&nbsp;(10−6)/300&nbsp;=&nbsp;<strong>13.3&nbsp;mA</strong>;
+      at 14&nbsp;V, I&nbsp;=&nbsp;(14−6)/300&nbsp;=&nbsp;<strong>26.7&nbsp;mA</strong>. A 2:1
+      brightness swing — ±33% around nominal — visible to any eyeball, and it rides every
+      supply dip. The problem: the resistor only gets the <em>leftover</em> voltage, and the
+      leftover is where all the wobble lives.</p>
+      <p><strong>(b) Current source.</strong> String in the collector path from the supply rail.
+      Hold V<sub>B</sub> fixed at 2.7&nbsp;V — and here "fixed" must mean <em>referenced to
+      something stable</em> (a Zener, a reference, a regulated rail), not a divider from the
+      wobbling supply, or V<sub>B</sub> wobbles proportionally and you're back to ±21%. Then
+      V<sub>E</sub>&nbsp;=&nbsp;2.1&nbsp;V and
+      R<sub>E</sub>&nbsp;=&nbsp;2.1&nbsp;V&nbsp;/&nbsp;20&nbsp;mA&nbsp;=&nbsp;105&nbsp;Ω
+      (100&nbsp;Ω gives 21&nbsp;mA — fine). Compliance at the worst-case 10&nbsp;V supply: need
+      6&nbsp;(string)&nbsp;+&nbsp;2.1&nbsp;(V<sub>E</sub>)&nbsp;+&nbsp;0.2&nbsp;(V<sub>CE,sat</sub>)
+      = 8.3&nbsp;V — and we have 10&nbsp;V, so the source stays in compliance with 1.7&nbsp;V
+      spare. Current variation across 10–14&nbsp;V: essentially <strong>zero</strong> — the extra
+      supply volts just land on V<sub>CE</sub>, where nobody cares. That's the whole argument for
+      current-driving LEDs in one design.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="08-bjt-switch.html"><span class="dir">Previous</span><span class="name">08 · The BJT as a Switch</span></a>
+  <a href="10-common-emitter.html"><span class="dir">Next</span><span class="name">10 · The Common-Emitter Amplifier</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("09");
+
+  function par(a, b) { return (a * b) / (a + b); }
+  function pct(f) { return (f * 100).toFixed(1) + "<small> %</small>"; }
+
+  /* ==================================================================
+     Widget 1 — impedance transformer
+     Follower: β = 100, biased at Ic ≈ 5 mA (re = 25 mV / 5 mA = 5 Ω),
+     RE = 1.2 kΩ (the worked 12 V design).
+     direct    : Vout/Vs = RL / (Rs + RL)
+     buffered  : Vout/Vs = Rpar / (Rpar + re + Rs/(β+1)), Rpar = RE∥RL
+     (verified against a full small-signal nodal solution — agrees to
+      better than 0.01% across the slider ranges)
+     ================================================================== */
+  var BETA = 100, RE_F = 1200, RE_LITTLE = 5; /* Ω, at Ic = 5 mA */
+
+  var f = { Rs: 10000, RL: 1000 };
+
+  var directRead = document.getElementById("direct-read");
+  var buffRead = document.getElementById("buff-read");
+  var zinRead = document.getElementById("zin-read");
+  var zoutRead = document.getElementById("zout-read");
+  var followerNote = document.getElementById("follower-note");
+  var rsLbl = document.getElementById("rs-lbl");
+  var rlLbl = document.getElementById("rl-lbl");
+
+  function directFrac(Rs, RL) { return RL / (Rs + RL); }
+  function buffFrac(Rs, RL) {
+    var Rpar = par(RE_F, RL);
+    return Rpar / (Rpar + RE_LITTLE + Rs / (BETA + 1));
+  }
+
+  HH.slider("rs-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { f.Rs = r; updateFollower(); }
+  });
+  HH.slider("rl-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { f.RL = r; updateFollower(); }
+  });
+
+  var fPlot = HH.plot(document.getElementById("follower-plot"), {
+    xlabel: "Load resistance RL (log scale)",
+    ylabel: "Delivered fraction (%)",
+    xmin: 1, xmax: 4, ymin: 0, ymax: 100,
+    xticks: [1, 2, 3, 4],
+    yticks: [0, 25, 50, 75, 100],
+    xfmt: function (v) { return { 1: "10Ω", 2: "100Ω", 3: "1k", 4: "10k" }[v] || ""; },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var RL = Math.pow(10, x);
+      return [
+        { text: "RL = " + HH.fmt(RL, "Ω") },
+        { color: "--series-6", text: "direct: " + (directFrac(f.Rs, RL) * 100).toFixed(1) + " %" },
+        { color: "--series-1", text: "follower: " + (buffFrac(f.Rs, RL) * 100).toFixed(1) + " %" }
+      ];
+    }
+  });
+
+  function updateFollower() {
+    var d = directFrac(f.Rs, f.RL);
+    var b = buffFrac(f.Rs, f.RL);
+    var zin = (BETA + 1) * (RE_LITTLE + par(RE_F, f.RL));
+    var zout = f.Rs / (BETA + 1) + RE_LITTLE;
+
+    directRead.innerHTML = pct(d) + "<small> delivered</small>";
+    buffRead.innerHTML = pct(b) + "<small> delivered</small>";
+    buffRead.style.color = b > d * 2 ? "var(--good-text)" : "";
+    zinRead.innerHTML = HH.fmt(zin, "Ω");
+    zoutRead.innerHTML = HH.fmt(zout, "Ω");
+    rsLbl.textContent = HH.fmt(f.Rs, "Ω");
+    rlLbl.textContent = HH.fmt(f.RL, "Ω");
+
+    var ratio = d > 0 ? b / d : 0;
+    if (ratio > 1.5) {
+      followerNote.textContent = "The follower delivers " + ratio.toFixed(1) +
+        "× more signal: the source drives " + HH.fmt(zin, "Ω") + " instead of " +
+        HH.fmt(f.RL, "Ω") + ", and the load is driven from " + HH.fmt(zout, "Ω") +
+        " instead of " + HH.fmt(f.Rs, "Ω") + ".";
+      followerNote.style.color = "var(--muted)";
+    } else {
+      followerNote.textContent = "With a source this stiff (or a load this light) the direct " +
+        "wiring was already fine — a buffer earns its keep when Rs is large next to RL.";
+      followerNote.style.color = "var(--muted)";
+    }
+
+    var direct = [], buffed = [];
+    for (var x = 1; x <= 4.0001; x += 0.03) {
+      var RL = Math.pow(10, x);
+      direct.push([x, directFrac(f.Rs, RL) * 100]);
+      buffed.push([x, buffFrac(f.Rs, RL) * 100]);
+    }
+    fPlot.draw(
+      [
+        { pts: direct, color: "--series-6", width: 2 },
+        { pts: buffed, color: "--series-1", width: 2.5 }
+      ],
+      {
+        markers: [
+          { x: Math.log10(f.RL), y: d * 100, color: "--series-6" },
+          { x: Math.log10(f.RL), y: b * 100, color: "--series-1" }
+        ]
+      }
+    );
+  }
+  updateFollower();
+
+  /* ==================================================================
+     Widget 2 — current source & compliance
+     VB = 2.6 V (divider from 12 V), VE = 2.0 V, Iset = 2.0 / RE.
+     Compliance: collector must stay ≥ VE + 0.2 = 2.2 V, so the load may
+     drop at most 12 − 2.2 = 9.8 V. Past that the transistor saturates
+     and I collapses to 9.8 / Rload:  Iactual = min(Iset, 9.8/Rload).
+     ================================================================== */
+  var VSUP = 12, VB = 2.6, VE = VB - 0.6, VMAXDROP = VSUP - VE - 0.2; /* 9.8 V */
+
+  var cs = { RE: 1000, Rload: 1000 };
+
+  var isetRead = document.getElementById("iset-read");
+  var iactRead = document.getElementById("iact-read");
+  var headRead = document.getElementById("head-read");
+  var csWarning = document.getElementById("cs-warning");
+  var rloadLbl = document.getElementById("rload-lbl");
+  var reseLbl = document.getElementById("rese-lbl");
+  var iloadLbl = document.getElementById("iload-lbl");
+  var vcLbl = document.getElementById("vc-lbl");
+
+  function source(RE, Rload) {
+    var Iset = VE / RE;
+    var Isat = VMAXDROP / Rload;           /* transistor fully on: Ohm's law takes over */
+    var Iact = Math.min(Iset, Isat);       /* the honest min() */
+    var Vc = VSUP - Iact * Rload;
+    return { Iset: Iset, Iact: Iact, Vc: Vc, sat: Isat < Iset, headroom: VMAXDROP - Iset * Rload };
+  }
+
+  HH.slider("re-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω") + "  →  " + HH.fmt(VE / r, "A"); },
+    onchange: function (r) { cs.RE = r; updateSource(); }
+  });
+  HH.slider("rload-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { cs.Rload = r; updateSource(); }
+  });
+
+  var csPlot = HH.plot(document.getElementById("csource-plot"), {
+    xlabel: "Load resistance (log scale)",
+    ylabel: "Load current (mA)",
+    xmin: 1, xmax: 5, ymin: 0, ymax: 4,
+    xticks: [1, 2, 3, 4, 5],
+    yticks: [0, 1, 2, 3, 4],
+    xfmt: function (v) { return { 1: "10Ω", 2: "100Ω", 3: "1k", 4: "10k", 5: "100k" }[v] || ""; },
+    yfmt: function (v) { return String(+v.toFixed(2)); },
+    hover: function (x) {
+      var Rload = Math.pow(10, x);
+      var s = source(cs.RE, Rload);
+      return [
+        { text: "Rload = " + HH.fmt(Rload, "Ω") + "  (drop " + HH.fmt(s.Iact * Rload, "V") + ")" },
+        { color: "--series-2", text: "I = " + HH.fmt(s.Iact, "A") + (s.sat ? "  — saturated!" : "") }
+      ];
+    }
+  });
+
+  function niceMax(x) {
+    var p = Math.pow(10, Math.floor(Math.log10(x)));
+    var m = x / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 4 ? 4 : m <= 5 ? 5 : 10) * p;
+  }
+
+  function updateSource() {
+    var s = source(cs.RE, cs.Rload);
+
+    isetRead.innerHTML = HH.fmt(s.Iset, "A");
+    iactRead.innerHTML = HH.fmt(s.Iact, "A");
+    iactRead.style.color = s.sat ? "var(--critical)" : "var(--good-text)";
+    headRead.innerHTML = s.sat
+      ? "<small>none — saturated</small>"
+      : HH.fmt(s.headroom, "V") + "<small> to spare</small>";
+    headRead.style.color = s.sat ? "var(--critical)" : s.headroom < 1 ? "var(--task-edge)" : "";
+
+    rloadLbl.textContent = HH.fmt(cs.Rload, "Ω");
+    reseLbl.textContent = HH.fmt(cs.RE, "Ω");
+    iloadLbl.textContent = HH.fmt(s.Iact, "A");
+    vcLbl.textContent = "Vc = " + HH.fmt(s.Vc, "V");
+
+    if (s.sat) {
+      csWarning.innerHTML = "⚠️ Out of compliance: " + HH.fmt(s.Iset, "A") + " through " +
+        HH.fmt(cs.Rload, "Ω") + " would need " + HH.fmt(s.Iset * cs.Rload, "V") +
+        " across the load, but only " + VMAXDROP.toFixed(1) +
+        " V exists. The transistor is saturated (Vce ≈ 0.2 V) and the current is just Ohm's law: " +
+        HH.fmt(VMAXDROP, "V") + " / " + HH.fmt(cs.Rload, "Ω") + " = " + HH.fmt(s.Iact, "A") + ".";
+      csWarning.style.color = "var(--critical)";
+    } else {
+      csWarning.textContent = "In compliance: the load drops " + HH.fmt(s.Iact * cs.Rload, "V") +
+        " of the available " + VMAXDROP.toFixed(1) + " V, and the collector sits at " +
+        HH.fmt(s.Vc, "V") + " — the current holds at the set value regardless of the load.";
+      csWarning.style.color = "var(--muted)";
+    }
+
+    /* y-axis adapts to the set current */
+    var ymaxMA = niceMax(s.Iset * 1000 * 1.3);
+    csPlot.cfg.ymax = ymaxMA;
+    csPlot.cfg.yticks = [0, ymaxMA / 4, ymaxMA / 2, (3 * ymaxMA) / 4, ymaxMA];
+
+    var curve = [];
+    for (var x = 1; x <= 5.0001; x += 0.02) {
+      curve.push([x, source(cs.RE, Math.pow(10, x)).Iact * 1000]);
+    }
+    csPlot.draw(
+      [
+        { pts: [[1, s.Iset * 1000], [5, s.Iset * 1000]], color: "--series-2", width: 1.5, dash: [4, 4] },
+        { pts: curve, color: "--series-2", width: 2.5 }
+      ],
+      { markers: [{ x: Math.log10(cs.Rload), y: s.Iact * 1000, color: "--series-2" }] }
+    );
+  }
+  updateSource();
+
+  /* ---------- quiz ---------- */
+  HH.quiz("quiz", [
+    {
+      q: "An emitter follower's voltage gain is about 1 — the output is no bigger than the input. What does the circuit actually transform?",
+      opts: [
+        "Nothing — it exists only to add a 0.6 V offset",
+        "Impedance: the source sees a load β× lighter, the load sees a source β× stiffer",
+        "Frequency: it shifts the signal spectrum upward",
+        "Current into voltage, like a resistor"
+      ],
+      answer: 1,
+      expl: "The follower is an <em>impedance</em> transformer. The same voltage reappears at the emitter, but issued from an impedance ÷(β+1) — while the original source only has to drive an impedance ×(β+1). Voltage gain of one, power gain of plenty: the extra muscle comes from the collector supply."
+    },
+    {
+      q: "A follower (β = 100, biased at 1 mA) is driven from a 10 kΩ source. Its output impedance is about…",
+      opts: ["10 kΩ — the follower just passes it along", "1 kΩ", "≈125 Ω (10 kΩ/100, plus re)", "exactly 0 — followers are ideal sources"],
+      answer: 2,
+      expl: "Zout ≈ Rsource/β + re = 10 kΩ/100 + 25 Ω = 100 + 25 = 125 Ω. The transformed source impedance and the little re add — and note that at this low bias current, re is a quarter of the total. More bias current would shrink it."
+    },
+    {
+      q: "What is the intrinsic emitter resistance re of a transistor running at 1 mA of collector current?",
+      opts: ["0.6 Ω", "25 Ω", "1 kΩ", "It depends on β"],
+      answer: 1,
+      expl: "re = 25 mV / Ic = 25 mV / 1 mA = 25 Ω. It comes from the slope of the diode law — pure thermal physics (kT/q), the same for every silicon transistor, and independent of β. At 5 mA it would be 5 Ω; at 100 µA, 250 Ω."
+    },
+    {
+      q: "Why can't a simple NPN follower pull its output down as hard as it pulls up?",
+      opts: [
+        "Because β is smaller for falling signals",
+        "Because the transistor only conducts one way — it can source current into the load, but the pull-down is just RE",
+        "Because the 0.6 V drop subtracts from negative swings only",
+        "Because the collector is tied to the positive rail"
+      ],
+      answer: 1,
+      expl: "Up-swings are active: the transistor pours current from the collector rail. Down-swings are passive: the best the transistor can do is turn off, leaving RE alone to drag the load down. Dive too fast into a heavy or capacitive load and the transistor cuts off, slicing the bottom off the waveform — the problem push–pull (Module 11) exists to solve."
+    },
+    {
+      q: "A current source: base held at 2.6 V, emitter resistor RE = 1 kΩ to ground. What collector current does it force through the load?",
+      opts: ["2.6 mA", "2 mA", "Depends on the load resistance", "0.6 mA"],
+      answer: 1,
+      expl: "The emitter sits at 2.6 − 0.6 = 2.0 V, so I = 2.0 V / 1 kΩ = 2 mA — set entirely on the emitter side. The load doesn't get a vote (as long as compliance holds); the collector voltage adjusts instead."
+    },
+    {
+      q: "What does the \"compliance range\" of a current source mean?",
+      opts: [
+        "The tolerance of RE, which sets the current accuracy",
+        "The range of currents the source can be programmed to",
+        "The range of load voltage over which the current actually stays constant",
+        "The temperature range the transistor tolerates"
+      ],
+      answer: 2,
+      expl: "Compliance is the window of load voltage over which the source keeps its promise — here, from ~0.2 V above the emitter up to near the rail. Demand a bigger load drop than the window allows and the transistor saturates: the \"current source\" degenerates into a resistor chain obeying Ohm's law. Check compliance before celebrating."
+    },
+    {
+      q: "Why does a string of LEDs want a current source rather than a voltage source?",
+      opts: [
+        "LEDs need AC drive, which only current sources provide",
+        "Brightness is set by current, and the LED's steep V–I curve makes current wildly sensitive to voltage — so fix the current directly",
+        "Current sources deliver more power for the same supply",
+        "Voltage sources can't drive more than one LED"
+      ],
+      answer: 1,
+      expl: "An LED is a diode: past its knee, tiny voltage changes produce huge current changes (and Vf drifts with temperature, inviting runaway). Brightness tracks current, so drive the thing you actually want to control. A series resistor is a poor-man's current source — workable, but the design bench shows how badly it tracks a wobbling supply compared to the real thing."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
