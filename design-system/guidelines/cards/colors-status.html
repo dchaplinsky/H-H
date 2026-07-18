@@ -1,0 +1,22 @@
+<!-- @dsCard group="Colors" viewport="720x150" name="Status & washes" subtitle="Good/warning/critical + tinted panel washes" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;background:var(--page);padding:16px;color:var(--ink);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .sw{width:100px;height:96px;border-radius:10px;display:flex;flex-direction:column;justify-content:flex-end;
+      padding:9px;box-sizing:border-box;color:#fff;}
+  .wash{color:var(--ink);border:1px solid var(--border);}
+  .n{font-size:11px;font-weight:700;}
+  .t{font-size:10px;font-family:ui-monospace,monospace;opacity:.9;}
+</style></head>
+<body><div class="row">
+  <div class="sw" style="background:var(--good)"><span class="n">Good</span><span class="t">--good</span></div>
+  <div class="sw" style="background:var(--warning);color:#3d2a00"><span class="n">Warning</span><span class="t">--warning</span></div>
+  <div class="sw" style="background:var(--critical)"><span class="n">Critical</span><span class="t">--critical</span></div>
+  <div class="sw wash" style="background:var(--accent-wash)"><span class="n">Accent wash</span><span class="t">--accent-wash</span></div>
+  <div class="sw wash" style="background:var(--physics-wash)"><span class="n">Physics</span><span class="t">--physics-wash</span></div>
+  <div class="sw wash" style="background:var(--analogy-wash)"><span class="n">Analogy</span><span class="t">--analogy-wash</span></div>
+  <div class="sw wash" style="background:var(--task-wash)"><span class="n">Task</span><span class="t">--task-wash</span></div>
+</div></body></html>

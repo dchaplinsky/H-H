@@ -1,0 +1,21 @@
+<!-- @dsCard group="Colors" viewport="720x150" name="Surfaces & Ink" subtitle="Page/surface planes + text ramp, light & dark via tokens" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;background:var(--page);padding:16px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .sw{width:106px;height:100px;border-radius:10px;display:flex;flex-direction:column;justify-content:flex-end;
+      padding:10px;box-sizing:border-box;border:1px solid var(--border);}
+  .n{font-size:12px;font-weight:600;}
+  .t{font-size:11px;font-family:ui-monospace,monospace;opacity:.8;}
+</style></head>
+<body><div class="row">
+  <div class="sw" style="background:var(--page);color:var(--ink)"><span class="n">Page</span><span class="t">--page</span></div>
+  <div class="sw" style="background:var(--surface);color:var(--ink)"><span class="n">Surface</span><span class="t">--surface</span></div>
+  <div class="sw" style="background:var(--ink);color:var(--surface)"><span class="n">Ink</span><span class="t">--ink</span></div>
+  <div class="sw" style="background:var(--ink-2);color:var(--surface)"><span class="n">Ink 2</span><span class="t">--ink-2</span></div>
+  <div class="sw" style="background:var(--muted);color:var(--surface)"><span class="n">Muted</span><span class="t">--muted</span></div>
+  <div class="sw" style="background:var(--grid);color:var(--ink)"><span class="n">Grid</span><span class="t">--grid</span></div>
+  <div class="sw" style="background:var(--axis);color:var(--ink)"><span class="n">Axis</span><span class="t">--axis</span></div>
+</div></body></html>

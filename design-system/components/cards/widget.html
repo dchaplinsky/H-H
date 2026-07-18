@@ -1,0 +1,26 @@
+<!-- @dsCard group="Components" viewport="720x330" name="Interactive widget shell" subtitle="Title + hint, labeled sliders with live values, readout tiles" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:10px 22px;}</style></head>
+<body>
+<div class="widget">
+  <div class="widget-title">Interactive: the Ohm's-law lab</div>
+  <div class="widget-hint">One-line hint telling the learner what to try and what to watch for.</div>
+  <div class="controls">
+    <div class="control">
+      <label>Voltage V <span class="val">9 V</span></label>
+      <input type="range" min="0" max="24" value="9">
+    </div>
+    <div class="control">
+      <label>Resistance R <span class="val">1 kΩ</span></label>
+      <input type="range" min="1" max="5" step="0.01" value="3">
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout"><div class="k">Current I = V/R</div><div class="v">9 mA</div></div>
+    <div class="readout"><div class="k">Power P = V·I</div><div class="v">81 mW</div></div>
+    <div class="readout"><div class="k">τ = RC</div><div class="v">1 ms</div></div>
+  </div>
+</div>
+</body></html>

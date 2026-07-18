@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" viewport="720x210" name="Series palette" subtitle="8 categorical slots, CVD-validated order; semantic assignments for electronics" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body{margin:0;background:var(--page);padding:16px;color:var(--ink);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .sw{width:80px;height:96px;border-radius:10px;display:flex;flex-direction:column;justify-content:flex-end;
+      padding:8px;box-sizing:border-box;color:#fff;}
+  .n{font-size:11px;font-weight:700;}
+  .t{font-size:10px;font-family:ui-monospace,monospace;opacity:.9;}
+  .note{font-size:12px;color:var(--ink-2);margin-top:12px;max-width:640px;line-height:1.5;}
+</style></head>
+<body>
+<div class="row">
+  <div class="sw" style="background:var(--series-1)"><span class="n">1 voltage</span><span class="t">--series-1</span></div>
+  <div class="sw" style="background:var(--series-2)"><span class="n">2 current</span><span class="t">--series-2</span></div>
+  <div class="sw" style="background:var(--series-3);color:#3d0f22"><span class="n">3</span><span class="t">--series-3</span></div>
+  <div class="sw" style="background:var(--series-4);color:#3d2a00"><span class="n">4</span><span class="t">--series-4</span></div>
+  <div class="sw" style="background:var(--series-5)"><span class="n">5</span><span class="t">--series-5</span></div>
+  <div class="sw" style="background:var(--series-6)"><span class="n">6 power</span><span class="t">--series-6</span></div>
+  <div class="sw" style="background:var(--series-7)"><span class="n">7</span><span class="t">--series-7</span></div>
+  <div class="sw" style="background:var(--series-8)"><span class="n">8 heat</span><span class="t">--series-8</span></div>
+</div>
+<p class="note">Fixed slot order — never cycled or re-ranked. Electronics semantics: voltage traces always
+slot 1 (blue), current slot 2 (green), power/heat slots 6/8 (orange/red). Dark mode re-steps the same hues
+via the token layer; components never hardcode hex.</p>
+</body></html>

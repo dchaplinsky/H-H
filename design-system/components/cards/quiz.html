@@ -1,0 +1,22 @@
+<!-- @dsCard group="Components" viewport="720x560" name="Quiz question" subtitle="Unanswered, correct and incorrect states with explanation + score" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:10px 22px;}</style></head>
+<body>
+<div class="quiz">
+  <div class="quiz-q">
+    <div class="q-text"><span class="q-num">1.</span>Unanswered question — options are tappable rows.</div>
+    <label class="quiz-opt"><input type="radio" name="a"><span>First option</span></label>
+    <label class="quiz-opt"><input type="radio" name="a"><span>Second option</span></label>
+  </div>
+  <div class="quiz-q">
+    <div class="q-text"><span class="q-num">2.</span>Answered wrong — chosen row flags red, right answer flags green, explanation appears.</div>
+    <label class="quiz-opt incorrect disabled"><input type="radio" checked><span>The chosen (wrong) option</span></label>
+    <label class="quiz-opt correct disabled"><input type="radio"><span>The correct option</span></label>
+    <div class="quiz-expl show"><span class="verdict bad">Not quite. </span>Explanations teach in both
+    directions — every wrong answer says <em>why</em>, in secondary ink on the page plane.</div>
+  </div>
+  <div class="quiz-score show">Score: 5 / 7 (71%)<br><small>Getting there — reread the sections above and retry.</small></div>
+</div>
+</body></html>

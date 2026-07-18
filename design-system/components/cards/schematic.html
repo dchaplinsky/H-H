@@ -1,0 +1,28 @@
+<!-- @dsCard group="Components" viewport="720x300" name="Schematic style" subtitle="Inline SVG circuits: 2px ink strokes, semantic label classes, themed via tokens" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<style>body{padding:16px 22px;background:var(--page);}</style></head>
+<body>
+<div class="widget" style="margin:0">
+  <svg class="schematic" viewBox="0 0 356 220" width="356" height="220" role="img" aria-label="Battery driving a resistor">
+    <path class="wire" d="M 60 160 L 60 60 L 280 60 L 280 160 L 60 160" fill="none"/>
+    <rect x="45" y="95" width="30" height="30" fill="var(--surface)" stroke="none"/>
+    <line x1="48" y1="103" x2="72" y2="103" class="comp"/>
+    <line x1="56" y1="112" x2="64" y2="112" class="comp" stroke-width="3"/>
+    <text x="34" y="100" class="lbl vplus">+</text>
+    <text x="36" y="122" class="lbl">−</text>
+    <text x="14" y="112" class="lbl big">9 V</text>
+    <rect x="262" y="80" width="36" height="60" fill="var(--surface)" stroke="none"/>
+    <path class="comp" d="M 280 80 L 280 86 L 270 90 L 290 98 L 270 106 L 290 114 L 270 122 L 290 130 L 280 134 L 280 140"/>
+    <text x="298" y="108" class="lbl big">1 kΩ</text>
+    <text x="298" y="126" class="lbl">81 mW</text>
+    <path class="comp" d="M 160 48 l 14 0 m 0 0 l -6 -5 m 6 5 l -6 5" stroke="var(--series-2)"/>
+    <text x="140" y="44" class="lbl" fill="var(--series-2)">9 mA</text>
+    <circle cx="120" cy="60" r="3.2" fill="var(--series-2)"/>
+    <circle cx="200" cy="60" r="3.2" fill="var(--series-2)"/>
+    <circle cx="280" cy="120" r="3.2" fill="var(--series-2)"/>
+    <circle cx="170" cy="160" r="3.2" fill="var(--series-2)"/>
+  </svg>
+</div>
+</body></html>

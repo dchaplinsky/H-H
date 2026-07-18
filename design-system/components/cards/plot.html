@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="720x360" name="Canvas plot" subtitle="Live HH.plot render: recessive grid, series colors by role, marker + dashed reference" -->
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="../../hh.js" defer></script>
+<style>body{padding:10px 22px;}</style></head>
+<body>
+<div class="widget">
+  <div class="widget-title">RC step response</div>
+  <div class="widget-hint">Rendered live by the shared plot helper — hover (or touch-scrub) for the crosshair readout.</div>
+  <canvas id="demo" class="hh-plot" data-height="240"></canvas>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var tau = 1;
+  var plot = HH.plot(document.getElementById("demo"), {
+    xlabel: "t / τ", ylabel: "Vc (V)",
+    xmin: 0, xmax: 6, ymin: 0, ymax: 10,
+    xticks: [0,1,2,3,4,5,6], yticks: [0,2,4,6,8,10],
+    hover: function (x) {
+      var v = 10 * (1 - Math.exp(-x / tau));
+      return [{ text: "t = " + x.toFixed(2) + " τ" },
+              { color: "--series-1", text: "Vc = " + v.toFixed(2) + " V" }];
+    }
+  });
+  var pts = [], ref = [];
+  for (var t = 0; t <= 6.001; t += 0.05) pts.push([t, 10 * (1 - Math.exp(-t / tau))]);
+  ref.push([0, 10]); ref.push([6, 10]);
+  plot.draw(
+    [{ pts: ref, color: "--axis", width: 1.5, dash: [4,4] },
+     { pts: pts, color: "--series-1", width: 2 }],
+    { vline: 1, markers: [{ x: 1, y: 10 * (1 - Math.exp(-1)), color: "--series-1" }] }
+  );
+});
+</script>
+</body></html>
