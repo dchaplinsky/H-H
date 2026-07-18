@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Inductors &amp; Transformers — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 04</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Inductors &amp; Transformers</h1>
+  <p class="subtitle">The capacitor's magnetic twin: a part that stores energy in a field of its
+  own making, fights any change in <em>current</em> — and bites, hard, if you don't respect it.
+  <em>AoE 3rd ed. §1.5.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Inductors are rarer on a board than capacitors, but they run the show wherever serious power or
+radio lives: every <strong>switching power supply</strong> (which is to say, every charger, laptop
+and phone) works by pumping energy into an inductor and letting it back out; <strong>RF
+circuits</strong> tune with them; <strong>motors, relays and solenoids</strong> <em>are</em> them —
+a coil is how electricity is turned into pull and spin. And the <strong>transformer</strong> — two
+inductors sharing one magnetic field — is the reason the power grid works at all, and the thing
+standing between the mains and your low-voltage electronics.</p>
+<p>There's also a menace side, and H&amp;H are blunt about it. Interrupt the current through an
+inductor and it responds with a voltage spike of whatever size it takes to keep that current
+flowing — routinely <em>hundreds of volts</em> from a little 12&nbsp;V relay coil. That spike is
+called <strong>inductive kick</strong>; it is why unprotected switch contacts arc themselves to
+death and why transistors driving relays die mysteriously. The one-cent fix — a <strong>flyback
+diode</strong> — is the first reflex this module installs. Every relay coil gets one. No
+exceptions.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p>Two facts of electromagnetism, and everything here follows:</p>
+  <p><strong>1. Current makes a magnetic field</strong> (Ampère). Send current through a wire and
+  a magnetic field circles it; wind the wire into a coil and the turns' fields stack into a strong
+  field threading the coil. Wrap the turns around iron or ferrite and the core multiplies the flux
+  hundreds of times over.</p>
+  <p><strong>2. A <em>changing</em> field makes a voltage</strong> (Faraday). If the magnetic flux
+  through a loop changes, a voltage appears around the loop — and by Lenz's law it points in the
+  direction that opposes the change. A coil therefore fights changes in its own current: try to
+  change I and the changing flux induces a back-voltage pushing the other way. The coil's
+  "electrical inertia" is its <strong>inductance L</strong>, measured in henries (H):</p>
+  <div class="formula">
+    V = L · dI/dt
+    <small>volts across the coil, per amp-per-second of current change; 1 H is a big inductor —
+    real parts run µH to H</small>
+  </div>
+  <p>Building the field takes work, and the field stores it:</p>
+  <div class="formula">
+    E = ½ L I²
+    <small>joules held in the magnetic field — handed back, on the inductor's terms, when the
+    current falls</small>
+  </div>
+  <p>Now put V&nbsp;=&nbsp;L·dI/dt next to the capacitor's I&nbsp;=&nbsp;C·dV/dt. Same equation
+  with V and I swapped. The inductor is the capacitor's <strong>exact dual</strong>: every fact
+  you learned in Module 03 has a mirror-image twin here — swap voltage↔current, C↔L, series↔
+  parallel, and RC↔L/R. Learn the dictionary once and you get this whole module half price.</p>
+</div>
+
+<h2>V = L·dI/dt, unpacked</h2>
+<p>Read it the way we read the capacitor law — slowly, because it's the whole component in one
+line:</p>
+<ul>
+  <li><strong>Steady current → zero voltage.</strong> If dI/dt&nbsp;=&nbsp;0, then V&nbsp;=&nbsp;0.
+  At settled DC an ideal inductor is a <em>piece of wire</em>. It simply isn't there. (Real ones
+  have winding resistance — more on that below.)</li>
+  <li><strong>Fast change → big voltage.</strong> Try to change the current quickly and the coil
+  answers with a proportionally large voltage. Try to change it <em>instantly</em> and it answers
+  with an infinite one — which no real circuit survives politely. Conclusion:
+  <strong>the current through an inductor cannot jump.</strong></li>
+  <li><strong>So, instantaneously, an inductor behaves like a current source</strong> holding
+  whatever current it currently carries. In the first moment after you throw a switch, an
+  inductor that was carrying nothing is a 0&nbsp;A source — i.e. an <em>open circuit</em>. Long
+  after, it's a short. Exactly opposite to the capacitor, limit for limit.</li>
+</ul>
+<p>In short: a capacitor fights <em>voltage</em> change; an inductor fights <em>current</em>
+change. Here is the full dictionary — worth a slow minute, because it converts Module 03 into
+this one line by line:</p>
+<table>
+  <thead><tr><th></th><th>Capacitor</th><th>Inductor</th></tr></thead>
+  <tbody>
+    <tr><td>Defining law</td><td>I = C·dV/dt</td><td>V = L·dI/dt</td></tr>
+    <tr><td>Fights changes in…</td><td>voltage</td><td>current</td></tr>
+    <tr><td>…so this can't jump</td><td>V across it</td><td>I through it</td></tr>
+    <tr><td>Instant after switching</td><td>short (if uncharged)</td><td>open (if no current)</td></tr>
+    <tr><td>At settled DC</td><td>open circuit</td><td>short circuit (a wire)</td></tr>
+    <tr><td>Stored energy</td><td>½CV², in the electric field</td><td>½LI², in the magnetic field</td></tr>
+    <tr><td>Time constant with R</td><td>τ = RC</td><td>τ = L/R</td></tr>
+    <tr><td>Combination rules</td><td>opposite of resistors</td><td>same as resistors (series adds)</td></tr>
+    <tr><td>Failure mode when abused</td><td>overvoltage punctures dielectric</td><td>interrupted current makes a voltage spike</td></tr>
+  </tbody>
+</table>
+
+<h2>RL circuits — the same exponential, mirrored</h2>
+<p>Connect a battery V through a resistor R to an inductor L and close the switch. At the first
+instant the current is zero and can't jump, so the inductor takes the <em>whole</em> battery
+voltage and the current starts rising at slope V/L. As current builds, R steals more of the
+voltage, less is left across L, and the rise slows… a rate of change proportional to the
+remaining distance. You've met this curve:</p>
+<div class="formula">
+  I(t) = (V/R) · (1 − e<sup>−t/τ</sup>) &nbsp;&nbsp;&nbsp; τ = L/R
+  <small>current climbing toward its DC value V/R — the RC charging curve with I and V swapped</small>
+</div>
+<p>Everything you memorized about τ carries straight over: 63% of the way at 1τ, 86% at 2τ,
+"done" at 5τ. Only the formula flips — note it's L <em>divided by</em> R now. A <em>small</em>
+resistance makes a <em>long</em> time constant (nothing to burn the energy in), where for
+capacitors small R meant fast. And when the drive is removed but a path remains, the current
+decays the same way: I(t)&nbsp;=&nbsp;I₀·e<sup>−t/τ</sup> through whatever resistance the loop
+offers. Hold that thought — "whatever resistance the loop offers" is about to become the most
+dangerous phrase in Part I.</p>
+
+<h2>Inductive kick — the menace</h2>
+<p>Suppose an inductor is happily carrying current and you <em>open the switch</em>. The current
+must now fall to zero very fast — dI/dt is huge and negative — and the inductor does exactly
+what V&nbsp;=&nbsp;L·dI/dt says: it generates whatever voltage it takes to keep its current
+flowing for another instant. Not the supply voltage. <em>Whatever it takes.</em> The current has
+nowhere to go except into the few picofarads of stray capacitance around the switch, so the
+voltage rises until something conducts — an arc across the opening contacts, or the avalanche
+breakdown of the poor transistor doing the switching.</p>
+<p>How big? A useful estimate: the inductor's energy ½LI² sloshes into the stray capacitance's
+½CV², giving</p>
+<div class="formula">
+  V<sub>peak</sub> ≈ I · √(L / C<sub>stray</sub>)
+  <small>the LC "surge impedance" estimate; with C<sub>stray</sub> ~ 100 pF the multiplier
+  √(L/C) is enormous</small>
+</div>
+<p>Plug in numbers to feel the menace: 100&nbsp;mA through 100&nbsp;mH with 100&nbsp;pF of stray
+capacitance gives √(L/C)&nbsp;≈&nbsp;31.6&nbsp;kΩ and V<sub>peak</sub>&nbsp;≈&nbsp;3&nbsp;kV.
+From a coil that was running on maybe 12&nbsp;V. In practice losses and larger real strays tame
+that to "merely" hundreds of volts — still ample to arc relay contacts (each arc transfers metal
+and pits them) and far beyond the 40–60&nbsp;V ratings of ordinary transistors. This isn't a
+corner case; it's what inductors <em>do</em>, every single time, unless you give the current
+somewhere to go.</p>
+
+<h3>The one-cent fix: the flyback diode</h3>
+<div class="viz-row">
+  <svg class="schematic" viewBox="0 0 340 210" width="340" height="210" role="img"
+       aria-label="Relay coil between +12 V and a transistor switch, with a flyback diode across the coil, cathode to the +12 V rail">
+    <!-- +V rail -->
+    <path class="wire" d="M 60 30 L 280 30"/>
+    <text x="20" y="35" class="lbl big vplus">+12 V</text>
+    <!-- coil branch: L symbol (4 arcs) from rail down to switch node -->
+    <path class="wire" d="M 130 30 L 130 58"/>
+    <path class="comp" d="M 130 58 a 9 9 0 0 1 0 18 a 9 9 0 0 1 0 18 a 9 9 0 0 1 0 18 a 9 9 0 0 1 0 18"/>
+    <path class="wire" d="M 130 130 L 130 150"/>
+    <text x="84" y="98" class="lbl big">coil</text>
+    <!-- flyback diode branch, cathode up -->
+    <path class="wire" d="M 210 30 L 210 74"/>
+    <line x1="196" y1="74" x2="224" y2="74" class="comp"/>
+    <path class="comp" d="M 210 74 L 196 100 L 224 100 Z" fill="var(--surface)"/>
+    <path class="wire" d="M 210 100 L 210 150 L 130 150"/>
+    <text x="232" y="80" class="lbl">cathode → +V</text>
+    <text x="232" y="98" class="lbl">flyback diode</text>
+    <!-- switch (transistor stand-in) from node down to ground -->
+    <path class="wire" d="M 130 150 L 130 162"/>
+    <line x1="130" y1="186" x2="118" y2="164" class="comp"/>
+    <circle cx="130" cy="162" r="3" class="node"/>
+    <circle cx="130" cy="186" r="3" class="node"/>
+    <path class="wire" d="M 130 186 L 130 196"/>
+    <path class="gnd" d="M 118 196 L 142 196 M 122 201 L 138 201 M 126 206 L 134 206" fill="none"/>
+    <text x="150" y="178" class="lbl">switch (transistor)</text>
+  </svg>
+  <div>
+    <p style="margin-top:0">Put a plain diode <strong>across the coil, cathode to the positive
+    rail</strong>. In normal operation the diode sees the supply voltage backwards and does
+    nothing at all. The instant the switch opens, the coil's terminal voltage flies past the rail
+    — and the diode conducts, giving the current a loop to circulate in. The "kick" is clamped to
+    one diode drop (≈0.6&nbsp;V) above the supply, and the current dies gently through the coil's
+    own resistance with τ&nbsp;=&nbsp;L/R.</p>
+    <p>The cost of this politeness: the relay releases a little more slowly, since the current
+    coasts instead of stopping dead. Almost always a fine trade. (When it isn't — fast relays,
+    solenoid valves — a zener or R-C snubber clamps at a higher voltage and kills the current
+    faster. Same idea: give the energy a designated exit.)</p>
+  </div>
+</div>
+
+<h2>Transformers — two coils, one field</h2>
+<p>Wind two separate coils on the same core and you've built a transformer. The
+<strong>primary</strong> (N<sub>p</sub> turns) is driven with AC; its changing current makes a
+changing flux in the core; that same changing flux threads the <strong>secondary</strong>
+(N<sub>s</sub> turns) and — Faraday again — induces a voltage in it. Each turn of either winding
+embraces the same flux, so each turn gets the same volts. Voltage is therefore doled out
+per-turn:</p>
+<div class="formula">
+  V<sub>s</sub> / V<sub>p</sub> = N<sub>s</sub> / N<sub>p</sub>
+  <small>volts per turn is the same for every winding on the core</small>
+</div>
+<p>A transformer is not a source of free power — it converts. Power in ≈ power out (good ones
+manage 90–99%), so the currents must transform <em>inversely</em>: step the voltage down 10× and
+the available current goes <em>up</em> 10×. That's the entire point of the power grid —
+transmit at high voltage and low current (thin cables, small I²R loss), then transform down at
+your street.</p>
+<p>Combine the two ratios and something useful pops out: a load Z on the secondary draws
+V<sub>s</sub>/Z; seen from the primary that appears as V<sub>p</sub> at
+I<sub>p</sub>&nbsp;=&nbsp;I<sub>s</sub>·(N<sub>s</sub>/N<sub>p</sub>), so the primary "sees" an
+impedance</p>
+<div class="formula">
+  Z<sub>primary</sub> = (N<sub>p</sub>/N<sub>s</sub>)² · Z<sub>load</sub>
+  <small>impedance transforms as the turns ratio <em>squared</em> — voltage ratio times inverse
+  current ratio</small>
+</div>
+<p>which makes the transformer an impedance-matching machine — the trick behind coupling a
+200&nbsp;Ω-loving tube amplifier to an 8&nbsp;Ω speaker, or a 50&nbsp;Ω antenna to whatever the
+receiver wants.</p>
+<p>Two more properties earn their keep daily. <strong>Isolation:</strong> the windings are
+connected only by magnetic field — no copper path — so the secondary side floats free of the
+mains. That galvanic break is a safety feature you'll learn to treasure. And the fine print:
+<strong>transformers only work on AC.</strong> Faraday's law pays out for <em>changing</em> flux
+only. Feed the primary DC and after the first instant the flux sits constant, the secondary sees
+nothing — and the primary, being just a low-resistance coil at DC, cheerfully melts. A
+transformer on DC is a room heater with one trick.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>Never open-circuit an inductor carrying current.</strong> It <em>will</em> make
+        the voltage needed to keep that current flowing, and it doesn't care what breaks.</li>
+    <li><strong>Every relay coil gets a flyback diode.</strong> Cathode to the positive rail.
+        Reflex, not decision.</li>
+    <li><strong>τ = L/R</strong> — dual of RC, and note the division: less resistance means a
+        <em>slower</em> current change.</li>
+    <li><strong>Transformer power in ≈ power out.</strong> Step voltage down N×, current
+        capability goes up N×; impedance transforms as N². No free energy, ever.</li>
+    <li><strong>At DC an ideal inductor is a wire</strong> — real ones are a wire plus winding
+        resistance, which sets the coil current (that's why relay coils are specified in ohms)
+        and quietly turns "ideal short" into "small resistor".</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy</span>
+  <p>The capacitor was a rubber membrane. The inductor is <strong>mass in the pipe</strong>:
+  picture a heavy water wheel — a flywheel — that the flow must spin as it passes.</p>
+  <ul>
+    <li><strong>Inertia:</strong> open the valve and the flow builds gradually — the pressure
+    goes into spinning up the wheel. Once turning, the wheel is barely there (DC: a wire). The
+    stored spin is kinetic energy ½mv², the exact analog of ½LI².</li>
+    <li><strong>It resists changes in FLOW,</strong> not pressure. Steady flow: no fight. Change
+    the flow: the flywheel pushes back with a pressure proportional to how fast you're changing
+    it — V&nbsp;=&nbsp;L·dI/dt in brass and water.</li>
+    <li><strong>Inductive kick is real plumbing:</strong> slam a valve shut on a long pipe of
+    moving water and the water's momentum piles into the closed valve as a violent pressure
+    spike — <em>water hammer</em>, the bang your pipes make when a washing machine's solenoid
+    valve snaps shut. Plumbers literally install little air-cushion "hammer arrestors" — the
+    plumbing trade's flyback diodes/snubbers — to give the moving mass somewhere soft to spend
+    its energy. Electronics and plumbing converged on the same fix independently.</li>
+    <li><strong>Transformer:</strong> two water wheels in separate pipe loops, linked by a belt,
+    with different radii. The belt forces them to a common surface speed, so the big wheel turns
+    slowly with lots of torque and the small one fast with little — pressure and flow trade off
+    exactly as voltage and current do, and belt power in equals belt power out (minus a little
+    friction: core and copper losses). The two water circuits never exchange a drop — that's
+    isolation.</li>
+  </ul>
+  <p>Where the analogy fails: real flywheels have friction and coast down on their own, while a
+  superconducting inductor's current would circulate forever (ordinary ones stop only because of
+  winding resistance — analogy salvaged, partially). And nothing in the plumbing picture explains
+  why a coil's field can induce voltage in a <em>separate, unconnected</em> coil — magnetic
+  coupling through empty space has no everyday hydraulic counterpart; the belt is a confession
+  that we needed a mechanical linkage to fake it.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the RL lab — and the kick</div>
+  <div class="widget-hint">Close the switch and watch the current climb toward V/R with
+  τ&nbsp;=&nbsp;L/R (dashed line marks 1τ). Then <strong>open the switch</strong> — first without
+  the flyback diode, then with it — and check the voltage readout. Treat R as the coil's own
+  winding resistance.</div>
+
+  <div class="viz-row">
+    <svg id="rl-circuit" class="schematic" viewBox="0 0 360 220" width="360" height="220" role="img"
+         aria-label="Battery through a switch driving a coil (resistance R plus inductance L), with an optional flyback diode across the coil">
+      <!-- bottom rail -->
+      <path class="wire" d="M 40 190 L 320 190"/>
+      <!-- battery, left -->
+      <path class="wire" d="M 40 190 L 40 128"/>
+      <path class="wire" d="M 40 112 L 40 44 L 96 44"/>
+      <line x1="28" y1="112" x2="52" y2="112" class="comp"/>
+      <line x1="34" y1="122" x2="46" y2="122" class="comp" stroke-width="3"/>
+      <text x="12" y="108" class="lbl vplus">+</text>
+      <text x="14" y="128" class="lbl">−</text>
+      <text x="8" y="90" class="lbl big" id="rl-v-lbl">12 V</text>
+      <!-- switch: contacts at (102,44) and (142,44), lever pivots at left contact -->
+      <circle cx="102" cy="44" r="3.5" class="node"/>
+      <circle cx="142" cy="44" r="3.5" class="node"/>
+      <line id="rl-lever" x1="102" y1="44" x2="138" y2="24" class="comp" stroke-width="2.5"/>
+      <path class="wire" d="M 142 44 L 230 44"/>
+      <text x="100" y="18" class="lbl" id="rl-sw-lbl">switch open</text>
+      <!-- coil branch: R zigzag then L arcs, from (230,44) down to rail -->
+      <path class="wire" d="M 230 44 L 230 56"/>
+      <path class="comp" d="M 230 56 l 0 3 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 4 l 0 3"/>
+      <text x="246" y="80" class="lbl big" id="rl-r-lbl">1 kΩ</text>
+      <path class="wire" d="M 230 104 L 230 112"/>
+      <path class="comp" d="M 230 112 a 9 9 0 0 1 0 18 a 9 9 0 0 1 0 18 a 9 9 0 0 1 0 18 a 9 9 0 0 1 0 18"/>
+      <text x="246" y="148" class="lbl big" id="rl-l-lbl">100 mH</text>
+      <path class="wire" d="M 230 184 L 230 190"/>
+      <text x="180" y="96" class="lbl" id="rl-i-lbl" fill="var(--series-2)" text-anchor="end">I = 0 A</text>
+      <!-- flyback diode branch (toggleable), cathode up -->
+      <g id="rl-diode" opacity="0.15">
+        <path class="wire" d="M 292 44 L 292 96"/>
+        <path class="wire" d="M 230 44 L 292 44"/>
+        <line x1="279" y1="96" x2="305" y2="96" class="comp"/>
+        <path class="comp" d="M 292 96 L 279 120 L 305 120 Z" fill="var(--surface)"/>
+        <path class="wire" d="M 292 120 L 292 190"/>
+        <text x="300" y="140" class="lbl">flyback</text>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="rl-v">Supply V <span class="val"></span></label>
+          <input type="range" id="rl-v" min="1" max="24" step="0.5" value="12">
+        </div>
+        <div class="control">
+          <label for="rl-l">Inductance L <span class="val"></span></label>
+          <!-- log: 10^-3 .. 10^1  (1 mH .. 10 H) -->
+          <input type="range" id="rl-l" min="-3" max="1" step="0.01" value="-1">
+        </div>
+        <div class="control">
+          <label for="rl-r">Coil resistance R <span class="val"></span></label>
+          <!-- log: 10^1 .. 10^4  (10 Ω .. 10 kΩ) -->
+          <input type="range" id="rl-r" min="1" max="4" step="0.01" value="3">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; margin:12px 0 2px; flex-wrap:wrap">
+        <button class="btn" id="rl-close">Close switch</button>
+        <button class="btn ghost" id="rl-open">Open switch</button>
+        <label style="display:flex; gap:7px; align-items:center; font-size:0.9rem; cursor:pointer">
+          <input type="checkbox" id="rl-diode-cb" style="accent-color: var(--accent)">
+          flyback diode
+        </label>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">τ = L/R</div><div class="v" id="rl-tau">—</div></div>
+        <div class="readout"><div class="k">Final current V/R</div><div class="v" id="rl-if">—</div></div>
+        <div class="readout"><div class="k">Energy ½LI²</div><div class="v" id="rl-e">—</div></div>
+        <div class="readout"><div class="k">Coil voltage at open</div><div class="v" id="rl-kick">—</div></div>
+      </div>
+      <p class="widget-hint" id="rl-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+  <canvas id="rl-plot" class="hh-plot" data-height="300"></canvas>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: transformer explorer</div>
+  <div class="widget-hint">Slide the turns ratio and the primary voltage; the fixed 100&nbsp;Ω
+  load on the secondary shows how the currents transform the <em>other</em> way and how the load
+  reflects back to the primary as (N<sub>p</sub>/N<sub>s</sub>)²&nbsp;×&nbsp;100&nbsp;Ω.</div>
+
+  <div class="viz-row">
+    <svg id="tx-svg" class="schematic" viewBox="0 0 360 220" width="360" height="220" role="img"
+         aria-label="Transformer: AC source driving the primary winding, secondary winding feeding a 100 ohm load">
+      <text x="180" y="22" class="lbl big" id="tx-ratio-lbl" text-anchor="middle">10 : 1</text>
+      <!-- AC source -->
+      <circle cx="62" cy="112" r="17" class="comp"/>
+      <path class="comp" d="M 51 112 q 5.5 -11 11 0 q 5.5 11 11 0"/>
+      <text x="18" y="90" class="lbl big" id="tx-vp-lbl">230 V</text>
+      <text x="20" y="106" class="lbl">AC</text>
+      <!-- primary loop -->
+      <path class="wire" d="M 62 95 L 62 58 L 150 58"/>
+      <path class="wire" d="M 62 129 L 62 166 L 150 166"/>
+      <path class="wire" d="M 150 58 L 150 62"/>
+      <path class="comp" d="M 150 62 a 13 13 0 0 1 0 26 a 13 13 0 0 1 0 26 a 13 13 0 0 1 0 26 a 13 13 0 0 1 0 26"/>
+      <path class="wire" d="M 150 166 L 150 162"/>
+      <text x="128" y="118" class="lbl" text-anchor="end">Np</text>
+      <text x="104" y="48" class="lbl" id="tx-ip-lbl" fill="var(--series-2)">Ip = —</text>
+      <!-- core -->
+      <line x1="170" y1="48" x2="170" y2="176" class="comp"/>
+      <line x1="178" y1="48" x2="178" y2="176" class="comp"/>
+      <!-- secondary loop -->
+      <path class="wire" d="M 198 58 L 198 62"/>
+      <path class="comp" d="M 198 62 a 13 13 0 0 0 0 26 a 13 13 0 0 0 0 26 a 13 13 0 0 0 0 26 a 13 13 0 0 0 0 26"/>
+      <path class="wire" d="M 198 166 L 198 162"/>
+      <path class="wire" d="M 198 58 L 290 58 L 290 86"/>
+      <path class="wire" d="M 198 166 L 290 166 L 290 138"/>
+      <text x="220" y="118" class="lbl">Ns</text>
+      <text x="216" y="48" class="lbl" id="tx-is-lbl" fill="var(--series-2)">Is = —</text>
+      <!-- load resistor, vertical zigzag -->
+      <path class="comp" d="M 290 86 l 0 2 l -8 3 l 16 7 l -16 7 l 16 7 l -16 7 l 16 7 l -8 4 l 0 2"/>
+      <text x="304" y="108" class="lbl big">100 Ω</text>
+      <text x="304" y="126" class="lbl" id="tx-vs-lbl" fill="var(--series-1)">Vs = —</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="tx-ratio">Turns ratio Np : Ns <span class="val"></span></label>
+          <!-- value = log10(Np/Ns): 10:1 .. 1:10 -->
+          <input type="range" id="tx-ratio" min="-1" max="1" step="0.01" value="1">
+        </div>
+        <div class="control">
+          <label for="tx-vp">Primary voltage (RMS) <span class="val"></span></label>
+          <input type="range" id="tx-vp" min="1" max="240" step="1" value="230">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Secondary voltage</div><div class="v" id="tx-vs">—</div></div>
+        <div class="readout"><div class="k">Secondary current</div><div class="v" id="tx-is">—</div></div>
+        <div class="readout"><div class="k">Primary current</div><div class="v" id="tx-ip">—</div></div>
+        <div class="readout"><div class="k">Reflected impedance</div><div class="v" id="tx-z">—</div></div>
+      </div>
+      <p class="widget-hint" id="tx-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the duality dictionary. Check the box when you've done it and verified
+against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — protect the relay driver</label>
+  </div>
+  <p>A relay coil is specified 12&nbsp;V, 400&nbsp;Ω, 100&nbsp;mH, switched by a small transistor
+  rated for 40&nbsp;V. (a) What current does the coil draw when energized? (b) Estimate the voltage
+  spike at turn-off with no protection, using the ½LI²&nbsp;→&nbsp;½CV² model with
+  C<sub>stray</sub>&nbsp;=&nbsp;100&nbsp;pF — and say what the model leaves out. (c) Add the
+  flyback diode: pick a part, justify its current rating, and state the cost in release time.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>(a)</strong> At DC the inductance is invisible; the winding resistance sets the
+      current: I&nbsp;=&nbsp;12&nbsp;V&nbsp;/&nbsp;400&nbsp;Ω&nbsp;=&nbsp;<strong>30&nbsp;mA</strong>.
+      Stored energy: ½LI² = ½&nbsp;×&nbsp;0.1&nbsp;×&nbsp;(0.03)² = <strong>45&nbsp;µJ</strong> —
+      sounds tiny, but delivered into picofarads it isn't.</p>
+      <p><strong>(b)</strong> V<sub>peak</sub> = I·√(L/C) = 0.03&nbsp;×&nbsp;√(0.1&nbsp;/&nbsp;10⁻¹⁰)
+      = 0.03&nbsp;×&nbsp;√(10⁹) = 0.03&nbsp;×&nbsp;31,623 ≈ <strong>950&nbsp;V</strong>. Be honest
+      about the model, though: it's a lossless-LC upper bound. Real coils have more stray and
+      inter-winding capacitance than 100&nbsp;pF, plus core and resistive losses that eat energy
+      during the swing — measured spikes from small relays typically land in the
+      <em>hundreds</em> of volts. The design conclusion survives every refinement of the model:
+      whether it's 300&nbsp;V or 950&nbsp;V, the 40&nbsp;V transistor loses. (It fails by
+      avalanche breakdown, which at least clamps the spike — transistors as sacrificial zeners,
+      briefly.)</p>
+      <p><strong>(c)</strong> A <strong>1N4007</strong> (or any 1N400x) across the coil, cathode
+      to +12&nbsp;V. Rating logic: the diode must carry the coil current at the moment of
+      turn-off — the current can't jump, so the diode momentarily conducts exactly 30&nbsp;mA,
+      decaying from there. A 1&nbsp;A part has ~30× margin; even a small-signal 1N4148
+      (200&nbsp;mA) would do here, but the 1N4007's 1000&nbsp;V reverse rating is comfortable
+      insurance and the part costs a cent. Cost: the current now coasts down with
+      τ&nbsp;=&nbsp;L/R&nbsp;=&nbsp;0.1/400&nbsp;=&nbsp;<strong>0.25&nbsp;ms</strong>, so the
+      relay releases roughly a millisecond ("a few τ") later than an unprotected slam. For
+      almost everything, irrelevant.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — a mains-to-12 V front end</label>
+  </div>
+  <p>You need roughly 12&nbsp;V DC from 230&nbsp;V mains, via a transformer feeding a bridge
+  rectifier (the bridge costs about two diode drops ≈ 1.2&nbsp;V off the peak; smoothing comes in
+  a later module). Choose a secondary RMS voltage and the turns ratio. Then answer the tempting
+  shortcut: why not skip the transformer and just use a resistive divider from the mains?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Secondary choice:</strong> a rectifier charges toward the <em>peak</em> of the
+      sine, not the RMS. Try a 9&nbsp;V RMS secondary: peak = 9&nbsp;×&nbsp;√2 ≈ 12.73&nbsp;V;
+      minus the bridge's ≈1.2&nbsp;V leaves <strong>≈ 11.5&nbsp;V</strong> — right in the "roughly
+      12&nbsp;V" pocket. Turns ratio: N<sub>p</sub>/N<sub>s</sub> = 230/9 ≈ 25.6, call it
+      <strong>26&nbsp;:&nbsp;1</strong> (transformer catalogs simply say "230&nbsp;V&nbsp;:
+      9&nbsp;V" and spare you the counting).</p>
+      <p><strong>Why the divider is a terrible idea</strong>, in ascending order of alarm:
+      (1)&nbsp;<em>Power.</em> A divider stiff enough to hold up its output under load carries the
+      load current through its top resistor from 230&nbsp;V — dropping ~218&nbsp;V at, say,
+      100&nbsp;mA is 22&nbsp;W of pure heat, per Thévenin (Module 02) it's a dreadful source
+      besides. The transformer converts instead of burning: power in ≈ power out.
+      (2)&nbsp;<em>Regulation.</em> The divider's output collapses with load; the transformer's
+      barely sags. (3)&nbsp;<em>Safety — the real disqualifier.</em> A divider is copper-connected
+      to the mains: its "12&nbsp;V" output can sit 230&nbsp;V-worth of shock above earth, and one
+      failed resistor puts the full mains on your circuit and its user. The transformer's
+      magnetic-only coupling isolates the secondary completely. You can touch it. That's not a
+      convenience; it's the difference between an appliance and an incident.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — matching an 8 Ω speaker</label>
+  </div>
+  <p>A small amplifier delivers its rated power only into a ≈200&nbsp;Ω load, but your speaker is
+  8&nbsp;Ω. Choose the turns ratio of a matching transformer, and verify numerically that the
+  amplifier actually sees ≈200&nbsp;Ω.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Impedance transforms as the turns ratio squared, so pick
+      N<sub>p</sub>/N<sub>s</sub> = √(200/8) = √25 = <strong>5&nbsp;:&nbsp;1</strong> —
+      primary (amplifier side) has 5× the turns.</p>
+      <p><strong>Verify forward:</strong> Z<sub>primary</sub> = (N<sub>p</sub>/N<sub>s</sub>)²
+      × 8 = 25 × 8 = <strong>200&nbsp;Ω</strong> ✓. <strong>Verify from first principles:</strong>
+      put 10&nbsp;V RMS on the primary. Secondary: 10/5 = 2&nbsp;V across 8&nbsp;Ω →
+      I<sub>s</sub> = 0.25&nbsp;A. Primary current: 0.25/5 = 50&nbsp;mA. The amp sees
+      10&nbsp;V/0.05&nbsp;A = 200&nbsp;Ω ✓ — and power checks too: 2&nbsp;V × 0.25&nbsp;A =
+      10&nbsp;V × 0.05&nbsp;A = 0.5&nbsp;W on both sides, as conservation insists. This is
+      exactly how tube amplifiers (and door-entry intercoms, and old telephone networks) married
+      high-impedance electronics to low-impedance transducers.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="03-capacitors-rc.html"><span class="dir">Previous</span><span class="name">03 · Capacitors &amp; RC Circuits</span></a>
+  <a href="05-impedance-filters.html"><span class="dir">Next</span><span class="name">05 · Impedance, Reactance &amp; Filters</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("04");
+
+  /* ================= Widget 1: the RL lab + inductive kick ================= */
+
+  var C_STRAY = 100e-12; // stray capacitance for the kick estimate
+
+  var state = {
+    V: 12, L: 0.1, R: 1000,
+    Inow: 0,          // coil current "now" (end of last completed animation)
+    mode: null,       // "build" | "decay" | "kick" | null
+    I0: 0, If: 0,     // current transition: start and target current
+    t0: null,         // wall-clock ms at animation start
+    progress: 0       // 0..1 of the 6τ window drawn so far
+  };
+  var ANIM_MS = 1700;
+
+  var tauRead = document.getElementById("rl-tau");
+  var ifRead = document.getElementById("rl-if");
+  var eRead = document.getElementById("rl-e");
+  var kickRead = document.getElementById("rl-kick");
+  var note = document.getElementById("rl-note");
+  var vLbl = document.getElementById("rl-v-lbl");
+  var rLbl = document.getElementById("rl-r-lbl");
+  var lLbl = document.getElementById("rl-l-lbl");
+  var iLbl = document.getElementById("rl-i-lbl");
+  var swLbl = document.getElementById("rl-sw-lbl");
+  var lever = document.getElementById("rl-lever");
+  var diodeG = document.getElementById("rl-diode");
+  var diodeCb = document.getElementById("rl-diode-cb");
+  var closeBtn = document.getElementById("rl-close");
+  var openBtn = document.getElementById("rl-open");
+
+  function tau() { return state.L / state.R; }
+
+  HH.slider("rl-v", {
+    format: function (v) { return HH.fmt(v, "V", 1); },
+    onchange: function (v) { state.V = v; refreshLab(); }
+  });
+  HH.slider("rl-l", {
+    log: true,
+    format: function (l) { return HH.fmt(l, "H"); },
+    onchange: function (l) { state.L = l; refreshLab(); }
+  });
+  HH.slider("rl-r", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.R = r; refreshLab(); }
+  });
+  diodeCb.addEventListener("change", function () {
+    diodeG.setAttribute("opacity", diodeCb.checked ? 1 : 0.15);
+  });
+
+  var rlPlot = HH.plot(document.getElementById("rl-plot"), {
+    xlabel: "time", ylabel: "coil current",
+    xmin: 0, xmax: 6, ymin: 0, ymax: 0.012,
+    xfmt: function (v) { return v === 0 ? "0" : (v / rlPlot.cfg._tau).toFixed(0) + "τ"; },
+    yfmt: function (v) { return HH.fmt(v, "A"); },
+    hover: function (x) {
+      if (state.mode == null) return [{ text: "close the switch to begin" }];
+      var i = state.mode === "kick" ? (x <= 0 ? state.I0 : 0) : iAt(x);
+      return [
+        { text: "t = " + HH.fmt(x, "s") + "  (" + (x / tauCur()).toFixed(2) + " τ)" },
+        { color: "--series-2", text: "I = " + HH.fmt(i, "A") },
+        { color: "--series-1", text: "V across L = " + HH.fmt(vAcrossL(x), "V") }
+      ];
+    }
+  });
+  rlPlot.cfg._tau = 1;
+
+  var frozenTau = null; // τ frozen at animation start so slider drags don't warp the trace
+  function tauCur() { return frozenTau != null ? frozenTau : tau(); }
+
+  function iAt(t) { // exponential from I0 toward If
+    return state.If + (state.I0 - state.If) * Math.exp(-t / tauCur());
+  }
+  function vAcrossL(t) { // V_L = L·dI/dt = (If − I(t))·R for the exponential
+    if (state.mode === "kick") return 0;
+    return Math.abs(state.If - iAt(t)) * state.R;
+  }
+
+  function niceCeil(v) { // round up to 1/2/5 × 10^n for a tidy y axis
+    if (v <= 0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(v)));
+    var m = v / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+
+  function drawLab() {
+    var tc = tauCur();
+    var W = 6 * tc;
+    rlPlot.cfg.xmax = W;
+    rlPlot.cfg.xticks = [0, tc, 2 * tc, 3 * tc, 4 * tc, 5 * tc, 6 * tc];
+    rlPlot.cfg._tau = tc;
+    var ymax = niceCeil(Math.max(state.V / state.R, state.I0, state.If) * 1.02);
+    rlPlot.cfg.ymax = ymax;
+    rlPlot.cfg.yticks = [0, ymax / 4, ymax / 2, (3 * ymax) / 4, ymax];
+    rlPlot.cfg.xlabel = "time  (1 division = τ = " + HH.fmt(tc, "s") + ")";
+
+    var series = [];
+    var extras = { vline: tc };
+    if (state.mode === "kick") {
+      // current has nowhere to go: it collapses almost instantly (µs on a ms-scale axis)
+      series.push({ pts: [[0, ymax], [0, 0]], color: "--series-8", width: 2, dash: [3, 3] });
+      series.push({ pts: [[0, state.I0], [0.004 * W, 0], [W, 0]], color: "--series-2", width: 2.5 });
+    } else if (state.mode != null) {
+      var tEnd = state.progress * W;
+      var pts = [];
+      var N = 240;
+      for (var i = 0; i <= N; i++) {
+        var t = (i / N) * tEnd;
+        pts.push([t, iAt(t)]);
+      }
+      series.push({ // target level, faint dashed
+        pts: [[0, state.If], [W, state.If]],
+        color: "--axis", width: 1, dash: [5, 5]
+      });
+      series.push({ pts: pts, color: "--series-2", width: 2.5 });
+      if (tEnd >= tc) {
+        extras.markers = [{ x: tc, y: iAt(tc), color: "--series-2" }];
+      }
+    }
+    rlPlot.draw(series, extras);
+  }
+
+  function refreshLab() {
+    var tc = tau();
+    tauRead.innerHTML = HH.fmt(tc, "s");
+    ifRead.innerHTML = HH.fmt(state.V / state.R, "A");
+    eRead.innerHTML = HH.fmt(0.5 * state.L * state.Inow * state.Inow, "J");
+    vLbl.textContent = HH.fmt(state.V, "V", 1);
+    rLbl.textContent = HH.fmt(state.R, "Ω");
+    lLbl.textContent = HH.fmt(state.L, "H");
+    if (state.mode == null || state.mode === "kick") drawLab();
+  }
+
+  function setSwitch(closed) {
+    lever.setAttribute("x2", closed ? 142 : 138);
+    lever.setAttribute("y2", closed ? 44 : 24);
+    swLbl.textContent = closed ? "switch closed" : "switch open";
+  }
+
+  function animate(mode, I0, If) {
+    state.mode = mode;
+    state.I0 = I0;
+    state.If = If;
+    state.t0 = null;
+    state.progress = 0;
+    frozenTau = tau();
+    requestAnimationFrame(stepLab);
+  }
+
+  function stepLab(now) {
+    if (state.t0 == null) state.t0 = now;
+    state.progress = Math.min(1, (now - state.t0) / ANIM_MS);
+    var iNow = iAt(state.progress * 6 * tauCur());
+    iLbl.textContent = "I = " + HH.fmt(iNow, "A");
+    eRead.innerHTML = HH.fmt(0.5 * state.L * iNow * iNow, "J");
+    drawLab();
+    if (state.progress < 1) {
+      requestAnimationFrame(stepLab);
+    } else {
+      state.Inow = state.If; // 6τ out — call it arrived
+      frozenTau = null;
+      iLbl.textContent = "I = " + HH.fmt(state.Inow, "A");
+      refreshLab();
+    }
+  }
+
+  closeBtn.addEventListener("click", function () {
+    setSwitch(true);
+    kickRead.innerHTML = "—";
+    kickRead.style.color = "";
+    note.textContent = "Current climbing toward V/R = " + HH.fmt(state.V / state.R, "A") +
+      " — the inductor takes the full supply voltage at t = 0 and none at the end.";
+    note.style.color = "var(--muted)";
+    animate("build", state.Inow, state.V / state.R);
+  });
+
+  openBtn.addEventListener("click", function () {
+    setSwitch(false);
+    var I = state.Inow;
+    if (I <= 1e-12) {
+      note.textContent = "No current was flowing — opening the switch is uneventful. " +
+        "Close it first, let the current build, then try again.";
+      note.style.color = "var(--muted)";
+      return;
+    }
+    if (diodeCb.checked) {
+      note.textContent = "The diode conducts the instant the coil terminal flies past the rail: " +
+        "the kick is clamped to one diode drop and the " + HH.fmt(I, "A") +
+        " coasts down through the coil's own resistance with τ = L/R = " + HH.fmt(tau(), "s") + ".";
+      note.style.color = "var(--muted)";
+      kickRead.innerHTML = "≈ 0.6 V <small>clamped</small>";
+      kickRead.style.color = "var(--good-text)";
+      animate("decay", I, 0);
+    } else {
+      var vpk = I * Math.sqrt(state.L / C_STRAY);
+      kickRead.innerHTML = vpk > 10000 ? "&gt; 10 kV" : HH.fmt(vpk, "V");
+      kickRead.style.color = "var(--critical)";
+      note.innerHTML = "No diode, nowhere to go: " + HH.fmt(I, "A") +
+        " is forced into ~100 pF of stray capacitance. Estimate: V ≈ I·√(L/C) ≈ <strong>" +
+        (vpk > 10000 ? "over 10 kV" : HH.fmt(vpk, "V")) +
+        "</strong> — from a " + HH.fmt(state.V, "V", 0) + " supply. This is the spike that arcs " +
+        "contacts and kills transistors. (Real losses tame it somewhat; the lesson stands.)";
+      note.style.color = "var(--critical)";
+      state.mode = "kick";
+      state.I0 = I;
+      state.If = 0;
+      state.Inow = 0;
+      frozenTau = null;
+      iLbl.textContent = "I = 0 A";
+      refreshLab();
+    }
+  });
+
+  setSwitch(false);
+  refreshLab();
+
+  /* ================= Widget 2: transformer explorer ================= */
+
+  var tx = { r: 10, Vp: 230 }; // r = Np/Ns
+  var Z_LOAD = 100;
+
+  var txVsRead = document.getElementById("tx-vs");
+  var txIsRead = document.getElementById("tx-is");
+  var txIpRead = document.getElementById("tx-ip");
+  var txZRead = document.getElementById("tx-z");
+  var txNote = document.getElementById("tx-note");
+  var txRatioLbl = document.getElementById("tx-ratio-lbl");
+  var txVpLbl = document.getElementById("tx-vp-lbl");
+  var txVsLbl = document.getElementById("tx-vs-lbl");
+  var txIpLbl = document.getElementById("tx-ip-lbl");
+  var txIsLbl = document.getElementById("tx-is-lbl");
+
+  function fmtRatio(r) {
+    function side(x) {
+      return x >= 9.95 ? x.toFixed(0) : x >= 1.05 ? x.toFixed(1).replace(/\.0$/, "") : "1";
+    }
+    if (r >= 1) return side(r) + " : 1";
+    return "1 : " + side(1 / r);
+  }
+
+  function updateTx() {
+    var Vs = tx.Vp / tx.r;
+    var Is = Vs / Z_LOAD;
+    var Ip = Is / tx.r;
+    var Zref = tx.r * tx.r * Z_LOAD;
+    txVsRead.innerHTML = HH.fmt(Vs, "V");
+    txIsRead.innerHTML = HH.fmt(Is, "A");
+    txIpRead.innerHTML = HH.fmt(Ip, "A");
+    txZRead.innerHTML = HH.fmt(Zref, "Ω");
+    txRatioLbl.textContent = fmtRatio(tx.r);
+    txVpLbl.textContent = HH.fmt(tx.Vp, "V", tx.Vp >= 100 ? 0 : 1);
+    txVsLbl.textContent = "Vs = " + HH.fmt(Vs, "V");
+    txIpLbl.textContent = "Ip = " + HH.fmt(Ip, "A");
+    txIsLbl.textContent = "Is = " + HH.fmt(Is, "A");
+    var P = Vs * Is;
+    txNote.textContent = "Power check: secondary Vs·Is = " + HH.fmt(P, "W") +
+      ", primary Vp·Ip = " + HH.fmt(tx.Vp * Ip, "W") +
+      " — identical, as an (ideal) transformer insists. " +
+      (tx.r > 1
+        ? "Stepping voltage down steps the available current up by the same factor."
+        : tx.r < 1
+          ? "Stepping voltage up means the primary must supply proportionally more current."
+          : "1 : 1 changes nothing — except providing isolation, which is often the whole point.");
+  }
+
+  HH.slider("tx-ratio", {
+    log: true,
+    format: fmtRatio,
+    onchange: function (r) { tx.r = r; updateTx(); }
+  });
+  HH.slider("tx-vp", {
+    format: function (v) { return HH.fmt(v, "V", 0); },
+    onchange: function (v) { tx.Vp = v; updateTx(); }
+  });
+  updateTx();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "At the exact instant a switch first applies voltage, an inductor carrying no current behaves like ______, while an uncharged capacitor behaves like ______.",
+      opts: [
+        "a short; an open",
+        "an open; a short",
+        "a wire; a wire",
+        "a resistor; a resistor"
+      ],
+      answer: 1,
+      expl: "Duality, limit for limit. The inductor's current can't jump — it was zero, so for that first instant it stays zero: an <em>open</em>. The capacitor's voltage can't jump — it was zero, so it momentarily holds 0 V: a <em>short</em>. Long after, they swap costumes: inductor → wire, capacitor → open."
+    },
+    {
+      q: "τ for a 100 mH inductor in series with 100 Ω?",
+      opts: ["10 ms", "1 ms", "100 µs", "1 s"],
+      answer: 1,
+      expl: "τ = L/R = 0.1 H / 100 Ω = 10⁻³ s = 1 ms. Note the division (dual of RC's product) — and its consequence: <em>reducing</em> R makes the current change <em>more</em> slowly."
+    },
+    {
+      q: "Why does breaking the current through an inductor draw a spark across the opening switch contacts?",
+      opts: [
+        "The stored charge leaks out through the air",
+        "V = L·dI/dt: forcing the current to stop almost instantly makes dI/dt huge, so the coil generates whatever enormous voltage keeps the current flowing — enough to ionize the air gap",
+        "The magnetic field attracts the contacts together",
+        "The supply voltage doubles when the load disconnects"
+      ],
+      answer: 1,
+      expl: "The inductor insists on current continuity. Opening the switch demands the current fall to zero in microseconds — dI/dt is huge and negative — so V = L·dI/dt spikes to hundreds or thousands of volts, easily enough to break down the widening air gap and keep the current flowing as an arc. The coil doesn't care that this destroys the contacts."
+    },
+    {
+      q: "In a relay driven low-side (coil from +12 V rail down to a transistor switch), which way does the flyback diode go — and why doesn't it interfere in normal operation?",
+      opts: [
+        "Cathode to the +12 V rail; while the transistor is on the diode is reverse-biased and does nothing — it only conducts when the switched-off coil drives its lower end <em>above</em> the rail",
+        "Anode to the +12 V rail, so current bypasses the coil",
+        "In series with the coil, cathode toward the transistor",
+        "Either way works — a diode is a diode"
+      ],
+      answer: 0,
+      expl: "Across the coil, cathode to +V. Energized, the diode sees the supply backwards: reverse-biased, invisible. At turn-off the coil keeps its current flowing by yanking its transistor-side terminal above the rail — which forward-biases the diode, closes the loop, and clamps the spike at one diode drop. Backwards (anode to +V) it would short the supply through the transistor the moment it switched on."
+    },
+    {
+      q: "A transformer takes 230 V mains to 11.5 V. The turns ratio Np : Ns is…",
+      opts: ["11.5 : 1", "20 : 1", "230 : 1", "1 : 20"],
+      answer: 1,
+      expl: "Vp/Vs = Np/Ns = 230/11.5 = 20, so 20 : 1 — twenty primary turns for every secondary turn. Voltage is doled out per turn: every turn on the core sees the same volts."
+    },
+    {
+      q: "A transformer steps 230 V down to 23 V. What does it do to the available current?",
+      opts: [
+        "Steps it down 10× as well",
+        "Leaves it unchanged",
+        "Steps it up ~10× — power in ≈ power out, so less voltage means proportionally more current",
+        "Depends on the core material"
+      ],
+      answer: 2,
+      expl: "A transformer converts, it doesn't create: Vp·Ip ≈ Vs·Is. Divide voltage by 10 and the current capability multiplies by ~10 (minus a few percent of losses). This inverse current relation is also why impedance transforms as the ratio <em>squared</em> — one factor from voltage, one from current."
+    },
+    {
+      q: "Why doesn't a transformer work on DC?",
+      opts: [
+        "DC current can't flow through a coil",
+        "The core saturates instantly",
+        "Faraday's law needs <em>changing</em> flux: steady primary current makes steady flux, which induces nothing in the secondary — while the primary, a low-resistance coil at DC, overheats",
+        "It does — the output is just inverted"
+      ],
+      answer: 2,
+      expl: "Induction pays out for dΦ/dt only. On DC (after the first instant) the flux is constant, the secondary sees zero volts — and the primary winding, being nearly a short at DC with no back-EMF to limit it, draws heavy current and cooks. AC only; that's not a preference, it's the physics."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
