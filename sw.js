@@ -1,7 +1,7 @@
 /* Service worker: precache the whole app so it runs fully offline once visited.
    Bump CACHE_VERSION whenever any file changes; add new modules to FILES. */
 
-const CACHE_VERSION = "hh-v4";
+const CACHE_VERSION = "hh-v5";
 
 const FILES = [
   "./",
@@ -23,6 +23,11 @@ const FILES = [
   "./modules/11-diffpairs-mirrors.html",
   "./modules/12-fets.html",
   "./modules/13-fet-switches.html",
+  "./modules/14-opamp-golden-rules.html",
+  "./modules/15-opamp-toolbox.html",
+  "./modules/16-comparators-schmitt.html",
+  "./modules/17-active-filters.html",
+  "./modules/18-opamp-imperfections.html",
 ];
 
 self.addEventListener("install", (event) => {

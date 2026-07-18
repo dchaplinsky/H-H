@@ -95,11 +95,11 @@ Status: ✅ built · 🔜 planned
 
 | # | Module | Book | Status |
 |---|--------|------|--------|
-| 14 | Op-Amp Golden Rules | §4.1–4.2 | 🔜 |
-| 15 | The Op-Amp Toolbox | §4.3 | 🔜 |
-| 16 | Comparators & Schmitt Triggers | §4.3.2, §12.3 | 🔜 |
-| 17 | Active Filters | Ch. 6 | 🔜 |
-| 18 | Op-Amp Imperfections & Precision Design | §4.4, Ch. 5 | 🔜 |
+| 14 | Op-Amp Golden Rules | §4.1–4.2 | ✅ |
+| 15 | The Op-Amp Toolbox | §4.3 | ✅ |
+| 16 | Comparators & Schmitt Triggers | §4.3.2, §12.3 | ✅ |
+| 17 | Active Filters | Ch. 6 | ✅ |
+| 18 | Op-Amp Imperfections & Precision Design | §4.4, Ch. 5 | ✅ |
 
 ### Part IV — Signals & Power (AoE Ch. 7, 9)
 
