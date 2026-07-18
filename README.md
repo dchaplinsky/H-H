@@ -18,6 +18,17 @@ No build, no server, no dependencies:
 
 Dark mode follows your OS preference automatically.
 
+## Offline & mobile
+
+- **Zero network by design** — no CDNs, fonts, or external resources anywhere,
+  so opening the files locally already works with no connection at all.
+- **Installable PWA** — when hosted over HTTP(S) (GitHub Pages works great),
+  a service worker precaches the entire app on first visit: add it to your
+  phone's home screen and every module keeps working with no connection.
+- **Mobile-friendly** — responsive layout down to small phones, big touch
+  targets, and touch-scrubbing on the interactive plots (drag a finger across
+  a graph to read values).
+
 ## What's here
 
 - `index.html` — curriculum hub with a progress dashboard

@@ -10,8 +10,12 @@ and the feedback loop.
    of one book chapter, cited in its header.
 2. **Self-contained apps.** Every module is a single HTML file that runs from
    `file://` — no build step, no server, no network. Shared CSS/JS lives in
-   `shared/` via relative links, so the whole repo is portable.
-3. **Fixed pedagogical spine.** Every module follows the same arc:
+   `shared/` via relative links, so the whole repo is portable. When hosted
+   over HTTP(S), a service worker (`sw.js`) precaches everything, making the
+   app installable and fully offline-capable on phones.
+3. **Mobile-first ergonomics.** Responsive layout to 390 px, coarse-pointer
+   touch targets, and touch-scrub on every interactive plot.
+4. **Fixed pedagogical spine.** Every module follows the same arc:
    - *Why this matters* — motivation before mechanism
    - *Physics background* (violet panel) — the underlying physics, honestly but briefly
    - *Core concepts* — the H&H material, distilled, with schematics
@@ -23,9 +27,9 @@ and the feedback loop.
    - *Quiz* — immediate feedback with explanations for both right and wrong answers
    - *Design bench* — real schematic-design tasks done on paper first, with worked
      solutions behind a disclosure
-4. **Estimation over calculation.** Following H&H's own ethos: every module drills
+5. **Estimation over calculation.** Following H&H's own ethos: every module drills
    "roughly what current/voltage/power is this?" reflexes.
-5. **Progress without accounts.** `localStorage` tracks visits, best quiz scores, and
+6. **Progress without accounts.** `localStorage` tracks visits, best quiz scores, and
    completed tasks; the hub (`index.html`) renders it. A module counts as *complete*
    at quiz ≥ 75% plus all bench tasks checked.
 
@@ -132,7 +136,9 @@ Status: ✅ built · 🔜 planned
 4. Every numeric example must be verified (do the arithmetic twice).
 5. Register the module in `index.html`'s `PARTS` array (add `file:` to flip it from
    planned → available), and link it into the prev/next footer chain.
-6. Update the status table above.
+6. Add the new file to the `FILES` list in `sw.js` and bump `CACHE_VERSION`,
+   so the offline precache picks it up.
+7. Update the status table above.
 
 ## Deliberate scope choices
 

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Voltage Dividers, Kirchhoff &amp; Thévenin — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 02</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Voltage Dividers, Kirchhoff &amp; Thévenin</h1>
+  <p class="subtitle">Two resistors, one tap point — and the theorem that lets you replace any
+  tangle of sources and resistors with just two parts. <em>AoE 3rd ed. §1.2.3–1.2.6.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>The voltage divider is the most common subcircuit in all of electronics. Two resistors in
+series, tapped in the middle — that's it. But look closely at almost any schematic and you'll
+find dividers hiding everywhere: the pair of resistors biasing a transistor's base is a divider.
+A thermistor plus a fixed resistor reading temperature is a divider. The feedback network setting
+an op-amp's gain is a divider. Your oscilloscope probe is a divider (a 10:1 one, usually). If you
+learn one subcircuit cold — including its <em>weakness</em>, which is what happens when you
+attach something to the tap — you can read half the schematics ever drawn.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — Kirchhoff's laws</span>
+  <p>Everything in this module rests on two laws that are really just conservation laws wearing
+  circuit clothing:</p>
+  <p><strong>KCL — Kirchhoff's current law.</strong> The currents flowing <em>into</em> any node
+  sum to zero (counting outflows as negative). This is conservation of charge: a node is just a
+  blob of wire with essentially no capacity to store charge, so whatever flows in must
+  immediately flow out. If 3&nbsp;mA arrives and 1.2&nbsp;mA leaves through one branch, exactly
+  1.8&nbsp;mA leaves through the other — no exceptions, no delays.</p>
+  <p><strong>KVL — Kirchhoff's voltage law.</strong> The voltage drops around any closed loop sum
+  to zero. This is conservation of energy: voltage is energy per charge, and a charge carried
+  around a full loop ends up exactly where it started, at the same potential energy. Whatever the
+  battery lifts, the resistors must drop.</p>
+  <p>Both follow from electrostatics. KCL comes from charge conservation plus the fact that
+  circuit nodes are too small to accumulate meaningful charge (that changes when we meet
+  capacitors — on purpose). KVL comes from the electric field of static charges being
+  <em>conservative</em>: the work done moving a charge between two points doesn't depend on the
+  path, so the round trip is always zero. (Rapidly changing magnetic fields can break this —
+  that's what a transformer exploits — but for the resistive circuits of Part I, KVL is iron
+  law.)</p>
+</div>
+
+<h2>The voltage divider</h2>
+<p>Take a voltage <code>Vin</code>, run it through <code>R1</code>, then <code>R2</code>, then to
+ground. The tap point between the two resistors sits at some intermediate voltage
+<code>Vout</code>. What is it?</p>
+<p>The derivation is two lines, and both lines are Module 01 material. Nothing is connected to
+the tap (yet), so by KCL the <strong>same current flows through both resistors</strong>:</p>
+<div class="formula">
+  I = V<sub>in</sub> / (R₁ + R₂)
+  <small>series resistors: one path, one current, resistances add</small>
+</div>
+<p><code>Vout</code> is just the drop across <code>R2</code> — that resistor's share of the
+total. Multiply the current by <code>R2</code>:</p>
+<div class="formula">
+  V<sub>out</sub> = V<sub>in</sub> · R₂ / (R₁ + R₂)
+  <small>the divider equation — worth engraving somewhere permanent</small>
+</div>
+<p>Notice the output depends only on the <em>ratio</em> of the resistors. A 1k/1k divider and a
+1M/1M divider both give exactly half of <code>Vin</code>. So which do you build? That question
+has no answer until you know what the divider will be <em>driving</em> — which brings us to the
+whole point of this module.</p>
+
+<h2>Loading — where dividers lie to you</h2>
+<p>The divider equation assumed no current leaves through the tap. But a divider that drives
+nothing is a decoration. The moment you connect a load resistor <code>RL</code> from the tap to
+ground, the load sits <em>in parallel with</em> <code>R2</code>, the effective lower resistance
+shrinks, and <code>Vout</code> <strong>sags</strong>. Always down, never up: adding a resistive
+load can only pull the tap toward ground.</p>
+<p>How much it sags depends on how <code>RL</code> compares to the divider's <strong>output
+impedance</strong> — the resistance the circuit appears to have when you look back <em>into</em>
+the tap. For a divider, that looking-back resistance turns out to be <code>R1&nbsp;∥&nbsp;R2</code>
+(we'll see why in a moment). A "stiff" divider — one whose output barely budges under load — is
+one with a <em>low</em> output impedance relative to whatever loads it. Stiffness costs current
+through the divider string, and there's the eternal trade-off: low resistances hold their voltage
+but burn power; high resistances sip power but fold at the first touch.</p>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy</span>
+  <p>A voltage divider is a pressure-reducing tee: high-pressure main → first constriction →
+  <strong>tap</strong> → second constriction → drain. Water flowing through both constrictions in
+  series drops pressure twice, and the tee between them sits at an intermediate pressure set by
+  the ratio of the two restrictions. Cap the tap and it reads that pressure faithfully.</p>
+  <p>Now connect a fat drain pipe to the tap — a heavy load. Water gushes out the side branch,
+  the flow through the first constriction increases, its pressure drop grows, and the pressure at
+  the tee collapses. The gauge didn't lie about the capped pressure; you changed the circuit by
+  measuring… er, draining it.</p>
+  <p>A <em>stiff</em> divider is fat pipes feeding a thin tap: the side branch draws so little
+  compared to the main flow that the tee pressure barely notices. That's the 10× rule in
+  plumbing form — keep the tap's draw small next to the through-flow.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the loaded divider</div>
+  <div class="widget-hint">Set up a divider, then flip the load on and off and watch the tap sag.
+  Try a 100k/100k divider driving a 10k load — then make the divider stiffer (smaller R1, R2)
+  and watch the sag shrink.</div>
+
+  <div class="viz-row">
+    <svg id="divider-svg" class="schematic" viewBox="0 0 372 262" width="372" height="262" role="img"
+         aria-label="Voltage divider: Vin through R1 to the output node, R2 to ground, optional load RL from the node to ground">
+      <!-- outer loop wires -->
+      <path class="wire" d="M 60 40 L 180 40 L 180 58"/>
+      <path class="wire" d="M 180 112 L 180 148"/>
+      <path class="wire" d="M 180 202 L 180 232 L 60 232"/>
+      <!-- battery on the left -->
+      <path class="wire" d="M 60 40 L 60 112"/>
+      <path class="wire" d="M 60 128 L 60 232"/>
+      <line x1="46" y1="112" x2="74" y2="112" class="comp"/>
+      <line x1="53" y1="122" x2="67" y2="122" class="comp" stroke-width="3"/>
+      <text x="32" y="109" class="lbl vplus">+</text>
+      <text x="34" y="131" class="lbl">−</text>
+      <text x="8" y="121" class="lbl big" id="vin-lbl">12 V</text>
+      <!-- R1 zigzag -->
+      <path class="comp" d="M 180 58 L 180 62 L 170 66 L 190 74 L 170 82 L 190 90 L 170 98 L 190 106 L 180 110 L 180 112"/>
+      <text x="198" y="88" class="lbl big" id="r1-lbl">10 kΩ</text>
+      <text x="152" y="88" class="lbl">R1</text>
+      <!-- output node -->
+      <circle cx="180" cy="130" r="4" class="node"/>
+      <text x="108" y="126" class="lbl big" fill="var(--series-1)" id="vout-lbl">6 V</text>
+      <text x="120" y="142" class="lbl" fill="var(--series-1)">Vout</text>
+      <!-- R2 zigzag -->
+      <path class="comp" d="M 180 148 L 180 152 L 170 156 L 190 164 L 170 172 L 190 180 L 170 188 L 190 196 L 180 200 L 180 202"/>
+      <text x="198" y="178" class="lbl big" id="r2-lbl">10 kΩ</text>
+      <text x="152" y="178" class="lbl">R2</text>
+      <!-- load branch (toggleable) -->
+      <g id="load-branch">
+        <path class="wire" d="M 184 130 L 290 130 L 290 148"/>
+        <path class="comp" d="M 290 148 L 290 152 L 280 156 L 300 164 L 280 172 L 300 180 L 280 188 L 300 196 L 290 200 L 290 202"/>
+        <path class="wire" d="M 290 202 L 290 232 L 180 232"/>
+        <text x="308" y="178" class="lbl big" id="rl-lbl">100 kΩ</text>
+        <text x="262" y="178" class="lbl">RL</text>
+        <path class="comp" d="M 236 122 l 14 0 m 0 0 l -6 -5 m 6 5 l -6 5" stroke="var(--series-2)"/>
+        <text x="214" y="114" class="lbl" fill="var(--series-2)" id="il-lbl"></text>
+      </g>
+      <!-- ground symbol on bottom rail -->
+      <g class="gnd">
+        <line x1="120" y1="232" x2="120" y2="240"/>
+        <line x1="110" y1="240" x2="130" y2="240"/>
+        <line x1="114" y1="245" x2="126" y2="245"/>
+        <line x1="118" y1="250" x2="122" y2="250"/>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="vin-slider"><span>Supply V<sub>in</sub></span> <span class="val"></span></label>
+          <input type="range" id="vin-slider" min="0" max="24" step="0.5" value="12">
+        </div>
+        <div class="control">
+          <label for="r1-slider">R1 (upper) <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^6  (100 Ω .. 1 MΩ) -->
+          <input type="range" id="r1-slider" min="2" max="6" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="r2-slider">R2 (lower) <span class="val"></span></label>
+          <input type="range" id="r2-slider" min="2" max="6" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="rl-slider">Load RL <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^7  (100 Ω .. 10 MΩ) -->
+          <input type="range" id="rl-slider" min="2" max="7" step="0.01" value="5">
+        </div>
+        <div class="control" style="min-width:0">
+          <label style="justify-content:flex-start; gap:8px; cursor:pointer">
+            <input type="checkbox" id="load-toggle" checked style="accent-color:var(--accent)">
+            Connect the load RL
+          </label>
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Vout unloaded</div><div class="v" id="vopen-read">—</div></div>
+        <div class="readout"><div class="k">Vout loaded</div><div class="v" id="vload-read">—</div></div>
+        <div class="readout"><div class="k">Sag</div><div class="v" id="sag-read">—</div></div>
+        <div class="readout"><div class="k">Rth = R1 ∥ R2</div><div class="v" id="rth-read">—</div></div>
+      </div>
+      <p class="widget-hint" id="sag-warning" style="margin-top:10px"></p>
+    </div>
+  </div>
+</div>
+
+<h2>Thévenin's theorem — the great simplifier</h2>
+<p>Here is one of the most useful facts in circuit theory. <strong>Any</strong> two-terminal
+network built from voltage sources, current sources, and resistors — however baroque — behaves,
+as seen from its two terminals, exactly like a single voltage source <code>V<sub>Th</sub></code>
+in series with a single resistor <code>R<sub>Th</sub></code>. Not approximately. Exactly, for any
+load you attach.</p>
+<p>Finding the two magic numbers takes two thought experiments:</p>
+<ul>
+  <li><strong>V<sub>Th</sub> = the open-circuit voltage.</strong> Attach nothing and measure the
+  terminal voltage. With no load current, there's no drop across <code>R<sub>Th</sub></code>, so
+  the terminals show the bare source.</li>
+  <li><strong>R<sub>Th</sub> = V<sub>Th</sub> / I<sub>short-circuit</sub>.</strong> Short the
+  terminals and measure the current (mentally, please — real circuits object). Equivalently, and
+  usually easier: <em>set every voltage source to zero (replace with a wire) and every current
+  source to zero (replace with an open), then compute the resistance seen looking into the
+  terminals.</em></li>
+</ul>
+<p>For the divider, both experiments are one-liners. Open-circuit voltage is just the divider
+equation. And with the source shorted, look back into the tap: you see <code>R1</code> going to
+ground (through the dead source) and <code>R2</code> going to ground — <em>in parallel</em>:</p>
+<div class="formula">
+  V<sub>Th</sub> = V<sub>in</sub> · R₂/(R₁+R₂) &nbsp;&nbsp;&nbsp;&nbsp;
+  R<sub>Th</sub> = R₁ ∥ R₂ = R₁R₂/(R₁+R₂)
+  <small>the Thévenin equivalent of a voltage divider — this pair is used constantly</small>
+</div>
+<p>Why care? Because the equivalent makes loading calculations trivial. A 10&nbsp;V supply with a
+10k/10k divider becomes a 5&nbsp;V source in series with 5&nbsp;kΩ. Attach any load and the
+loaded voltage is just <em>another divider</em>: V<sub>Th</sub>&nbsp;·&nbsp;RL/(RL&nbsp;+&nbsp;R<sub>Th</sub>).
+Hang 5&nbsp;kΩ on it and you get 2.5&nbsp;V — the messy "parallel combination back into the
+original divider" arithmetic collapses to one line. The Thévenin resistance <em>is</em> the
+output impedance we met above; the two phrases name the same number.</p>
+<p><em>Norton duality, briefly:</em> the same theorem comes in a current-source flavor. Any such
+network is also equivalent to a current source <code>I<sub>N</sub> = V<sub>Th</sub>/R<sub>Th</sub></code>
+in <em>parallel</em> with the same <code>R<sub>Th</sub></code>. Our 5&nbsp;V/5&nbsp;kΩ example is
+equally a 1&nbsp;mA source paralleled by 5&nbsp;kΩ. Same terminal behavior, different mental
+furniture; Thévenin suits voltage-ish thinking, Norton suits current-ish thinking (transistor
+collectors, photodiodes). Convert freely.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rule of thumb — the 10× rule</span>
+  <p>For a divider (or any source) to be usably "stiff", make the <strong>load impedance at least
+  10× the source's output impedance</strong>. With RL&nbsp;=&nbsp;10·R<sub>Th</sub>, the output
+  sags by 1/11 ≈ 9% — usually tolerable, often negligible next to resistor tolerances.</p>
+  <p>The same habit, cascaded through a design: each stage should look into a load ≥10× its own
+  output impedance, so stages don't drag each other down and you can design them one at a time.
+  Corollary in the other direction: a good <em>measuring</em> instrument should present an input
+  impedance ≥10× (preferably 100×+) the impedance of the node it probes — otherwise the act of
+  measuring rewrites the answer.</p>
+</div>
+
+<h2>Potentiometers — the adjustable divider</h2>
+<p>A potentiometer is a voltage divider you can turn: one resistive element, three terminals, with
+the middle one (the <em>wiper</em>) sliding along the element. Wherever the wiper sits, the
+element is split into an R1 above and an R2 below with R1&nbsp;+&nbsp;R2 constant — a divider
+with a knob for the ratio. Volume controls, contrast trimmers, joystick axes: all pots.</p>
+<p>Everything in this module applies. A 10k pot set to mid-travel has
+R<sub>Th</sub>&nbsp;=&nbsp;5k&nbsp;∥&nbsp;5k&nbsp;=&nbsp;2.5&nbsp;kΩ — its worst case, at the
+middle. Load a pot with too small an RL and not only does the output sag, the sag varies with the
+setting, so the dial's response goes lumpy and nonlinear. The 10× rule applied against the pot's
+worst-case R<sub>Th</sub> (one quarter of the total element resistance) keeps the knob honest.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: Vout versus load resistance</div>
+  <div class="widget-hint">The whole loading story in one curve. Solid: the loaded output as RL
+  sweeps from 100 Ω to 10 MΩ (log axis). Dashed: the unloaded (Thévenin) voltage it approaches.
+  The dot is the RL slider's current setting. Hover to read values; note the sag hits ~9% right
+  where RL = 10·R<sub>Th</sub>.</div>
+  <canvas id="load-plot" class="hh-plot" data-height="320"></canvas>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the divider equation. Check the box once you've worked it and compared with
+the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — a 3.3 V rail reference from 5 V</label>
+  </div>
+  <p>Design a divider that produces 3.3&nbsp;V from a 5&nbsp;V supply, with an output impedance of
+  about 10&nbsp;kΩ. Give R1 and R2 as standard values, then compute the current the divider draws
+  continuously and comment on the trade-off you just made.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Two constraints, two unknowns. Ratio: R2/(R1+R2) = 3.3/5 = 0.66. Output impedance:
+      R1∥R2 ≈ 10&nbsp;kΩ. A slick way to see it: R<sub>Th</sub> = R1∥R2 can be written
+      R1&nbsp;×&nbsp;(ratio), so R1 = 10k/0.66 ≈ 15.2&nbsp;kΩ, and R2 = R1·(3.3/1.7) ≈ 29.4&nbsp;kΩ.</p>
+      <p>Standard values: <strong>R1 = 15&nbsp;kΩ, R2 = 30&nbsp;kΩ</strong> — and this pair is a
+      small miracle: 5&nbsp;V × 30/45 = 3.333&nbsp;V, and 15k∥30k = 10&nbsp;kΩ <em>exactly</em>.
+      (30&nbsp;kΩ is E24; if your drawer only has E12, 15k/33k gives 3.44&nbsp;V and 10.3&nbsp;kΩ —
+      ask whether 4% high matters before reaching for precision parts.)</p>
+      <p>Drain: 5&nbsp;V / 45&nbsp;kΩ ≈ <strong>111&nbsp;µA</strong>, always, whether anyone uses
+      the 3.3&nbsp;V or not. The trade-off: scale both resistors down 10× and the output gets 10×
+      stiffer (1&nbsp;kΩ) but drains 1.1&nbsp;mA — real money on a coin cell. Scale up 10× and you
+      sip 11&nbsp;µA but fold under any load below ~1&nbsp;MΩ. Output impedance is a design
+      <em>choice</em>, not an afterthought.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — Thévenize, then load</label>
+  </div>
+  <p>A 12&nbsp;V source feeds a divider of R1&nbsp;=&nbsp;4.7&nbsp;kΩ over R2&nbsp;=&nbsp;1&nbsp;kΩ.
+  Find the Thévenin equivalent of the tap, then use it — and only it — to predict the output
+  voltage with a 1&nbsp;kΩ load attached. Check your answer the long way if you're suspicious.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Open-circuit: V<sub>Th</sub> = 12 × 1/(4.7+1) = 12/5.7 ≈ <strong>2.11&nbsp;V</strong>.
+      Looking back in with the source shorted: R<sub>Th</sub> = 4.7k∥1k = 4700/5.7 ≈
+      <strong>825&nbsp;Ω</strong>.</p>
+      <p>Now the 1&nbsp;kΩ load sees a plain series pair — one more divider:
+      V = 2.105 × 1000/(1000+825) ≈ <strong>1.15&nbsp;V</strong>.</p>
+      <p>Long way: 1k∥1k = 500&nbsp;Ω, so V = 12 × 500/(4700+500) = 12 × 500/5200 = 1.154&nbsp;V.
+      Same answer, as the theorem promised — but notice the Thévenin route required no revisiting
+      of the original circuit. That's the point: characterize once, load repeatedly. Also note the
+      brutal sag (2.11&nbsp;V → 1.15&nbsp;V, about 45%): a 1&nbsp;kΩ load on an 825&nbsp;Ω source
+      violates the 10× rule by nearly a factor of ten.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — the sensor that couldn't</label>
+  </div>
+  <p>A sensor behaves like a voltage source with a 100&nbsp;kΩ output impedance (its Thévenin
+  resistance). You wire it straight into an ADC input that looks like 10&nbsp;kΩ to ground. What
+  fraction of the sensor's true voltage does the ADC actually see? Quantify the error, then
+  propose the fix.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Thévenin makes this a one-line divider: the ADC sees
+      V × 10k/(100k+10k) = V × 1/11 ≈ <strong>9.1% of the true voltage</strong> — a 91% error.
+      Not a subtle calibration issue; the reading is garbage. (The 10× rule, held up to a mirror:
+      here the <em>load</em> is 10× <em>smaller</em> than the source impedance, so the divider
+      ratio ≈ 1/11 instead of ≈ 1.)</p>
+      <p>You can't fix it with resistors — any resistive network between a weak source and a
+      hungry load just makes another lossy divider. What you need is a circuit with a
+      <em>high</em> input impedance and a <em>low</em> output impedance: a <strong>buffer</strong>
+      (unity-gain follower). An op-amp follower presents ~GΩ to the sensor (drawing essentially
+      nothing) and ~ohms to the ADC (sagging essentially never). Impedance transformation without
+      touching the voltage is one of the two great things amplifiers do for a living — the
+      op-amp modules will make good on this IOU.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="01-voltage-current-resistance.html"><span class="dir">Previous</span><span class="name">01 · Voltage, Current &amp; Ohm's Law</span></a>
+  <a href="03-capacitors-rc.html"><span class="dir">Next</span><span class="name">03 · Capacitors &amp; RC Circuits</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("02");
+
+  /* ---------- loaded-divider lab ---------- */
+  var vopenRead = document.getElementById("vopen-read");
+  var vloadRead = document.getElementById("vload-read");
+  var sagRead = document.getElementById("sag-read");
+  var rthRead = document.getElementById("rth-read");
+  var sagWarning = document.getElementById("sag-warning");
+  var vinLbl = document.getElementById("vin-lbl");
+  var r1Lbl = document.getElementById("r1-lbl");
+  var r2Lbl = document.getElementById("r2-lbl");
+  var rlLbl = document.getElementById("rl-lbl");
+  var voutLbl = document.getElementById("vout-lbl");
+  var ilLbl = document.getElementById("il-lbl");
+  var loadBranch = document.getElementById("load-branch");
+  var loadToggle = document.getElementById("load-toggle");
+
+  var state = { Vin: 12, R1: 10000, R2: 10000, RL: 100000, loaded: true };
+
+  function par(a, b) { return (a * b) / (a + b); }
+
+  HH.slider("vin-slider", {
+    format: function (v) { return HH.fmt(v, "V", 1); },
+    onchange: function (v) { state.Vin = v; update(); }
+  });
+  HH.slider("r1-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.R1 = r; update(); }
+  });
+  HH.slider("r2-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.R2 = r; update(); }
+  });
+  HH.slider("rl-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.RL = r; update(); }
+  });
+  loadToggle.addEventListener("change", function () {
+    state.loaded = loadToggle.checked;
+    update();
+  });
+
+  function circuit(RL) {
+    /* returns { vOpen, vLoad, rth } for the current divider driving RL */
+    var vOpen = state.Vin * state.R2 / (state.R1 + state.R2);
+    var rth = par(state.R1, state.R2);
+    var vLoad = vOpen * RL / (RL + rth);       /* Thévenin, doing the work for us */
+    return { vOpen: vOpen, vLoad: vLoad, rth: rth };
+  }
+
+  /* ---------- Vout-vs-RL plot ---------- */
+  var plot = HH.plot(document.getElementById("load-plot"), {
+    xlabel: "Load resistance RL (log scale)",
+    ylabel: "Vout (V)",
+    xmin: 2, xmax: 7, ymin: 0, ymax: 12,
+    xticks: [2, 3, 4, 5, 6, 7],
+    yticks: [0, 3, 6, 9, 12],
+    xfmt: function (v) {
+      return { 2: "100Ω", 3: "1k", 4: "10k", 5: "100k", 6: "1M", 7: "10M" }[v] || "";
+    },
+    yfmt: function (v) { return String(Math.round(v * 100) / 100); },
+    hover: function (x) {
+      var RL = Math.pow(10, x);
+      var c = circuit(RL);
+      var sagPct = c.vOpen > 0 ? (1 - c.vLoad / c.vOpen) * 100 : 0;
+      return [
+        { text: "RL = " + HH.fmt(RL, "Ω") },
+        { color: "--series-1", text: "Vout = " + HH.fmt(c.vLoad, "V") + "  (sag " + sagPct.toFixed(1) + "%)" }
+      ];
+    }
+  });
+
+  function drawPlot() {
+    var c = circuit(state.RL);
+    /* adapt the y-axis to the supply so small Vin isn't a flatline at the floor */
+    var ymax = Math.max(4, Math.ceil(state.Vin / 4) * 4);
+    plot.cfg.ymax = ymax;
+    plot.cfg.yticks = [0, ymax / 4, ymax / 2, (3 * ymax) / 4, ymax];
+
+    var curve = [];
+    for (var x = 2; x <= 7.0001; x += 0.05) {
+      curve.push([x, circuit(Math.pow(10, x)).vLoad]);
+    }
+    plot.draw(
+      [
+        { pts: [[2, c.vOpen], [7, c.vOpen]], color: "--series-1", width: 1.5, dash: [4, 4] },
+        { pts: curve, color: "--series-1", width: 2.5 }
+      ],
+      { markers: [{ x: Math.log10(state.RL), y: c.vLoad, color: "--series-1" }] }
+    );
+  }
+
+  function update() {
+    var c = circuit(state.RL);
+    var shown = state.loaded ? c.vLoad : c.vOpen;
+    var sagPct = (state.loaded && c.vOpen > 0) ? (1 - c.vLoad / c.vOpen) * 100 : 0;
+
+    vopenRead.innerHTML = HH.fmt(c.vOpen, "V");
+    vloadRead.innerHTML = state.loaded ? HH.fmt(c.vLoad, "V") : "<small>no load</small>";
+    sagRead.innerHTML = state.loaded ? sagPct.toFixed(1) + "<small> %</small>" : "—";
+    sagRead.style.color = state.loaded && sagPct > 10 ? "var(--critical)" : "";
+    rthRead.innerHTML = HH.fmt(c.rth, "Ω");
+
+    vinLbl.textContent = HH.fmt(state.Vin, "V", 1);
+    r1Lbl.textContent = HH.fmt(state.R1, "Ω");
+    r2Lbl.textContent = HH.fmt(state.R2, "Ω");
+    rlLbl.textContent = HH.fmt(state.RL, "Ω");
+    voutLbl.textContent = HH.fmt(shown, "V");
+    ilLbl.textContent = state.loaded ? HH.fmt(c.vLoad / state.RL, "A") : "";
+    loadBranch.style.opacity = state.loaded ? "1" : "0.22";
+
+    if (!state.loaded) {
+      sagWarning.textContent = "Open-circuit: the tap reads the ideal divider voltage. Connect RL to see reality.";
+      sagWarning.style.color = "var(--muted)";
+    } else if (sagPct > 10) {
+      sagWarning.innerHTML = "⚠️ Sagging " + sagPct.toFixed(1) + "% — RL is only " +
+        (state.RL / c.rth).toFixed(1) + "× the divider's Rth of " + HH.fmt(c.rth, "Ω") +
+        ". The 10× rule wants RL ≥ " + HH.fmt(10 * c.rth, "Ω") + ".";
+      sagWarning.style.color = "var(--critical)";
+    } else {
+      sagWarning.textContent = "Stiff enough: RL is " + (state.RL / c.rth).toFixed(1) +
+        "× the output impedance, so the tap holds within " + sagPct.toFixed(1) + "% of ideal.";
+      sagWarning.style.color = "var(--muted)";
+    }
+
+    drawPlot();
+  }
+  update();
+
+  /* ---------- quiz ---------- */
+  HH.quiz("quiz", [
+    {
+      q: "Three wires meet at a node. 3 mA flows in on the first; 1.2 mA flows out through the second. What flows in the third wire?",
+      opts: [
+        "1.8 mA, flowing out",
+        "4.2 mA, flowing out",
+        "1.8 mA, flowing in",
+        "Can't tell without the resistor values"
+      ],
+      answer: 0,
+      expl: "KCL is pure bookkeeping — no resistor values needed. In = out: 3 mA arrives, 1.2 mA leaves one way, so 3 − 1.2 = 1.8 mA must leave the other way. A node can't stash charge."
+    },
+    {
+      q: "A 9 V battery drives two resistors in series. You measure 5.5 V across the first. Without touching anything else, what's across the second?",
+      opts: ["5.5 V", "3.5 V", "9 V", "Depends on the resistor ratio"],
+      answer: 1,
+      expl: "KVL around the loop: 9 = 5.5 + V₂, so V₂ = 3.5 V. It does depend on the ratio — but the measurement already encoded the ratio for you. Energy per charge around a closed loop must balance."
+    },
+    {
+      q: "A divider: 15 V in, R1 = 10 kΩ on top, R2 = 5 kΩ below. Unloaded Vout?",
+      opts: ["10 V", "7.5 V", "5 V", "3 V"],
+      answer: 2,
+      expl: "Vout = 15 × 5k/(10k+5k) = 15 × 1/3 = 5 V. Sanity habit: R2 is a third of the total, so the tap gets a third of the input. If you got 10 V, you computed R1's share — the drop <em>across</em> R1, not the voltage at the tap."
+    },
+    {
+      q: "You attach a resistive load to a divider's tap. What happens to Vout?",
+      opts: [
+        "Nothing — the divider ratio is fixed by R1 and R2",
+        "It rises, because the load draws extra current from the supply",
+        "It falls, because the load parallels R2 and shrinks the lower leg",
+        "It can rise or fall depending on the load value"
+      ],
+      answer: 2,
+      expl: "The load appears in parallel with R2, so the effective lower resistance — and with it the divider ratio — can only shrink. A resistive load always sags the tap toward ground; only the <em>amount</em> depends on RL versus Rth. (An active load could push the node up, but that requires a source, not a resistor.)"
+    },
+    {
+      q: "Thévenin equivalent of a 10 V source driving a 10 kΩ / 10 kΩ divider, seen from the tap?",
+      opts: [
+        "Vth = 5 V, Rth = 20 kΩ",
+        "Vth = 5 V, Rth = 5 kΩ",
+        "Vth = 10 V, Rth = 5 kΩ",
+        "Vth = 5 V, Rth = 10 kΩ"
+      ],
+      answer: 1,
+      expl: "Vth is the open-circuit voltage: 10 × 10/(10+10) = 5 V. Rth: short the source and look back in — R1 and R2 both run from the tap to ground, in parallel: 10k ∥ 10k = 5 kΩ. (Norton flavor of the same circuit: 1 mA in parallel with 5 kΩ.)"
+    },
+    {
+      q: "That same tap (Vth = 5 V, Rth = 5 kΩ, so ~5 V sitting there) is probed with an old analog meter whose input resistance is 5 kΩ. What does it read, and why?",
+      opts: [
+        "5 V — meters read what's there",
+        "2.5 V — the meter itself forms a divider with Rth and halves the node",
+        "0 V — the meter shorts the node",
+        "10 V — the meter's resistance adds to the node"
+      ],
+      answer: 1,
+      expl: "The meter is a 5 kΩ load on a 5 kΩ source: 5 V × 5k/(5k+5k) = 2.5 V. The meter faithfully reports the voltage <em>of the circuit with the meter in it</em> — which is not the circuit you cared about. High-impedance nodes demand high-impedance instruments (a modern DMM's 10 MΩ would read 4.9975 V here)."
+    },
+    {
+      q: "Per the H&H 10× rule, a source with 5 kΩ output impedance should drive loads of at least…",
+      opts: ["500 Ω", "5 kΩ", "50 kΩ", "5 MΩ"],
+      answer: 2,
+      expl: "Load ≥ 10× the source's output impedance: 50 kΩ. That still costs you 5k/55k ≈ 9% of the signal — the rule buys \"good enough to ignore\", not perfection. Equal impedances (5 kΩ) would lose half; that's a matched load, great for power transfer, terrible for voltage fidelity."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

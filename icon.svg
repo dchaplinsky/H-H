@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1a1a19"/>
+  <path d="M 96 256 L 152 256 L 176 208 L 216 304 L 256 208 L 296 304 L 336 208 L 360 256 L 416 256"
+        fill="none" stroke="#3987e5" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="96" cy="256" r="18" fill="#0ca30c"/>
+  <circle cx="416" cy="256" r="18" fill="#0ca30c"/>
+  <text x="256" y="420" text-anchor="middle" font-family="system-ui, sans-serif"
+        font-size="96" font-weight="700" fill="#fcfcfb">H&amp;H</text>
+</svg>

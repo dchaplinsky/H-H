@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · Capacitors &amp; RC Circuits — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 03</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Capacitors &amp; RC Circuits</h1>
+  <p class="subtitle">The first component with a memory: a part that cares not about voltage but
+  about how fast voltage <em>changes</em> — and the exponential curve that governs every
+  charge and discharge. <em>AoE 3rd ed. §1.4.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Pick up any circuit board and count the parts: after resistors, <strong>capacitors</strong> are
+the most common thing on it — often by a wide margin. They set <strong>timing</strong> (how long
+before the reset releases), do <strong>filtering</strong> (smoothing a rectified supply, killing
+noise), handle <strong>coupling</strong> (passing the signal, blocking the DC it rides on) and
+<strong>decoupling</strong> (that forest of little 100&nbsp;nF parts next to every chip). One
+number, the time constant <strong>τ&nbsp;=&nbsp;RC</strong>, runs everything from a camera flash
+charging up to the debounce delay on the keyboard you're typing on. Master τ and you can read
+half the passive circuitry ever drawn.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p>A capacitor is embarrassingly simple: <strong>two conducting plates that don't touch</strong>,
+  separated by an insulator (the <em>dielectric</em>). Push charge onto one plate and it repels an
+  equal charge off the other; you end up with +Q on one plate, −Q on the other, and an electric
+  field stretched across the gap. That field is where the energy lives — the capacitor is a little
+  spring wound out of electrostatics.</p>
+  <p>The charge stored is proportional to the voltage across the plates. The constant of
+  proportionality is the <strong>capacitance</strong>:</p>
+  <div class="formula">
+    C = Q / V
+    <small>farads = coulombs per volt; 1 F is enormous — real parts run pF to mF</small>
+  </div>
+  <p>Geometry sets C: for parallel plates, <code>C = εA/d</code> — bigger plate area A, or a
+  smaller gap d, means more charge stored per volt. The dielectric's permittivity ε multiplies the
+  result: its molecules polarize in the field, partially cancelling it, so you can cram more charge
+  on at the same voltage. Good dielectrics buy you factors of 4–10,000× over vacuum, which is why
+  real capacitors are thin films and ceramics rolled or stacked into tiny packages.</p>
+  <p>Charging the spring stores energy:</p>
+  <div class="formula">
+    E = ½ C V²
+    <small>joules; each extra coulomb is pushed on against a higher voltage, hence the ½·(...)² shape</small>
+  </div>
+  <p>Now the law that gives the capacitor its personality. Differentiate Q&nbsp;=&nbsp;CV with
+  respect to time, and remember current is dQ/dt:</p>
+  <div class="formula">
+    I = C · dV/dt
+    <small>current flows only while the voltage is <em>changing</em></small>
+  </div>
+  <p>One subtlety worth internalizing: no electron ever crosses the gap. The "current through" a
+  capacitor is really charge piling onto one plate while equal charge drains off the other — from
+  outside the two terminals it is indistinguishable from a through-current (Maxwell called the
+  field's share of it <em>displacement current</em>), but inside, the dielectric stays an
+  insulator. That's why a capacitor can pass a signal while blocking DC completely.</p>
+</div>
+
+<h2>I = C·dV/dt, unpacked</h2>
+<p>Read the law slowly — it is the whole module in one line:</p>
+<ul>
+  <li><strong>Steady voltage → zero current.</strong> If dV/dt&nbsp;=&nbsp;0, then I&nbsp;=&nbsp;0.
+  At DC, once everything settles, a capacitor is an <em>open circuit</em>. It simply isn't there.</li>
+  <li><strong>Fast change → big current.</strong> Try to yank the voltage across a capacitor
+  quickly and it demands a proportionally huge current. Try to change it <em>instantly</em> and it
+  demands infinite current — which no real circuit supplies. Conclusion:
+  <strong>the voltage across a capacitor cannot jump.</strong></li>
+  <li><strong>So, instantaneously, a capacitor behaves like a voltage source</strong> holding
+  whatever voltage it currently has. In the first moment after you throw a switch, replace every
+  capacitor in your head with a battery at its present voltage (an <em>uncharged</em> one is a
+  0&nbsp;V source — i.e. a short circuit). Long after the switch, replace it with an open circuit.
+  Those two limiting pictures solve most switch-flipping problems before you write any equations.</li>
+</ul>
+<p>In short: a capacitor <em>fights voltage change</em>, and the fight is what makes it useful.</p>
+
+<h2>RC charging — the exponential everyone must own</h2>
+<p>Connect a battery V through a resistor R to a capacitor C. What does the capacitor voltage
+V<sub>C</sub> do? At the first instant V<sub>C</sub>&nbsp;=&nbsp;0, so the full battery voltage
+sits across R and the current is V/R — the maximum it will ever be. That current charges C, so
+V<sub>C</sub> rises… which leaves <em>less</em> voltage across R, so the current shrinks, so
+V<sub>C</sub> rises more slowly, which shrinks the current further… The chase never quite ends:
+the charging current is proportional to the remaining distance to the target. A quantity whose
+rate of change is proportional to how far it still has to go is the definition of an
+exponential approach:</p>
+<div class="formula">
+  V<sub>C</sub>(t) = V<sub>final</sub> · (1 − e<sup>−t/RC</sup>)
+  <small>charging toward V<sub>final</sub> from zero</small>
+</div>
+<div class="formula">
+  V<sub>C</sub>(t) = V₀ · e<sup>−t/RC</sup>
+  <small>discharging from V₀ through R to ground — same curve, upside down</small>
+</div>
+<p>(Derivation sketch, for the calculus-inclined: the loop gives
+<code>C·dV<sub>C</sub>/dt = (V<sub>final</sub> − V<sub>C</sub>)/R</code>, a first-order linear ODE
+whose solution is the exponential above. H&amp;H would add: and if you remember only the
+<em>shape</em> and the time constant, you'll be fine.)</p>
+
+<h3>The time constant τ = RC</h3>
+<p>The product RC has units of seconds — ohms × farads = (volts/amp) × (coulombs/volt) =
+seconds. It is <em>the</em> characteristic time of the circuit: after one τ, the capacitor has
+covered 63% of the remaining distance to its target. After five, engineers stop watching.</p>
+<table>
+  <thead><tr><th>Elapsed time</th><th>Charged to</th><th>Remaining</th></tr></thead>
+  <tbody>
+    <tr><td>1 τ</td><td>63.2%</td><td>36.8%</td></tr>
+    <tr><td>2 τ</td><td>86.5%</td><td>13.5%</td></tr>
+    <tr><td>3 τ</td><td>95.0%</td><td>5.0%</td></tr>
+    <tr><td>4 τ</td><td>98.2%</td><td>1.8%</td></tr>
+    <tr><td>5 τ</td><td>99.3%</td><td>0.7% — "done"</td></tr>
+  </tbody>
+</table>
+<p>Each τ knocks the remaining gap down by the same factor e&nbsp;≈&nbsp;2.72. The curve never
+mathematically arrives, but 5τ is the traditional handshake between mathematics and engineering.</p>
+
+<h2>Capacitor combinations — resistors, mirrored</h2>
+<p>Capacitors combine by the <em>opposite</em> rules from resistors:</p>
+<div class="formula">
+  C<sub>parallel</sub> = C₁ + C₂ &nbsp;&nbsp;&nbsp;&nbsp;
+  C<sub>series</sub> = C₁C₂ / (C₁ + C₂)
+  <small>parallel adds; series follows the reciprocal rule — swap your resistor instincts</small>
+</div>
+<p>Why the reversal? In <strong>parallel</strong>, both capacitors see the same voltage and each
+stores its own charge — total charge (and hence total C&nbsp;=&nbsp;Q/V) adds. It's just more
+plate area. In <strong>series</strong>, the same charge is forced through the chain (the plate
+between them can only pass charge along, not create it), while the <em>voltages</em> add — same
+Q at more V means <em>less</em> capacitance. Two equal capacitors in series halve, exactly the
+way two equal resistors in parallel do.</p>
+
+<h2>A short capacitor bestiary</h2>
+<p>Real capacitors come in tribes, and picking the wrong tribe is a classic beginner bug:</p>
+<table>
+  <thead><tr><th>Type</th><th>Typical range</th><th>Character</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Ceramic</strong></td><td>1 pF – 10 µF</td>
+        <td>Tiny, cheap, fast, non-polarized. The default. The 100 nF decoupling workhorse.</td></tr>
+    <tr><td><strong>Film</strong></td><td>1 nF – 10 µF</td>
+        <td>Stable, precise, low leakage, non-polarized. Timing and audio love them.</td></tr>
+    <tr><td><strong>Electrolytic</strong></td><td>1 µF – 10,000 µF</td>
+        <td><strong>Polarized!</strong> Big storage in small volume; leaky, sloppy tolerance
+        (−20/+80% is common). The stripe marks −; observe the + terminal or it will vent —
+        sometimes theatrically.</td></tr>
+  </tbody>
+</table>
+<p>The <strong>100&nbsp;nF habit</strong>: every IC on a board gets a 100&nbsp;nF ceramic from its
+power pin to ground, placed as close as physically possible. When a chip's logic switches, it
+gulps current in nanosecond spikes; the trace inductance back to the supply can't deliver that
+fast, so the local capacitor acts as a bucket of charge right at the pin. Distance matters
+because it's the wire <em>between</em> cap and pin that spoils the trick.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>R in kΩ × C in µF = τ in ms.</strong> (Check: 1&nbsp;kΩ × 1&nbsp;µF =
+        10³&nbsp;Ω × 10⁻⁶&nbsp;F = 10⁻³&nbsp;s = 1&nbsp;ms ✓.) Equally handy: MΩ × µF = seconds,
+        kΩ × nF = µs. Do this in your head, always.</li>
+    <li><strong>5τ ≈ fully charged</strong> (99.3%). 3τ (95%) when you're feeling brisk.</li>
+    <li><strong>Decouple every chip</strong> with 100 nF ceramic, close to the pin. Not near the
+        pin — <em>at</em> it.</li>
+    <li><strong>Never reverse an electrolytic.</strong> Check the stripe twice; it only has to be
+        wrong once.</li>
+    <li>Instant after switching: capacitor ≈ voltage source at its current voltage.
+        Long after: open circuit. Sketch both limits before computing anything.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy</span>
+  <p>Cut a water pipe and stretch a <strong>rubber membrane</strong> across it — a water balloon
+  spliced into the line. No water ever crosses the membrane, yet the pipe seems to conduct:</p>
+  <ul>
+    <li><strong>Charging:</strong> push water in one side and the membrane bulges, shoving an
+    equal flow out the other side. The more it stretches, the harder it pushes back — flow into
+    it dies away exactly as the pressure difference (voltage) builds. That's I&nbsp;=&nbsp;C·dV/dt
+    in rubber.</li>
+    <li><strong>DC blocked, AC passed:</strong> a steady pressure just holds the membrane at a
+    fixed bulge — zero flow. But <em>sloshing</em> passes straight through: each push-pull
+    flexes the membrane and the far side sloshes in sympathy. Signal through, DC stopped.</li>
+    <li><strong>τ = RC:</strong> a big, floppy membrane (large C) fed through a thin pipe
+    (large R) takes a long time to stretch to its final bulge. Fat pipe or stiff little membrane —
+    quick. The product of the two is the fill time.</li>
+    <li><strong>Energy:</strong> the stretched rubber stores it, and gives it back when you let
+    go — just like ½CV².</li>
+  </ul>
+  <p>Where it fails: real membranes get stiffer as they stretch (capacitors are gloriously linear
+  until the dielectric breaks down and the "membrane" ruptures for good), and the analogy has no
+  natural picture for why a polarized electrolytic cares which way it's installed.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the RC lab</div>
+  <div class="widget-hint">Set V, R and C, then hit <strong>Charge</strong> or
+  <strong>Discharge</strong> and watch the exponential draw itself. The dashed line marks
+  t&nbsp;=&nbsp;τ; the dot marks the 63% crossing. Hover the plot to read values. Note how τ
+  spans microseconds to minutes as you sweep R and C.</div>
+
+  <div class="viz-row">
+    <svg id="rc-circuit" class="schematic" viewBox="0 0 360 210" width="360" height="210" role="img"
+         aria-label="RC circuit: battery, charge/discharge switch, resistor, capacitor">
+      <!-- bottom rail -->
+      <path class="wire" d="M 40 180 L 300 180"/>
+      <!-- battery, left side -->
+      <path class="wire" d="M 40 180 L 40 126"/>
+      <path class="wire" d="M 40 110 L 40 60 L 104 60"/>
+      <line x1="28" y1="110" x2="52" y2="110" class="comp"/>
+      <line x1="34" y1="120" x2="46" y2="120" class="comp" stroke-width="3"/>
+      <text x="12" y="106" class="lbl vplus">+</text>
+      <text x="14" y="126" class="lbl">−</text>
+      <text x="8"  y="90"  class="lbl big" id="rc-v-lbl">9 V</text>
+      <!-- SPDT switch: throws at (110,60) and (110,104), pole at (150,82) -->
+      <circle cx="110" cy="60"  r="3.5" class="node"/>
+      <circle cx="110" cy="104" r="3.5" class="node"/>
+      <circle cx="150" cy="82"  r="3.5" class="node"/>
+      <line id="rc-lever" x1="150" y1="82" x2="112" y2="102" class="comp" stroke-width="2.5"/>
+      <path class="wire" d="M 110 110 L 110 180"/>
+      <text x="86" y="50"  class="lbl">charge</text>
+      <text x="120" y="122" class="lbl">discharge</text>
+      <!-- resistor, horizontal zigzag -->
+      <path class="wire" d="M 150 82 L 178 82"/>
+      <path class="comp" d="M 178 82 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+      <path class="wire" d="M 234 82 L 290 82"/>
+      <text x="186" y="62" class="lbl big" id="rc-r-lbl">10 kΩ</text>
+      <!-- capacitor: two parallel plates -->
+      <path class="wire" d="M 290 82 L 290 118"/>
+      <line x1="272" y1="118" x2="308" y2="118" class="comp" stroke-width="3"/>
+      <line x1="272" y1="128" x2="308" y2="128" class="comp" stroke-width="3"/>
+      <path class="wire" d="M 290 128 L 290 180"/>
+      <text x="314" y="112" class="lbl big" id="rc-c-lbl">1 µF</text>
+      <text x="314" y="140" class="lbl" id="rc-vc-lbl">Vc = 0 V</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="rc-v">Supply V <span class="val"></span></label>
+          <input type="range" id="rc-v" min="1" max="12" step="0.5" value="9">
+        </div>
+        <div class="control">
+          <label for="rc-r">Resistance R <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^6  (100 Ω .. 1 MΩ) -->
+          <input type="range" id="rc-r" min="2" max="6" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="rc-c">Capacitance C <span class="val"></span></label>
+          <!-- log: 10^-9 .. 10^-3  (1 nF .. 1000 µF) -->
+          <input type="range" id="rc-c" min="-9" max="-3" step="0.01" value="-6">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin:12px 0 2px">
+        <button class="btn" id="rc-charge">Charge</button>
+        <button class="btn ghost" id="rc-discharge">Discharge</button>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">τ = RC</div><div class="v" id="rc-tau">—</div></div>
+        <div class="readout"><div class="k">I at t = 0</div><div class="v" id="rc-i0">—</div></div>
+        <div class="readout"><div class="k">Energy ½CV² (end)</div><div class="v" id="rc-e">—</div></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="rc-plot" class="hh-plot" data-height="300"></canvas>
+</div>
+
+<h2>Square waves meet RC — a preview of filtering</h2>
+<p>Feed a square wave into R with C to ground (the "RC low-pass" you'll formalize in Module 05)
+and the output is the capacitor forever chasing a target that keeps jumping. Each half-period it
+relaxes exponentially toward the current input level; whether it ever gets there depends entirely
+on how the drive period T compares with τ. Once the waveform settles into a steady rhythm, the
+top and bottom levels it bounces between have a tidy closed form — for a square wave swinging
+0 to 1:</p>
+<div class="formula">
+  V<sub>high</sub> = 1 / (1 + e<sup>−T/2τ</sup>) &nbsp;&nbsp;&nbsp;
+  V<sub>low</sub> = e<sup>−T/2τ</sup> / (1 + e<sup>−T/2τ</sup>)
+  <small>steady-state bounce levels; they're symmetric about ½, and the swing is tanh(T/4τ)</small>
+</div>
+<p>(Where from? Call a&nbsp;=&nbsp;e<sup>−T/2τ</sup>. Over the high half-period the output relaxes
+from V<sub>low</sub> toward 1, ending at V<sub>high</sub>&nbsp;=&nbsp;1&nbsp;+&nbsp;(V<sub>low</sub>&nbsp;−&nbsp;1)a;
+over the low half it decays to V<sub>low</sub>&nbsp;=&nbsp;V<sub>high</sub>·a. Two equations, two
+unknowns; solve and the pair above falls out.)</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: square-wave shaper</div>
+  <div class="widget-hint">One slider — the ratio of drive period T to time constant τ. Watch the
+  output morph from a tiny triangle wave (the RC barely reacts, averaging the input) to a faithful
+  copy with rounded corners. Dashed grey: input. Blue: capacitor voltage.</div>
+  <div class="controls">
+    <div class="control" style="max-width:420px; margin:0 auto">
+      <label for="sq-ratio">Period ÷ time constant, T/τ <span class="val"></span></label>
+      <!-- log: 0.5 .. 50 -->
+      <input type="range" id="sq-ratio" min="-0.30103" max="1.69897" step="0.005" value="0.30103">
+    </div>
+  </div>
+  <canvas id="sq-plot" class="hh-plot" data-height="280"></canvas>
+  <div class="readouts">
+    <div class="readout"><div class="k">Regime</div><div class="v" id="sq-regime" style="font-size:1.02rem">—</div></div>
+    <div class="readout"><div class="k">Output swing (of input)</div><div class="v" id="sq-swing">—</div></div>
+    <div class="readout"><div class="k">Bounce levels</div><div class="v" id="sq-levels" style="font-size:1.02rem">—</div></div>
+  </div>
+  <p class="widget-hint" id="sq-caption" style="margin-top:10px"></p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the kΩ×µF=ms trick. Check the box when you've done it and verified against
+the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — power-on reset delay</label>
+  </div>
+  <p>A microcontroller's reset pin (a high-impedance input, ~1&nbsp;MΩ or better) must be held low
+  for roughly 100&nbsp;ms after power appears, then drift high. Design the RC: pick R from the
+  supply to the pin and C from the pin to ground. Then argue: why not 10&nbsp;MΩ with 10&nbsp;nF?
+  Why not 100&nbsp;Ω with 1000&nbsp;µF? What limits each extreme?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Target τ in the 100&nbsp;ms neighborhood (the pin crosses its threshold somewhere around
+      0.7–1&nbsp;τ, so τ&nbsp;≈&nbsp;100&nbsp;ms is the right order). By the rule of thumb,
+      kΩ&nbsp;×&nbsp;µF&nbsp;=&nbsp;ms: <strong>100&nbsp;kΩ × 1&nbsp;µF = 100&nbsp;ms</strong> ✓.
+      Equally valid: 1&nbsp;MΩ × 100&nbsp;nF. Both give the same τ — the product is what matters,
+      the split is an engineering choice.</p>
+      <p><strong>Why not huge R, tiny C</strong> (10&nbsp;MΩ × 10&nbsp;nF)? The charging current
+      through 10&nbsp;MΩ is under a microamp — comparable to the input's own leakage current and
+      the capacitor's. Those stray currents form an unplanned divider with your R and the "final"
+      voltage may never convincingly cross the threshold, or the delay drifts wildly with
+      temperature and humidity. Rule: keep R well below the input impedance and well above nothing
+      — 10&nbsp;k–1&nbsp;M is the comfortable decade range here.</p>
+      <p><strong>Why not tiny R, huge C</strong> (100&nbsp;Ω × 1000&nbsp;µF)? A 1000&nbsp;µF
+      electrolytic is physically large, costly, leaky, and sloppy (−20/+80% tolerance makes
+      "100&nbsp;ms" a fiction) — and at power-down it dumps its charge back through whatever path
+      it finds. 100&nbsp;kΩ with a small, tight film or ceramic part is cheaper and better in
+      every way.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — pushbutton debounce</label>
+  </div>
+  <p>A pushbutton's contacts mechanically bounce for about 2&nbsp;ms after a press. You're feeding
+  a logic input with threshold V<sub>th</sub>&nbsp;=&nbsp;0.5·V<sub>cc</sub>. Choose an RC so the
+  input can't cross the threshold during the bounce storm, but a real press registers within
+  50&nbsp;ms. (Useful fact: reaching 50% of the way takes t&nbsp;=&nbsp;τ·ln&nbsp;2&nbsp;≈&nbsp;0.69τ.)</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The threshold math.</strong> Charging from 0 toward V<sub>cc</sub>:
+      V(t)&nbsp;=&nbsp;V<sub>cc</sub>(1&nbsp;−&nbsp;e<sup>−t/τ</sup>). Setting V&nbsp;=&nbsp;0.5·V<sub>cc</sub>
+      gives e<sup>−t/τ</sup>&nbsp;=&nbsp;½, i.e. <strong>t₅₀&nbsp;=&nbsp;τ·ln&nbsp;2&nbsp;≈&nbsp;0.693τ</strong>.</p>
+      <p><strong>Bracket τ.</strong> Registration deadline: t₅₀&nbsp;≤&nbsp;50&nbsp;ms →
+      τ&nbsp;≤&nbsp;50/0.693&nbsp;≈&nbsp;72&nbsp;ms. Bounce immunity: even in the worst case
+      (contact solidly closed for the whole 2&nbsp;ms burst) the cap must stay under 50%, so we
+      want t₅₀ comfortably beyond 2&nbsp;ms — a 3–5× margin, say t₅₀&nbsp;≳&nbsp;7&nbsp;ms →
+      τ&nbsp;≳&nbsp;10&nbsp;ms.</p>
+      <p><strong>Pick the middle:</strong> τ&nbsp;=&nbsp;10&nbsp;ms, e.g.
+      <strong>10&nbsp;kΩ × 1&nbsp;µF</strong> (kΩ×µF=ms again). Check both ends: after 2&nbsp;ms
+      of solid contact the cap reaches 1&nbsp;−&nbsp;e<sup>−0.2</sup>&nbsp;=&nbsp;18% — far below
+      threshold, and bounce gaps let it sag back besides. A real press crosses 50% at
+      0.693&nbsp;×&nbsp;10&nbsp;=&nbsp;<strong>6.9&nbsp;ms</strong> — imperceptible, and well
+      inside the 50&nbsp;ms budget. (Purists add a Schmitt-trigger input so the slow ramp can't
+      dither the logic — Module 10's problem.)</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — size a coupling capacitor</label>
+  </div>
+  <p>An audio amplifier input has 10&nbsp;kΩ input impedance, and you must couple a signal into it
+  while blocking the DC it rides on. The series capacitor plus the input impedance form a
+  high-pass filter with corner frequency f&nbsp;=&nbsp;1/(2πRC) (Module 05 will earn this formula;
+  today, use it). You need the corner below 20&nbsp;Hz so the deepest bass passes untouched.
+  Find the minimum C and pick a standard value.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Solve for C: C&nbsp;=&nbsp;1/(2πRf) = 1/(2π × 10⁴ × 20) ≈
+      <strong>0.8&nbsp;µF</strong> (0.796&nbsp;µF). Any larger C pushes the corner lower —
+      good — so round <em>up</em> to the standard value: <strong>1&nbsp;µF</strong>.</p>
+      <p>Check: f = 1/(2π × 10&nbsp;kΩ × 1&nbsp;µF) ≈ <strong>16&nbsp;Hz</strong> — below 20&nbsp;Hz,
+      done. A film or ceramic part is fine here; if you reached for an electrolytic (say the next
+      size up, 10&nbsp;µF, corner 1.6&nbsp;Hz), remember the polarity: + toward whichever side
+      sits at the higher DC voltage.</p>
+      <p>The H&amp;H reflex worth keeping: coupling caps are sized against the <em>load's input
+      impedance</em>, and "bigger C" only costs money and size — the corner just slides lower.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="02-dividers-thevenin.html"><span class="dir">Previous</span><span class="name">02 · Voltage Dividers &amp; Thévenin</span></a>
+  <a href="../index.html"><span class="dir">Next</span><span class="name">Curriculum hub — Module 04 coming soon</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("03");
+
+  /* ================= Widget 1: the RC lab ================= */
+
+  var state = {
+    V: 9, R: 10000, C: 1e-6,
+    Vc: 0,            // capacitor voltage "now" (end of last completed animation)
+    mode: null,       // "charge" | "discharge" | null
+    V0: 0, Vf: 0,     // current transition: start and target voltage
+    t0: null,         // wall-clock ms at animation start
+    progress: 0       // 0..1 of the 6τ window drawn so far
+  };
+  var ANIM_MS = 1700; // wall time to sweep the 6τ window
+
+  var tauRead = document.getElementById("rc-tau");
+  var i0Read = document.getElementById("rc-i0");
+  var eRead = document.getElementById("rc-e");
+  var vLbl = document.getElementById("rc-v-lbl");
+  var rLbl = document.getElementById("rc-r-lbl");
+  var cLbl = document.getElementById("rc-c-lbl");
+  var vcLbl = document.getElementById("rc-vc-lbl");
+  var lever = document.getElementById("rc-lever");
+  var chargeBtn = document.getElementById("rc-charge");
+  var dischargeBtn = document.getElementById("rc-discharge");
+
+  function tau() { return state.R * state.C; }
+
+  HH.slider("rc-v", {
+    format: function (v) { return HH.fmt(v, "V", 1); },
+    onchange: function (v) { state.V = v; refreshLab(); }
+  });
+  HH.slider("rc-r", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.R = r; refreshLab(); }
+  });
+  HH.slider("rc-c", {
+    log: true,
+    format: function (c) { return HH.fmt(c, "F"); },
+    onchange: function (c) { state.C = c; refreshLab(); }
+  });
+
+  var rcPlot = HH.plot(document.getElementById("rc-plot"), {
+    xlabel: "time", ylabel: "capacitor voltage (V)",
+    xmin: 0, xmax: 6, ymin: 0, ymax: 12,
+    xticks: [0, 1, 2, 3, 4, 5, 6],
+    yticks: [0, 3, 6, 9, 12],
+    xfmt: function (v) { return v === 0 ? "0" : (v / rcPlot.cfg._tau).toFixed(0) + "τ"; },
+    yfmt: function (v) { return HH.fmt(v, "", 0); },
+    hover: function (x) {
+      if (state.mode == null) return [{ text: "press Charge to begin" }];
+      var v = vcAt(x);
+      return [
+        { text: "t = " + HH.fmt(x, "s") + "  (" + (x / tauCur()).toFixed(2) + " τ)" },
+        { color: "--series-1", text: "Vc = " + HH.fmt(v, "V") },
+        { color: "--series-2", text: "I = " + HH.fmt(Math.abs(state.Vf - v) / state.R, "A") }
+      ];
+    }
+  });
+  rcPlot.cfg._tau = 1;
+
+  // τ frozen at the moment the animation started (so slider drags mid-run don't warp the trace)
+  var frozenTau = null;
+  function tauCur() { return frozenTau != null ? frozenTau : tau(); }
+
+  function vcAt(t) { // transition curve: exponential from V0 toward Vf
+    return state.Vf + (state.V0 - state.Vf) * Math.exp(-t / tauCur());
+  }
+
+  function drawLab() {
+    var tc = tauCur();
+    var tEnd = state.progress * 6 * tc;
+    rcPlot.cfg.xmax = 6 * tc;
+    rcPlot.cfg.xticks = [0, tc, 2 * tc, 3 * tc, 4 * tc, 5 * tc, 6 * tc];
+    rcPlot.cfg._tau = tc;
+    var ymax = Math.max(2, Math.ceil(Math.max(state.V, state.V0, state.Vf)));
+    rcPlot.cfg.ymax = ymax;
+    rcPlot.cfg.yticks = [0, ymax / 4, ymax / 2, (3 * ymax) / 4, ymax].map(function (v) {
+      return Math.round(v * 100) / 100;
+    });
+    rcPlot.cfg.xlabel = "time  (1 division = τ = " + HH.fmt(tc, "s") + ")";
+
+    var series = [];
+    var extras = { vline: tc };
+    if (state.mode != null) {
+      var pts = [];
+      var N = 240;
+      for (var i = 0; i <= N; i++) {
+        var t = (i / N) * tEnd;
+        pts.push([t, vcAt(t)]);
+      }
+      // target level, faint dashed
+      series.push({
+        pts: [[0, state.Vf], [6 * tc, state.Vf]],
+        color: "--axis", width: 1, dash: [5, 5]
+      });
+      series.push({ pts: pts, color: "--series-1", width: 2.5 });
+      if (tEnd >= tc) {
+        extras.markers = [{ x: tc, y: vcAt(tc), color: "--series-1" }];
+      }
+    }
+    rcPlot.draw(series, extras);
+  }
+
+  function refreshLab() {
+    var tc = tau();
+    var endV = state.mode == null ? state.Vc : state.Vf;
+    tauRead.innerHTML = HH.fmt(tc, "s");
+    var i0 = state.mode == null ? state.V / state.R : Math.abs(state.Vf - state.V0) / state.R;
+    i0Read.innerHTML = HH.fmt(i0, "A");
+    eRead.innerHTML = HH.fmt(0.5 * state.C * endV * endV, "J");
+    vLbl.textContent = HH.fmt(state.V, "V", 1);
+    rLbl.textContent = HH.fmt(state.R, "Ω");
+    cLbl.textContent = HH.fmt(state.C, "F");
+    if (state.mode == null) drawLab(); // animation loop redraws otherwise
+  }
+
+  function startTransition(mode) {
+    state.mode = mode;
+    state.V0 = state.Vc;
+    state.Vf = mode === "charge" ? state.V : 0;
+    state.t0 = null;
+    state.progress = 0;
+    frozenTau = tau();
+    lever.setAttribute("x2", mode === "charge" ? 112 : 112);
+    lever.setAttribute("y2", mode === "charge" ? 62 : 102);
+    chargeBtn.className = mode === "charge" ? "btn" : "btn ghost";
+    dischargeBtn.className = mode === "discharge" ? "btn" : "btn ghost";
+    refreshLab();
+    requestAnimationFrame(stepLab);
+  }
+
+  function stepLab(now) {
+    if (state.t0 == null) state.t0 = now;
+    state.progress = Math.min(1, (now - state.t0) / ANIM_MS);
+    var vcNow = vcAt(state.progress * 6 * tauCur());
+    vcLbl.textContent = "Vc = " + HH.fmt(vcNow, "V");
+    drawLab();
+    if (state.progress < 1) {
+      requestAnimationFrame(stepLab);
+    } else {
+      state.Vc = state.Vf;         // 6τ out — call it arrived
+      frozenTau = null;
+      vcLbl.textContent = "Vc = " + HH.fmt(state.Vc, "V");
+    }
+  }
+
+  chargeBtn.addEventListener("click", function () { startTransition("charge"); });
+  dischargeBtn.addEventListener("click", function () { startTransition("discharge"); });
+
+  refreshLab();
+
+  /* ================= Widget 2: square-wave shaper ================= */
+
+  var sq = { ratio: 2 }; // T/τ
+  var sqRegime = document.getElementById("sq-regime");
+  var sqSwing = document.getElementById("sq-swing");
+  var sqLevels = document.getElementById("sq-levels");
+  var sqCaption = document.getElementById("sq-caption");
+
+  // Steady-state bounce levels for a 0..1 square wave: a = e^(−T/2τ)
+  function sqLevelsCalc(r) {
+    var a = Math.exp(-r / 2);
+    return { Vh: 1 / (1 + a), Vl: a / (1 + a), a: a };
+  }
+
+  // Output at time x (in periods, x >= 0), steady state.
+  function sqOut(x, r) {
+    var lv = sqLevelsCalc(r);
+    var ph = x - Math.floor(x);              // position within the period, 0..1
+    if (ph < 0.5) {                          // input high: relax from Vl toward 1
+      return 1 + (lv.Vl - 1) * Math.exp(-ph * r);
+    }                                        // input low: decay from Vh toward 0
+    return lv.Vh * Math.exp(-(ph - 0.5) * r);
+  }
+  function sqIn(x) { return (x - Math.floor(x)) < 0.5 ? 1 : 0; }
+
+  var sqPlot = HH.plot(document.getElementById("sq-plot"), {
+    xlabel: "time (periods of the square wave)",
+    ylabel: "voltage (× input amplitude)",
+    xmin: 0, xmax: 3, ymin: -0.06, ymax: 1.06,
+    xticks: [0, 0.5, 1, 1.5, 2, 2.5, 3],
+    yticks: [0, 0.25, 0.5, 0.75, 1],
+    xfmt: function (v) { return v + "T"; },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      return [
+        { text: "t = " + x.toFixed(2) + " T" },
+        { color: "--muted", text: "Vin = " + sqIn(x).toFixed(0) },
+        { color: "--series-1", text: "Vout = " + sqOut(x, sq.ratio).toFixed(3) }
+      ];
+    }
+  });
+
+  function drawSq() {
+    var r = sq.ratio;
+    var inPts = [], outPts = [];
+    // input square wave with explicit vertical edges
+    for (var p = 0; p < 3; p++) {
+      inPts.push([p, 0], [p, 1], [p + 0.5, 1], [p + 0.5, 0], [p + 1, 0]);
+    }
+    var N = 720;
+    for (var i = 0; i <= N; i++) {
+      var x = (i / N) * 3;
+      outPts.push([x, sqOut(x, r)]);
+    }
+    sqPlot.draw([
+      { pts: inPts, color: "--muted", width: 1.5, dash: [5, 4] },
+      { pts: outPts, color: "--series-1", width: 2.5 }
+    ]);
+
+    var lv = sqLevelsCalc(r);
+    var swing = lv.Vh - lv.Vl; // = tanh(r/4)
+    sqSwing.innerHTML = (100 * swing).toFixed(swing > 0.995 ? 2 : 1) + "<small> %</small>";
+    sqLevels.textContent = lv.Vl.toFixed(3) + " ↔ " + lv.Vh.toFixed(3);
+
+    var name, cap;
+    if (r < 2) {
+      name = "T ≪ τ — integrator";
+      cap = "The RC never gets going: each half-period the output creeps a short, nearly straight " +
+        "distance toward the target, so the curve looks like a small triangle wave riding at the " +
+        "input's average (½). The output approximates the running integral of the input — heavily " +
+        "attenuated. This is the low-pass filter earning its name.";
+    } else if (r < 12) {
+      name = "T ≈ τ — rounded edges";
+      cap = "The output makes real progress each half-period but never finishes: sharp corners " +
+        "become exponential shoulders and the swing is visibly compressed. Neither integrating " +
+        "nor following — the awkward, and often useful, middle.";
+    } else {
+      name = "T ≫ τ — follows the input";
+      cap = "Each half-period lasts many τ, so the capacitor charges essentially completely " +
+        "before the next edge. The output tracks the square wave with just a whisker of rounding " +
+        "at each corner — the RC is barely noticed. (Look closely at the corners: the exponential " +
+        "is still there, just fast.)";
+    }
+    sqRegime.textContent = name;
+    sqCaption.textContent = "T/τ = " + r.toFixed(1) + ": " + cap;
+  }
+
+  HH.slider("sq-ratio", {
+    log: true,
+    format: function (r) { return r.toFixed(1); },
+    onchange: function (r) { sq.ratio = r; drawSq(); }
+  });
+  drawSq();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "A capacitor has been sitting across a steady 5 V supply for an hour. How much current flows “through” it?",
+      opts: [
+        "5 V divided by its reactance",
+        "Zero — dV/dt is zero, so I = C·dV/dt is zero",
+        "A small constant current proportional to C",
+        "Infinite, briefly, once per second"
+      ],
+      answer: 1,
+      expl: "I = C·dV/dt: no <em>change</em> in voltage, no current. At settled DC a capacitor is an open circuit (real parts leak a whisker of current through imperfect dielectric, but ideally: zero)."
+    },
+    {
+      q: "τ for a 10 kΩ resistor charging a 100 nF capacitor?",
+      opts: ["1 µs", "100 µs", "1 ms", "10 ms"],
+      answer: 2,
+      expl: "kΩ × µF = ms: 10 kΩ × 0.1 µF = 1 ms. (Long-hand: 10⁴ × 10⁻⁷ = 10⁻³ s.) Make this trick a reflex."
+    },
+    {
+      q: "Starting from zero, how charged is a capacitor after two time constants?",
+      opts: ["86%", "50%", "63%", "99%"],
+      answer: 0,
+      expl: "1 − e⁻² = 86.5%. Each τ closes 63% of whatever gap remains: 63%, then 63% of the leftover 37% (→ 86%), then 95%, 98%, 99.3% at 5τ."
+    },
+    {
+      q: "Two 10 µF capacitors in series. Total capacitance?",
+      opts: ["20 µF", "10 µF", "5 µF", "100 µF"],
+      answer: 2,
+      expl: "Series capacitors follow the reciprocal rule — the reverse of resistors. Equal pair halves: 5 µF. Physically: the same charge now stretches across double the voltage, and C = Q/V drops. In parallel they'd add to 20 µF (more plate area)."
+    },
+    {
+      q: "Why must a decoupling capacitor sit physically close to the chip's power pin?",
+      opts: [
+        "To keep it warm and stable",
+        "Long traces add inductance and resistance between cap and pin, which choke off the fast current the cap exists to supply",
+        "Because capacitance decreases with distance",
+        "Purely a board-layout convention"
+      ],
+      answer: 1,
+      expl: "The cap's job is to feed the chip's nanosecond current spikes locally. Every millimetre of trace between cap and pin adds inductance that fights fast current changes — putting the bucket of charge far away defeats the whole point. C itself doesn't change with placement; the <em>wiring in between</em> is the villain."
+    },
+    {
+      q: "At the exact instant a switch connects a battery to an <em>uncharged</em> capacitor (through a resistor), the capacitor behaves like…",
+      opts: [
+        "an open circuit — no current flows yet",
+        "a resistor equal to R",
+        "a short circuit — a 0 V voltage source, so the full battery voltage appears across R",
+        "a battery equal to the supply voltage"
+      ],
+      answer: 2,
+      expl: "The voltage across a capacitor can't jump, so at t = 0 it still reads 0 V — instantaneously a 0 V source, i.e. a short. All the supply voltage lands on R and the current starts at its maximum, V/R. (Long after: the roles swap and the cap is an open circuit.)"
+    },
+    {
+      q: "Energy stored in a 100 µF capacitor charged to 12 V?",
+      opts: ["7.2 mJ", "1.2 mJ", "14.4 mJ", "72 mJ"],
+      answer: 0,
+      expl: "E = ½CV² = ½ × 10⁻⁴ × 144 = 7.2 mJ. Note the square: doubling the voltage quadruples the energy — one reason photoflash capacitors charge to hundreds of volts rather than growing physically enormous."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

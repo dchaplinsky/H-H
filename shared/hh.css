@@ -449,7 +449,32 @@ a.module-card:hover { border-color: var(--accent); transform: translateX(2px); }
 }
 .progress-summary .pct { font-weight: 700; font-variant-numeric: tabular-nums; }
 
-@media (max-width: 560px) {
+/* ---------- small screens ---------- */
+
+@media (max-width: 600px) {
+  body { font-size: 15px; }
+  main { padding: 0 14px 60px; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  .hh-hero { padding: 22px 0 4px; }
+  .hh-topbar { padding: 10px 14px; gap: 10px; }
+  .hh-topbar .module-tag { font-size: 0.7rem; padding: 2px 8px; }
+  .panel, .widget, .taskcard, .quiz-q { padding: 12px 14px; }
+  .formula { font-size: 1.02rem; padding: 8px 0; }
+  .control { min-width: 100%; }
+  .readout .v { font-size: 1.15rem; }
+  .module-card { padding: 12px 12px; gap: 10px; }
+  .module-card .status { font-size: 0.75rem; }
   .hh-footnav { flex-direction: column; }
   .hh-footnav a { max-width: 100%; }
+  /* wide content scrolls inside its own box, never the page */
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+
+/* generous touch targets on coarse pointers */
+@media (pointer: coarse) {
+  .quiz-opt { padding: 12px 14px; }
+  .control input[type="range"] { height: 34px; }
+  .taskcard .task-head input[type="checkbox"] { width: 22px; height: 22px; }
+  summary { padding: 6px 0; }
 }

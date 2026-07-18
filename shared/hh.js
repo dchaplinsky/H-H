@@ -12,6 +12,19 @@
   const HH = (window.HH = {});
   const STORE_KEY = "hh:progress";
 
+  /* ---------------- offline support ----------------
+     From file:// everything already works with zero network (no external
+     resources anywhere). When hosted over http(s), also install a service
+     worker so the whole app is cached and usable offline / installable. */
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    const root = new URL("..", document.currentScript.src); // shared/hh.js → repo root
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register(new URL("sw.js", root)).catch(function () {
+        /* e.g. sandboxed iframe — offline install just doesn't happen */
+      });
+    });
+  }
+
   /* ---------------- storage ---------------- */
 
   function loadStore() {
@@ -322,16 +335,26 @@
     }
 
     if (cfg.hover) {
-      canvas.addEventListener("mousemove", function (ev) {
+      function pointAt(clientX) {
         const rect = canvas.getBoundingClientRect();
         const d = dims();
         const s = scales(d);
-        const cx = ev.clientX - rect.left;
-        if (cx < pad.l || cx > d.w - pad.r) { hoverX = null; }
+        const cx = clientX - rect.left;
+        if (cx < pad.l || cx > d.w - pad.r) hoverX = null;
         else hoverX = s.x0 + ((cx - pad.l) / (d.w - pad.l - pad.r)) * (s.x1 - s.x0);
         draw();
-      });
+      }
+      canvas.addEventListener("mousemove", function (ev) { pointAt(ev.clientX); });
       canvas.addEventListener("mouseleave", function () { hoverX = null; draw(); });
+      /* touch: drag a finger across the plot to scrub the readout */
+      canvas.addEventListener("touchstart", function (ev) {
+        pointAt(ev.touches[0].clientX);
+      }, { passive: true });
+      canvas.addEventListener("touchmove", function (ev) {
+        pointAt(ev.touches[0].clientX);
+        ev.preventDefault(); /* scrubbing the plot shouldn't scroll the page */
+      }, { passive: false });
+      canvas.addEventListener("touchend", function () { hoverX = null; draw(); });
     }
     window.addEventListener("resize", function () { draw(); });
 
