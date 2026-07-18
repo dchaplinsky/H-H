@@ -1,14 +1,18 @@
 name: Deploy to GitHub Pages
 
+# The site is plain static files at the repo root, published via the classic
+# gh-pages branch (auto-provisioned by GitHub). Every push to main mirrors
+# the tree to gh-pages. If the repo's Pages settings are ever switched to
+# "GitHub Actions" as the source, replace this job with the
+# configure-pages/upload-pages-artifact/deploy-pages chain.
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -17,16 +21,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Mirror main to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push --force origin HEAD:gh-pages
