@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · Diodes &amp; Diode Circuits — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 06</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Diodes &amp; Diode Circuits</h1>
+  <p class="subtitle">Your first one-way street — and your first component whose I–V curve refuses
+  to be a straight line. Rectifiers, clamps, and the useful art of breaking down on purpose.
+  <em>AoE 3rd ed. §1.6.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Everything so far — resistors, capacitors, inductors — has been <em>linear</em>: double the
+voltage, double the current (or its derivative). Linear circuits can filter, divide, and
+differentiate, but they can never <em>decide</em>. They cannot say "current may pass this way but
+not that way." The diode is the door out of linear-land, and it's the door everything interesting
+walks through: rectification is why your wall adapter turns AC into DC, clamp diodes are quietly
+protecting every input pin you will ever design, and the diode's exponential law is a preview of
+the transistor — which is, at heart, a diode with ambition. Learn this one nonlinear curve well
+and Part II will feel like meeting an old friend.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — the PN junction</span>
+  <p>Pure silicon is a lousy conductor: its electrons are locked into bonds. Dope it with a whiff
+  of phosphorus (five outer electrons where silicon wants four) and each dopant atom donates a
+  spare electron free to wander — <strong>n-type</strong> material. Dope with boron (three outer
+  electrons) and each atom leaves a bond one electron short — a mobile <em>hole</em> that behaves
+  like a positive carrier — <strong>p-type</strong>. Join the two and something remarkable happens
+  at the boundary: electrons from the n side diffuse across to fill holes on the p side, leaving
+  behind a thin zone stripped of mobile carriers — the <strong>depletion region</strong> — with
+  fixed charged dopant ions on each side. Those fixed charges build an electric field that opposes
+  further diffusion, and the tug-of-war settles at a built-in <strong>barrier potential</strong>
+  of about 0.6&nbsp;V in silicon.</p>
+  <p>Apply external voltage with + on the p side (<em>forward bias</em>) and you push carriers
+  toward the junction, narrowing the depletion region; the fraction of carriers energetic enough
+  to cross the shrinking barrier grows <em>exponentially</em> with voltage, because carrier
+  energies follow a Boltzmann distribution. Reverse the polarity and you fatten the depletion
+  region: only a trickle of thermally generated carriers leaks across. That asymmetry is the whole
+  device, and it's captured by the <strong>Shockley equation</strong>:</p>
+  <div class="formula">
+    I = I<sub>S</sub> (e<sup>V/nV<sub>T</sub></sup> − 1) &nbsp;&nbsp;&nbsp;
+    V<sub>T</sub> = kT/q ≈ 25 mV at room temperature
+    <small>I<sub>S</sub> is a tiny leakage scale (~pA); n is an "ideality factor" between 1 and 2</small>
+  </div>
+  <p>One consequence worth tattooing somewhere: I<sub>S</sub> grows rapidly with temperature, so
+  at fixed current the forward drop <strong>falls by about 2&nbsp;mV for every °C of
+  warming</strong>. That −2&nbsp;mV/°C is a nuisance (bias points drift), a free thermometer
+  (many temperature sensors are exactly this), and a genuine hazard (a hot diode drops less,
+  hogs more current, gets hotter…). It will follow you through the entire book.</p>
+</div>
+
+<h2>The model ladder — three diodes for the price of one</h2>
+<p>H&amp;H's habit, worth stealing: keep several models of the same part on a mental ladder, and
+always use the <em>crudest one the problem tolerates</em>. Climbing the ladder buys accuracy and
+costs effort; most of the time the bottom rungs are all you need.</p>
+
+<h3>(a) The ideal one-way valve</h3>
+<p>Current flows freely in the direction of the arrow (anode → cathode); nothing flows backward.
+No forward drop at all. This model answers topology questions: <em>which way does the current go,
+which diodes in the bridge conduct on this half-cycle, does this clamp ever engage?</em> For
+figuring out what a diode circuit <em>does</em>, start here — always.</p>
+
+<h3>(b) Valve + 0.6 V drop</h3>
+<p>Same one-way valve, but conducting costs a fixed 0.6&nbsp;V (0.7&nbsp;V if it's working hard,
+0.3&nbsp;V for Schottky). This is the workhorse model — it answers virtually every numeric
+question in practical design: LED resistor values, rectifier output voltages, clamp thresholds.
+Nine problems out of ten end on this rung.</p>
+
+<h3>(c) The exponential truth</h3>
+<p>The full Shockley curve. You climb up here only when the <em>shape</em> of the curve matters:
+precision circuits, log converters, understanding why transistors amplify. It's also the rung
+that explains why rung (b) works at all — which brings us to the key fact.</p>
+
+<h2>Why "0.6 V" is such a good lie</h2>
+<p>An exponential is brutally steep. With V<sub>T</sub>&nbsp;≈&nbsp;25&nbsp;mV, the forward drop
+grows by only</p>
+<div class="formula">
+  ΔV ≈ 60 mV per decade of current
+  <small>(V<sub>T</sub>·ln 10 ≈ 58 mV for n = 1 — call it 60 and move on)</small>
+</div>
+<p>Run the numbers: if a diode drops 0.52&nbsp;V at 1&nbsp;mA, it drops about 0.58&nbsp;V at
+10&nbsp;mA and 0.63&nbsp;V at 100&nbsp;mA. The current changed by a factor of a <em>hundred</em>;
+the voltage moved 0.11&nbsp;V. Flip that around and it's the punchline of the whole section:
+<strong>over any current range you're likely to care about, the diode drop is 0.6–0.7&nbsp;V,
+full stop</strong>. That's why the crude model (b) is so trustworthy — the exponential's very
+steepness makes the voltage nearly constant. The same steepness makes the diode useless as a
+current-setting device: try to set current by picking a voltage and a 60&nbsp;mV error becomes a
+10× current error. Voltage across a diode: predictable. Current from a voltage: a resistor's
+job, never a diode's.</p>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy — the check valve</span>
+  <p>A diode is a spring-loaded flapper valve in the pipe — a check valve. Push water the right
+  way and nothing happens until the pressure reaches the spring's preload (~0.6&nbsp;V worth);
+  then the flap cracks open and flow is nearly unrestricted, with the valve eating roughly that
+  same small pressure regardless of how hard the water gushes. Push the wrong way and the
+  back-pressure slams the flap onto its seat: no flow, and the harder you push, the tighter it
+  seals.</p>
+  <p>The zener is the boiler-room cousin: a <strong>pressure-relief valve deliberately installed
+  backwards</strong>. It stays sealed against reverse pressure up to a factory-set limit
+  (V<sub>Z</sub>), then opens smoothly and holds the pressure right at that limit no matter how
+  much flow it must pass. Not a failure — a calibrated safety feature.</p>
+  <p>Where the analogy fails: real diodes <em>leak</em> a little backward (nA of reverse current,
+  where a good flapper seals absolutely); the exponential turn-on is nothing like a mechanical
+  spring's abrupt crack; and reverse breakdown in an ordinary diode isn't the graceful, reusable
+  event the relief valve suggests — exceed a rectifier's rated reverse voltage without limiting
+  the current and you get a one-time-use diode.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the diode's I–V signature + load line</div>
+  <div class="widget-hint">The exponential curve is the diode; the straight line is everything
+  else. A supply V<sub>s</sub> in series with R is just a Thévenin source (Module 02), and its
+  I–V line runs from (V<sub>s</sub>, 0) to (0, V<sub>s</sub>/R). The circuit must sit on both
+  curves at once, so it operates where they cross. Drag the sliders and watch the crossing point;
+  compare the exact answer with what the crude 0.6&nbsp;V model predicts. Hover to read the
+  curve.</div>
+  <canvas id="ll-plot" class="hh-plot" data-height="330"></canvas>
+  <div class="controls">
+    <div class="control">
+      <label for="vs-slider">Supply V<sub>s</sub> <span class="val"></span></label>
+      <input type="range" id="vs-slider" min="0.5" max="5" step="0.05" value="2">
+    </div>
+    <div class="control">
+      <label for="rs-slider">Series R <span class="val"></span></label>
+      <!-- log scale: 10^1.69897 .. 10^4  (50 Ω .. 10 kΩ) -->
+      <input type="range" id="rs-slider" min="1.69897" max="4" step="0.01" value="2.52">
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout"><div class="k">Operating V<sub>d</sub> (exact)</div><div class="v" id="vd-read">—</div></div>
+    <div class="readout"><div class="k">Operating I<sub>d</sub> (exact)</div><div class="v" id="id-read">—</div></div>
+    <div class="readout"><div class="k">Crude model: (V<sub>s</sub>−0.6)/R</div><div class="v" id="crude-read">—</div></div>
+  </div>
+  <p class="widget-hint" id="ll-note" style="margin-top:10px"></p>
+</div>
+
+<h2>Rectifiers — turning AC into DC</h2>
+<p>The diode's first job, historically and practically: your wall wants to sell you AC, your
+circuits want to eat DC. The simplest converter is the <strong>half-wave rectifier</strong> — one
+diode in series with the load. On positive half-cycles the diode conducts (minus its 0.6&nbsp;V
+toll) and the load sees the waveform; on negative half-cycles it blocks and the load sees
+nothing. You get pulsating DC, but you've thrown away half the input, and whatever smoothing you
+add must coast through a whole cycle between top-ups.</p>
+<p>The <strong>full-wave bridge</strong> fixes that with four diodes arranged in a diamond. On
+each half-cycle, one diagonal pair conducts and steers the current through the load <em>in the
+same direction</em>. Trace it with model (a) and you'll see the routing; switch to model (b) for
+the price: the current always crosses <em>two</em> diodes in series, so the bridge costs
+<strong>two diode drops — 1.2 to 1.4&nbsp;V</strong> off the peak. (At 12&nbsp;V that's a
+shrug; in a 3.3&nbsp;V design it's a catastrophe, which is why low-voltage supplies use
+synchronous rectifiers — transistors doing a diode's job, a Part II story.)</p>
+<p>Raw rectified output still touches zero a hundred times a second. The fix is a
+<strong>smoothing (reservoir) capacitor</strong> across the load: it charges to the peak, then
+supplies the load by itself while the input sine is below it, sagging until the next peak
+recharges it. The sag is the <strong>ripple</strong>, and the estimate is pure Module 03: a cap
+delivering current I for time Δt droops by</p>
+<div class="formula">
+  ΔV ≈ I · Δt / C
+  <small>full-wave at 50 Hz: peaks arrive every Δt = 1/(2·50 Hz) = 10 ms; half-wave: 20 ms</small>
+</div>
+<p>Note the pessimism baked in: it assumes the cap carries the load for the whole interval at
+constant current, when really the recharge arrives a bit early. Good — power-supply arithmetic
+should err on the side of more capacitor. And notice the half-wave penalty is now concrete:
+double the Δt, double the ripple, for the same C.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: rectifier playground</div>
+  <div class="widget-hint">A transformer secondary feeds a four-diode bridge, a reservoir cap,
+  and a load. Dashed: the full-wave rectified input (peaks already docked the 1.2&nbsp;V bridge
+  toll). Blue: what the capacitor actually delivers, from a time-stepped simulation. Shrink C or
+  the load resistance and watch the ripple teeth grow. Hover the plot to scrub in time.</div>
+
+  <div class="viz-row">
+    <svg id="rect-svg" class="schematic" viewBox="0 0 440 252" width="440" height="252" role="img"
+         aria-label="Full-wave bridge rectifier: AC secondary into a diamond of four diodes, smoothing capacitor and load resistor on the DC output">
+      <!-- AC source (transformer secondary) -->
+      <circle cx="52" cy="120" r="17" class="comp"/>
+      <path class="comp" d="M 42 120 q 5 -9 10 0 q 5 9 10 0"/>
+      <path class="wire" d="M 52 103 L 52 60 L 190 60"/>
+      <path class="wire" d="M 52 137 L 52 180 L 190 180"/>
+      <text x="12" y="98" class="lbl big" id="vsec-lbl">12 V</text>
+      <text x="16" y="114" class="lbl">RMS</text>
+      <!-- bridge diamond: T(190,60) R(250,120) B(190,180) L(130,120) -->
+      <!-- diode drawn along +x: anode wire, triangle, cathode bar, wire -->
+      <g id="bridge">
+        <g transform="translate(220,90) rotate(45)">
+          <path class="wire" d="M -42.5 0 L -8 0 M 8 0 L 42.5 0"/>
+          <path d="M -8 -7 L -8 7 L 8 0 Z" fill="var(--ink)"/>
+          <path class="comp" d="M 8 -7 L 8 7"/>
+        </g>
+        <g transform="translate(220,150) rotate(-45)">
+          <path class="wire" d="M -42.5 0 L -8 0 M 8 0 L 42.5 0"/>
+          <path d="M -8 -7 L -8 7 L 8 0 Z" fill="var(--ink)"/>
+          <path class="comp" d="M 8 -7 L 8 7"/>
+        </g>
+        <g transform="translate(160,90) rotate(-45)">
+          <path class="wire" d="M -42.5 0 L -8 0 M 8 0 L 42.5 0"/>
+          <path d="M -8 -7 L -8 7 L 8 0 Z" fill="var(--ink)"/>
+          <path class="comp" d="M 8 -7 L 8 7"/>
+        </g>
+        <g transform="translate(160,150) rotate(45)">
+          <path class="wire" d="M -42.5 0 L -8 0 M 8 0 L 42.5 0"/>
+          <path d="M -8 -7 L -8 7 L 8 0 Z" fill="var(--ink)"/>
+          <path class="comp" d="M 8 -7 L 8 7"/>
+        </g>
+        <circle cx="190" cy="60" r="3.5" class="node"/>
+        <circle cx="190" cy="180" r="3.5" class="node"/>
+        <circle cx="130" cy="120" r="3.5" class="node"/>
+        <circle cx="250" cy="120" r="3.5" class="node"/>
+      </g>
+      <text x="190" y="44" class="lbl" text-anchor="middle">4-diode bridge</text>
+      <!-- DC output: + rail from right node -->
+      <path class="wire" d="M 250 120 L 400 120"/>
+      <text x="258" y="110" class="lbl vplus">+</text>
+      <text x="380" y="108" class="lbl big" fill="var(--series-1)" id="vout-lbl">15 V</text>
+      <!-- return: left node down to bottom rail -->
+      <path class="wire" d="M 130 120 L 130 210 L 400 210"/>
+      <!-- smoothing cap at x = 310 -->
+      <circle cx="310" cy="120" r="3.5" class="node"/>
+      <path class="wire" d="M 310 120 L 310 149"/>
+      <line x1="296" y1="149" x2="324" y2="149" class="comp"/>
+      <line x1="296" y1="159" x2="324" y2="159" class="comp"/>
+      <path class="wire" d="M 310 159 L 310 210"/>
+      <text x="330" y="158" class="lbl big" id="cap-lbl">1 mF</text>
+      <!-- load resistor at x = 370 -->
+      <circle cx="370" cy="120" r="3.5" class="node"/>
+      <path class="wire" d="M 370 120 L 370 140"/>
+      <path class="comp" d="M 370 140 L 370 144 L 360 148 L 380 156 L 360 164 L 380 172 L 360 180 L 380 188 L 370 192 L 370 196"/>
+      <path class="wire" d="M 370 196 L 370 210"/>
+      <text x="386" y="172" class="lbl big" id="load-lbl">100 Ω</text>
+      <!-- ground on bottom rail -->
+      <g class="gnd">
+        <line x1="230" y1="210" x2="230" y2="220"/>
+        <line x1="220" y1="220" x2="240" y2="220"/>
+        <line x1="224" y1="225" x2="236" y2="225"/>
+        <line x1="228" y1="230" x2="232" y2="230"/>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="vsec-slider">Secondary (RMS) <span class="val"></span></label>
+          <input type="range" id="vsec-slider" min="6" max="24" step="0.5" value="12">
+        </div>
+        <div class="control">
+          <label for="cap-slider">Smoothing C <span class="val"></span></label>
+          <!-- log: 10^-5 .. 10^-2  (10 µF .. 10 mF) -->
+          <input type="range" id="cap-slider" min="-5" max="-2" step="0.01" value="-3">
+        </div>
+        <div class="control">
+          <label for="load-slider">Load R <span class="val"></span></label>
+          <!-- log: 10^1 .. 10^4  (10 Ω .. 10 kΩ) -->
+          <input type="range" id="load-slider" min="1" max="4" step="0.01" value="2">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Peak − 1.2 V</div><div class="v" id="ideal-read">—</div></div>
+        <div class="readout"><div class="k">DC out (sim avg)</div><div class="v" id="dc-read">—</div></div>
+        <div class="readout"><div class="k">Ripple pk–pk</div><div class="v" id="ripple-read">—</div></div>
+        <div class="readout"><div class="k">Ripple / output</div><div class="v" id="pct-read">—</div></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="rect-plot" class="hh-plot" data-height="300"></canvas>
+  <p class="widget-hint" id="ripple-note" style="margin-top:10px"></p>
+</div>
+
+<h2>Clamps &amp; protection — the diode as bodyguard</h2>
+<p>Every IC input pin has an allowed voltage window, usually "a diode drop outside the supply
+rails." Stray outside it — static discharge, a sensor on a long cable, a probe slip — and you can
+latch up or destroy the chip. The classic defense is a pair of <strong>clamp diodes</strong>:
+one from the pin up to the positive rail, one from ground up to the pin. Inside the window both
+are reverse-biased and invisible. Let the input try to exceed the rail by 0.6&nbsp;V and the top
+diode conducts, dumping the excess into the supply; dive below ground and the bottom one catches
+it. The pin simply cannot leave the range −0.6&nbsp;V to V<sub>CC</sub>+0.6&nbsp;V. (Most chips
+ship with exactly these diodes built in — small, fragile ones.)</p>
+<p>But a clamp diode without a <strong>series resistor</strong> is a promise it can't keep. The
+diode clamps <em>voltage</em>; something must limit the <em>current</em>, or the offending source
+will happily push amps through a part rated for milliamps. The series R turns "a 12&nbsp;V fault
+into a 3.9&nbsp;V node" problem into "a 12&nbsp;V fault into a resistor" problem — and resistors
+are cheap and stoic. Rule: <em>never let an input pin meet the outside world without a series
+resistor in front of its clamps.</em></p>
+<p>The same reflex catches <strong>inductive kick</strong>, which you met in Module 04: interrupt
+current through a relay coil and the inductor generates whatever voltage it takes to keep its
+current flowing — hundreds of volts, if you let it. A flyback diode across the coil (reverse-biased
+in normal operation) gives that current a polite one-way exit loop, clamping the spike to a diode
+drop above the supply. One diode, one destroyed-transistor mechanism eliminated.</p>
+
+<h2>Zener diodes — breakdown on purpose</h2>
+<p>Push any diode's reverse voltage far enough and it breaks down: the junction field gets strong
+enough to rip carriers loose (or tunnel them across), and reverse current rises almost
+vertically. In a rectifier this is a place you never go. A <strong>zener diode</strong> is built
+to go there for a living: doped so breakdown happens at a chosen, tightly specified voltage
+V<sub>Z</sub> — 3.3&nbsp;V, 5.1&nbsp;V, 12&nbsp;V, pick from the catalog — and the junction
+survives indefinitely as long as you limit the current and respect the power rating. A nearly
+vertical I–V line is a nearly constant voltage over a wide current range: a
+<strong>voltage reference</strong>.</p>
+<p>The minimal circuit is the <strong>shunt regulator</strong>: series resistor from the raw
+supply, zener from the output node to ground, load across the zener. The resistor drops the
+difference; the zener sits at V<sub>Z</sub> and conducts whatever current the load doesn't take:</p>
+<div class="formula">
+  R = (V<sub>in</sub> − V<sub>Z</sub>) / (I<sub>zener</sub> + I<sub>load</sub>)
+  <small>keep a few mA in the zener at worst case, or it drifts off its knee and regulation dies</small>
+</div>
+<p>Its limits are worth naming now (Module 20 fixes them): the total current is constant, so the
+zener must burn whatever the load doesn't — maximum waste at zero load; the output impedance is
+the zener's slope resistance (ohms to tens of ohms), not the milliohms a real supply needs; and
+V<sub>Z</sub> drifts with temperature. It's a fine reference and a poor power supply. Real
+regulators wrap an amplifier around a reference exactly to fix these three complaints.</p>
+
+<h2>A field guide to the diode family</h2>
+<p>Same physics, different tuning. What the drawer labels actually mean:</p>
+<table>
+  <tr><th>Type (example)</th><th>Forward drop</th><th>Speed</th><th>Reach for it when…</th></tr>
+  <tr><td>Small-signal silicon (1N4148)</td><td>0.6–0.7 V</td><td>~4 ns</td>
+      <td>signal steering, clamps, logic — anything under ~100 mA</td></tr>
+  <tr><td>Rectifier (1N4007)</td><td>0.7–1 V at amps</td><td>slow (µs recovery)</td>
+      <td>50/60 Hz power rectification; rugged, cheap, unhurried</td></tr>
+  <tr><td>Schottky (1N5819)</td><td>0.3–0.4 V</td><td>very fast (no stored charge)</td>
+      <td>low-drop rectification, fast switching — but leakier in reverse</td></tr>
+  <tr><td>Zener (1N4733, 5.1 V)</td><td>0.6 V forward; V<sub>Z</sub> reverse</td><td>—</td>
+      <td>references, clamps at voltages other than 0.6 V, protection</td></tr>
+  <tr><td>LED</td><td>1.8–3.3 V by color (red lowest, blue/white highest)</td><td>—</td>
+      <td>light. Still a diode: same exponential, same need for a series resistor</td></tr>
+</table>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li>Silicon diode drop ≈ <strong>0.6 V</strong> (0.7 V working hard; <strong>0.3 V</strong>
+        for Schottky). Use it and stop worrying.</li>
+    <li>The drop moves <strong>−2 mV/°C</strong> — bias drift, free thermometer, thermal-runaway
+        hazard, all in one number.</li>
+    <li>The exponential means <strong>~60 mV per decade of current</strong>: the drop is
+        "constant" precisely because the curve is so steep.</li>
+    <li>A bridge rectifier costs <strong>two drops: 1.2–1.4 V</strong> off the peak.</li>
+    <li>Reservoir-cap ripple: <strong>ΔV ≈ I·Δt/C</strong>, with Δt = 10 ms for full-wave at
+        50 Hz (8.3 ms at 60 Hz; double for half-wave).</li>
+    <li><strong>Never let an input pin see fault current without a series resistor</strong> —
+        clamp diodes limit voltage; only resistors limit current.</li>
+  </ul>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the 0.6 V model — climb the ladder only where a task forces you to. Check
+the box when you've worked it and compared with the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — a complete unregulated supply</label>
+  </div>
+  <p>A transformer gives you 9&nbsp;V RMS. Design the rest: full-wave bridge, reservoir capacitor,
+  and a load that draws 200&nbsp;mA. Compute the peak voltage, the DC output, and choose a
+  standard capacitor that keeps ripple under 1&nbsp;V peak-to-peak at 50&nbsp;Hz.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Peak: 9&nbsp;V RMS × √2 = <strong>12.7&nbsp;V</strong>. The bridge takes two diode drops:
+      12.7 − 1.2 ≈ <strong>11.5&nbsp;V</strong> DC output (at the ripple's top; the average sits
+      half a ripple lower).</p>
+      <p>Capacitor from ΔV = I·Δt/C, rearranged: C = I·Δt/ΔV = 0.2&nbsp;A × 0.01&nbsp;s / 1&nbsp;V
+      = <strong>2000&nbsp;µF</strong>. (Δt = 10&nbsp;ms because full-wave at 50&nbsp;Hz delivers a
+      peak every half-cycle.) Nearest standard value <em>up</em> — ripple specs round up —
+      is <strong>2200&nbsp;µF</strong>, giving ΔV ≈ 0.2×0.01/2.2×10⁻³ ≈ 0.91&nbsp;V. The
+      simulation above, set to 9&nbsp;V/2200&nbsp;µF/57&nbsp;Ω, shows ~0.8&nbsp;V — the formula's
+      pessimism at work, as promised.</p>
+      <p>Habit check: the cap must be rated for the <em>peak</em> (12.7&nbsp;V, so a 16&nbsp;V or
+      25&nbsp;V part), and the diodes see roughly the full peak in reverse — a 1N4007 yawns.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — bodyguard for an ADC pin</label>
+  </div>
+  <p>An ADC input runs on 0–3.3&nbsp;V rails, protected by clamp diodes to each rail. The sensor
+  feeding it lives on a long cable and can fault to ±12&nbsp;V. Choose a series resistor that
+  keeps the clamp current under 1&nbsp;mA in the worst case, then discuss what that resistor costs
+  you at the ADC's sampling input.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Positive fault: the top clamp engages at 3.3&nbsp;+&nbsp;0.6&nbsp;=&nbsp;3.9&nbsp;V, so
+      the resistor absorbs 12&nbsp;−&nbsp;3.9&nbsp;=&nbsp;8.1&nbsp;V. For under 1&nbsp;mA:
+      R&nbsp;≥&nbsp;8.1&nbsp;V&nbsp;/&nbsp;1&nbsp;mA&nbsp;=&nbsp;<strong>8.1&nbsp;kΩ</strong> →
+      standard <strong>10&nbsp;kΩ</strong> gives 0.81&nbsp;mA. Now the habit that separates
+      designs that survive from ones that don't: <em>check the other polarity.</em> At
+      −12&nbsp;V the bottom clamp holds the pin at −0.6&nbsp;V and the resistor absorbs
+      11.4&nbsp;V → 1.14&nbsp;mA through 10&nbsp;kΩ. A hair over the 1&nbsp;mA target — fine if
+      the datasheet's injection-current limit is the typical "±2&nbsp;mA", but if it says
+      1&nbsp;mA and means it, bump to 12&nbsp;kΩ (0.95&nbsp;mA worst case).</p>
+      <p>The cost: an ADC's sample-and-hold charges a small internal cap <em>through your
+      resistor</em>, and its input looks like a finite impedance during conversion. 10&nbsp;kΩ
+      against a typical spec of "source impedance ≤ 10&nbsp;kΩ at full speed" is right at the
+      edge — you may need to slow the sampling, add a small cap at the pin to feed the
+      sample-and-hold locally, or buffer. Protection versus signal integrity is a genuine
+      trade, not a checkbox.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — a 5.1 V zener shunt regulator</label>
+  </div>
+  <p>Make ~5.1&nbsp;V from a 12&nbsp;V supply for a load that draws 10&nbsp;mA, using a 5.1&nbsp;V
+  zener. Choose the series resistor so the zener keeps at least 5&nbsp;mA with the load connected,
+  compute the worst-case zener dissipation, and name the architecture's built-in weakness.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>The resistor must pass load + zener minimum: 10&nbsp;+&nbsp;5&nbsp;=&nbsp;15&nbsp;mA,
+      dropping 12&nbsp;−&nbsp;5.1&nbsp;=&nbsp;6.9&nbsp;V. R&nbsp;=&nbsp;6.9&nbsp;V&nbsp;/&nbsp;15&nbsp;mA
+      =&nbsp;<strong>460&nbsp;Ω</strong> → standard <strong>470&nbsp;Ω</strong> (14.7&nbsp;mA
+      total, leaving the zener 4.7&nbsp;mA under load — a whisker under target; the knee doesn't
+      fall off a cliff at 5.0&nbsp;mA, but if you're strict, round <em>down</em> to 430&nbsp;Ω,
+      because here more current is the safe direction).</p>
+      <p>Worst case for the zener is the load <em>disconnected</em>: it must then swallow the
+      whole 14.7&nbsp;mA, dissipating 14.7&nbsp;mA&nbsp;×&nbsp;5.1&nbsp;V&nbsp;≈&nbsp;<strong>75&nbsp;mW</strong>
+      — comfortable for a 400&nbsp;mW part. (The resistor burns 6.9²/470 ≈ 100&nbsp;mW,
+      always — spec it ¼&nbsp;W.)</p>
+      <p>The weakness: the input current is ~15&nbsp;mA <em>forever</em>, whether the load wants
+      10&nbsp;mA or nothing — the zener just burns the leftovers. Add sloppy regulation (the
+      zener's slope resistance) and temperature drift, and you have a circuit that's a fine
+      reference for a microamp-hungry comparator and a lousy power supply. Module 20 wraps
+      feedback around this exact idea and fixes all three flaws.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="05-impedance-filters.html"><span class="dir">Previous</span><span class="name">05 · Impedance, Reactance &amp; Filters</span></a>
+  <a href="07-reading-schematics.html"><span class="dir">Next</span><span class="name">07 · Reading &amp; Drawing Schematics</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("06");
+
+  /* ================= widget 1: I–V curve + load line ================= */
+  /* Shockley with Is = 1 pA, nVT = 25 mV:
+     V(1 mA) = 0.518 V, V(10 mA) = 0.576 V, V(100 mA) = 0.633 V — a credible
+     small-signal silicon diode, ~58 mV/decade. */
+  var IS = 1e-12, NVT = 0.025;
+  function diodeI(v) { return IS * (Math.exp(v / NVT) - 1); }
+
+  var ll = { Vs: 2, R: Math.pow(10, 2.52) };
+  var vdRead = document.getElementById("vd-read");
+  var idRead = document.getElementById("id-read");
+  var crudeRead = document.getElementById("crude-read");
+  var llNote = document.getElementById("ll-note");
+
+  HH.slider("vs-slider", {
+    format: function (v) { return HH.fmt(v, "V", 2); },
+    onchange: function (v) { ll.Vs = v; llUpdate(); }
+  });
+  HH.slider("rs-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { ll.R = r; llUpdate(); }
+  });
+
+  /* Solve (Vs − V)/R = Is(e^(V/nVT) − 1) by bisection. f(0) ≥ 0, f(Vs) < 0,
+     and f is monotonically decreasing, so this always converges. */
+  function operatingPoint(Vs, R) {
+    var lo = 0, hi = Vs;
+    for (var i = 0; i < 60; i++) {
+      var mid = (lo + hi) / 2;
+      if ((Vs - mid) / R - diodeI(mid) > 0) lo = mid; else hi = mid;
+    }
+    return { V: lo, I: (Vs - lo) / R };
+  }
+
+  var llPlot = HH.plot(document.getElementById("ll-plot"), {
+    xlabel: "Diode voltage (V)",
+    ylabel: "Current (mA)",
+    xmin: 0, xmax: 1, ymin: 0, ymax: 20,
+    xticks: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+    yticks: [0, 5, 10, 15, 20],
+    xfmt: function (v) { return v.toFixed(1); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var I = diodeI(x);
+      var itxt = I > 10
+        ? "≈ " + HH.fmt(I, "A") + " on paper; smoke in practice"
+        : HH.fmt(I, "A");
+      return [
+        { text: "V = " + (x * 1000).toFixed(0) + " mV" },
+        { color: "--series-2", text: "diode I = " + itxt }
+      ];
+    }
+  });
+
+  function llUpdate() {
+    var op = operatingPoint(ll.Vs, ll.R);
+    var crude = Math.max(0, (ll.Vs - 0.6) / ll.R);
+
+    vdRead.innerHTML = HH.fmt(op.V, "V");
+    idRead.innerHTML = HH.fmt(op.I, "A");
+    crudeRead.innerHTML = ll.Vs < 0.6 ? "0 <small>(diode “off”)</small>" : HH.fmt(crude, "A");
+
+    if (op.I > 0.0205) {
+      llNote.innerHTML = "The operating point (" + HH.fmt(op.I, "A") +
+        ") is off the top of this 20 mA window — the readouts still tell the truth. " +
+        "At currents like this, check the diode's ratings before checking the math.";
+      llNote.style.color = "var(--critical)";
+    } else if (crude > 0) {
+      var errPct = Math.abs(op.I - crude) / op.I * 100;
+      llNote.textContent = "The crude 0.6 V model is off by " + errPct.toFixed(1) +
+        "% here — one line of arithmetic versus an iterative solve. That ratio of effort " +
+        "to error is why rung (b) earns its keep.";
+      llNote.style.color = "var(--muted)";
+    } else {
+      llNote.textContent = "Below 0.6 V the crude model declares the diode off — yet the " +
+        "exponential still passes " + HH.fmt(op.I, "A") + ". Models lie at the edges; " +
+        "know which edge you're standing on.";
+      llNote.style.color = "var(--muted)";
+    }
+
+    /* exponential curve, stopped once safely above the plot window */
+    var curve = [];
+    for (var v = 0; v <= 1.0001; v += 0.002) {
+      var mA = diodeI(v) * 1000;
+      curve.push([v, Math.min(mA, 25)]);
+      if (mA > 25) break;
+    }
+    llPlot.draw(
+      [
+        { pts: curve, color: "--series-2", width: 2.5 },
+        { pts: [[0, ll.Vs / ll.R * 1000], [ll.Vs, 0]], color: "--series-1", width: 2, dash: [6, 4] }
+      ],
+      { markers: [{ x: op.V, y: op.I * 1000, color: "--series-8" }] }
+    );
+  }
+  llUpdate();
+
+  /* ================= widget 2: rectifier playground ================= */
+  var rp = { Vrms: 12, C: 1e-3, R: 100 };
+  var idealRead = document.getElementById("ideal-read");
+  var dcRead = document.getElementById("dc-read");
+  var rippleRead = document.getElementById("ripple-read");
+  var pctRead = document.getElementById("pct-read");
+  var rippleNote = document.getElementById("ripple-note");
+  var vsecLbl = document.getElementById("vsec-lbl");
+  var capLbl = document.getElementById("cap-lbl");
+  var loadLbl = document.getElementById("load-lbl");
+  var voutLbl = document.getElementById("vout-lbl");
+
+  HH.slider("vsec-slider", {
+    format: function (v) { return HH.fmt(v, "V", 1); },
+    onchange: function (v) { rp.Vrms = v; rpUpdate(); }
+  });
+  HH.slider("cap-slider", {
+    log: true,
+    format: function (c) { return HH.fmt(c, "F"); },
+    onchange: function (c) { rp.C = c; rpUpdate(); }
+  });
+  HH.slider("load-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { rp.R = r; rpUpdate(); }
+  });
+
+  var FREQ = 50, DT = 50e-6, T_TOTAL = 0.1, T_SHOW = 0.06; /* sim 5 cycles, plot last 3 */
+  var simData = { refPts: [], capPts: [] };
+
+  /* Time-stepped sim: the cap discharges through R continuously; whenever the
+     rectified input (|Vsec| minus the 1.2 V bridge toll) exceeds the cap
+     voltage, the bridge conducts and tops it up (ideal charging). Cross-check
+     against ΔV = I·Δt/C: at 12 V RMS / 1000 µF / 100 Ω the formula predicts
+     1.58 V and the sim measures ~1.3 V — less, because the discharge interval
+     is shorter than the full 10 ms. */
+  function simulate() {
+    var Vp = rp.Vrms * Math.SQRT2;
+    var Vc = 0, t;
+    var refPts = [], capPts = [];
+    var tail = [];
+    for (t = 0; t <= T_TOTAL + 1e-9; t += DT) {
+      var vin = Math.max(0, Math.abs(Vp * Math.sin(2 * Math.PI * FREQ * t)) - 1.2);
+      Vc -= (Vc / (rp.R * rp.C)) * DT;
+      if (vin > Vc) Vc = vin;
+      if (t >= T_TOTAL - T_SHOW - 1e-9) {
+        var ms = (t - (T_TOTAL - T_SHOW)) * 1000;
+        refPts.push([ms, vin]);
+        capPts.push([ms, Vc]);
+      }
+      if (t >= T_TOTAL - 0.02) tail.push(Vc);  /* last 2 full-wave periods */
+    }
+    var max = -Infinity, min = Infinity, sum = 0;
+    for (var i = 0; i < tail.length; i++) {
+      if (tail[i] > max) max = tail[i];
+      if (tail[i] < min) min = tail[i];
+      sum += tail[i];
+    }
+    simData.refPts = refPts;
+    simData.capPts = capPts;
+    return { Vp: Vp, dc: sum / tail.length, ripple: max - min };
+  }
+
+  var rectPlot = HH.plot(document.getElementById("rect-plot"), {
+    xlabel: "Time (ms) — three cycles at 50 Hz",
+    ylabel: "Voltage (V)",
+    xmin: 0, xmax: 60, ymin: 0, ymax: 20,
+    xticks: [0, 10, 20, 30, 40, 50, 60],
+    yticks: [0, 5, 10, 15, 20],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var idx = Math.max(0, Math.min(simData.capPts.length - 1,
+        Math.round(x / (DT * 1000))));
+      return [
+        { text: "t = " + x.toFixed(1) + " ms" },
+        { color: "--muted", text: "rectified in = " + HH.fmt(simData.refPts[idx][1], "V") },
+        { color: "--series-1", text: "cap output = " + HH.fmt(simData.capPts[idx][1], "V") }
+      ];
+    }
+  });
+
+  function rpUpdate() {
+    var s = simulate();
+    var ideal = s.Vp - 1.2;
+    var pct = s.dc > 0 ? (s.ripple / s.dc) * 100 : 0;
+
+    idealRead.innerHTML = HH.fmt(ideal, "V");
+    dcRead.innerHTML = HH.fmt(s.dc, "V");
+    rippleRead.innerHTML = HH.fmt(s.ripple, "V");
+    pctRead.innerHTML = pct.toFixed(1) + "<small> %</small>";
+    pctRead.style.color = pct > 10 ? "var(--critical)" : "";
+
+    vsecLbl.textContent = HH.fmt(rp.Vrms, "V", 1);
+    capLbl.textContent = HH.fmt(rp.C, "F");
+    loadLbl.textContent = HH.fmt(rp.R, "Ω");
+    voutLbl.textContent = HH.fmt(s.dc, "V");
+
+    var iLoad = s.dc / rp.R;
+    var formula = iLoad * 0.01 / rp.C;
+    if (pct > 10) {
+      rippleNote.innerHTML = "⚠️ " + pct.toFixed(1) + "% ripple — this isn't DC, it's AC with " +
+        "ambitions. ΔV ≈ I·Δt/C says " + HH.fmt(iLoad, "A") + " × 10 ms / " +
+        HH.fmt(rp.C, "F") + " ≈ " + HH.fmt(formula, "V") +
+        " — grow C or lighten the load until the teeth flatten out.";
+      rippleNote.style.color = "var(--critical)";
+    } else {
+      rippleNote.innerHTML = "Formula check: ΔV ≈ I·Δt/C = " + HH.fmt(iLoad, "A") +
+        " × 10 ms / " + HH.fmt(rp.C, "F") + " ≈ " + HH.fmt(formula, "V") +
+        ", versus " + HH.fmt(s.ripple, "V") + " measured — the estimate runs a little " +
+        "pessimistic because the recharge arrives before the full 10 ms is up. " +
+        "In power supplies, pessimism is a feature.";
+      rippleNote.style.color = "var(--muted)";
+    }
+
+    /* adapt y-axis to the peak so 6 V and 24 V secondaries both fill the frame */
+    var ymax = Math.max(10, Math.ceil(s.Vp / 5) * 5);
+    rectPlot.cfg.ymax = ymax;
+    rectPlot.cfg.yticks = [0, ymax * 0.25, ymax * 0.5, ymax * 0.75, ymax];
+    rectPlot.draw([
+      { pts: simData.refPts, color: "--muted", width: 1.5, dash: [5, 4] },
+      { pts: simData.capPts, color: "--series-1", width: 2.5 }
+    ]);
+  }
+  rpUpdate();
+
+  /* ================= quiz ================= */
+  HH.quiz("quiz", [
+    {
+      q: "The diode symbol is an arrow pressed against a bar. Which way does conventional current flow when the diode conducts?",
+      opts: [
+        "In the direction the arrow points — anode to cathode",
+        "Against the arrow — the bar blocks it going forward",
+        "Both ways, but with 0.6 V lost each way",
+        "From cathode to anode, since electrons carry the current"
+      ],
+      answer: 0,
+      expl: "The symbol is honest: conventional current flows the way the arrow points, from anode into the bar (cathode — the end with the stripe on the physical part). Electrons do drift the other way, but as in Module 01, we bookkeep conventional current and stay consistent. Reverse the polarity and the diode blocks (down to nA of leakage)."
+    },
+    {
+      q: "Why can H&H get away with calling the diode drop a constant 0.6–0.7 V when the real curve is exponential?",
+      opts: [
+        "Manufacturers trim every diode to exactly 0.65 V",
+        "The exponential is so steep that huge current changes move the voltage only tens of mV",
+        "It's only true at exactly 25 °C",
+        "The 0.6 V is the depletion region's physical width in volts"
+      ],
+      answer: 1,
+      expl: "Steepness is the secret: ~60 mV per decade means going from 1 mA to 100 mA — a factor of 100 — moves the drop barely 0.12 V. Viewed from any practical distance, that's a constant. The same steepness cuts the other way: you can never set a diode's current by applying a chosen voltage, because a few-mV error is a huge current error."
+    },
+    {
+      q: "Module 01's LED task used a series resistor with a 2 V LED on a 5 V supply. What actually happens if you wire the LED straight across the supply, no resistor?",
+      opts: [
+        "It runs at maximum brightness, safely",
+        "Nothing — the LED's 2 V drop limits the current by itself",
+        "The exponential demands enormous current at 5 V; the LED overheats — and heating lowers its drop, demanding even more",
+        "The supply politely delivers only the LED's rated current"
+      ],
+      answer: 2,
+      expl: "A diode drop is only 'constant' when something else sets the current. Force 5 V across a junction that wants ~2 V and the exponential asks for amps; power dissipation soars, the junction heats, and the −2 mV/°C tempco lowers the drop — which at fixed applied voltage means still more current. That's thermal runaway, and it ends with a dark, sometimes dramatically dark, LED. The series resistor isn't decoration; it's the only current-limiting element in the loop."
+    },
+    {
+      q: "A bridge rectifier is fed 10 V peak. Roughly what peak reaches the reservoir capacitor?",
+      opts: ["10 V", "9.4 V", "8.6–8.8 V", "5 V"],
+      answer: 2,
+      expl: "The conducting path always crosses two diodes in series, so the bridge charges the cap to the peak minus two drops: 10 − (1.2 to 1.4) ≈ 8.6–8.8 V. One drop (9.4 V) is the half-wave rectifier's price. This is also why bridges get warm at high current: two drops × load current is real power."
+    },
+    {
+      q: "A full-wave supply at 50 Hz delivers 100 mA from a 1000 µF reservoir cap. Estimate the ripple.",
+      opts: ["0.1 V", "1 V", "2 V", "10 mV"],
+      answer: 1,
+      expl: "ΔV ≈ I·Δt/C with Δt = 10 ms (full-wave at 50 Hz: peaks every half-cycle): 0.1 A × 0.01 s / 1000 µF = 1 V. Worth internalizing as a rate: at 100 mA, a 1000 µF cap droops 100 V per second — 1 V per 10 ms interval. Half-wave would wait 20 ms between top-ups: 2 V."
+    },
+    {
+      q: "A 5.1 V zener sits reverse-biased across a node (through a series resistor from the supply). How does it behave below and above 5.1 V?",
+      opts: [
+        "Conducts below 5.1 V, blocks above",
+        "Blocks below 5.1 V (near-invisible); above it conducts hard, holding the node at ~5.1 V",
+        "Burns out the moment the node exceeds 5.1 V",
+        "Drops a constant 0.6 V regardless of the node voltage"
+      ],
+      answer: 1,
+      expl: "Below V<sub>Z</sub> the zener is just a reverse-biased diode: microamps, effectively absent. At V<sub>Z</sub> reverse breakdown begins — deliberately, non-destructively — and the I–V curve turns nearly vertical, so the zener conducts whatever current is needed to pin the node near 5.1 V (as long as the series resistor keeps current and power within ratings). Forward-biased, it's an ordinary 0.6 V diode — sometimes exploited, usually irrelevant."
+    },
+    {
+      q: "You swap a silicon rectifier for a Schottky in a switching supply. What did you gain, and what's the fine print?",
+      opts: [
+        "Gain: higher reverse-voltage rating. Fine print: slower",
+        "Gain: lower drop (~0.3 V, less heat) and much faster switching. Fine print: more reverse leakage, often lower voltage ratings",
+        "Gain: no forward drop at all. Fine print: none — always use Schottky",
+        "Gain: cheaper. Fine print: only works below 1 kHz"
+      ],
+      answer: 1,
+      expl: "The Schottky's metal–semiconductor junction halves the drop (~0.3–0.4 V — at 2 A that's a watt of heat you don't make) and stores no minority-carrier charge, so it switches essentially instantly — vital at switching-supply frequencies. The tax: reverse leakage that's orders of magnitude higher (and grows quickly with temperature), plus generally lower reverse-voltage ratings. Engineering, as usual, is choosing which flaw you can live with."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
