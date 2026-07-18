@@ -84,12 +84,12 @@ Status: ✅ built · 🔜 planned
 
 | # | Module | Book | Status |
 |---|--------|------|--------|
-| 08 | The BJT as a Switch | §2.1–2.2 | 🔜 |
-| 09 | Emitter Followers & Current Sources | §2.2–2.3 | 🔜 |
-| 10 | The Common-Emitter Amplifier | §2.2–2.3 | 🔜 |
-| 11 | Differential Pairs, Mirrors & Push-Pull | §2.3–2.4 | 🔜 |
-| 12 | FETs: JFETs & MOSFETs | §3.1–3.2 | 🔜 |
-| 13 | FET Switches & Analog Switching | §3.4–3.5 | 🔜 |
+| 08 | The BJT as a Switch | §2.1–2.2 | ✅ |
+| 09 | Emitter Followers & Current Sources | §2.2–2.3 | ✅ |
+| 10 | The Common-Emitter Amplifier | §2.2–2.3 | ✅ |
+| 11 | Differential Pairs, Mirrors & Push-Pull | §2.3–2.4 | ✅ |
+| 12 | FETs: JFETs & MOSFETs | §3.1–3.2 | ✅ |
+| 13 | FET Switches & Analog Switching | §3.4–3.5 | ✅ |
 
 ### Part III — Op-Amps & Precision (AoE Ch. 4–6)
 

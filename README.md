@@ -35,7 +35,7 @@ Dark mode follows your OS preference automatically.
 ## What's here
 
 - `index.html` — curriculum hub with a progress dashboard
-- `modules/` — the learning modules (Part I complete: 7 of 31 built)
+- `modules/` — the learning modules (Parts I–II complete: 13 of 31 built)
 - `shared/` — the tiny framework every module uses (design tokens, quiz engine,
   plot helpers, progress store)
 - `CURRICULUM.md` — the full 31-module curriculum map, design principles, and
