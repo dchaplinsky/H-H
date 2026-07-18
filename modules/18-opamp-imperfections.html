@@ -263,30 +263,30 @@ almost any datasheet on the map:</p>
   <div class="viz-row">
     <svg id="budget-sch" class="schematic" viewBox="0 0 460 280" width="460" height="280" role="img"
          aria-label="Non-inverting amplifier with source resistance, offset-voltage battery and bias-current arrow shown">
-      <!-- signal source -->
-      <circle cx="38" cy="170" r="15" class="comp"/>
-      <path class="comp" d="M 29 170 q 4.5 -8 9 0 q 4.5 8 9 0"/>
-      <text x="14" y="144" class="lbl big">V<tspan baseline-shift="sub" font-size="10">sig</tspan></text>
+      <!-- signal source (feeds the + input, drawn on top) -->
+      <circle cx="38" cy="134" r="15" class="comp"/>
+      <path class="comp" d="M 29 134 q 4.5 -8 9 0 q 4.5 8 9 0"/>
+      <text x="12" y="108" class="lbl big">V<tspan baseline-shift="sub" font-size="10">sig</tspan></text>
       <!-- Rs -->
-      <path class="wire" d="M 53 170 L 66 170"/>
-      <path class="comp" d="M 66 170 l 3 0 l 4 -8 l 7 16 l 7 -16 l 7 16 l 7 -16 l 7 16 l 4 -8 l 3 0"/>
-      <text x="72" y="150" class="lbl big" id="rs-lbl">10 kΩ</text>
-      <text x="72" y="196" class="lbl">R<tspan baseline-shift="sub" font-size="10">s</tspan></text>
+      <path class="wire" d="M 53 134 L 66 134"/>
+      <path class="comp" d="M 66 134 l 3 0 l 4 -8 l 7 16 l 7 -16 l 7 16 l 7 -16 l 7 16 l 4 -8 l 3 0"/>
+      <text x="66" y="114" class="lbl big" id="rs-lbl">10 kΩ</text>
+      <text x="82" y="160" class="lbl">R<tspan baseline-shift="sub" font-size="10">s</tspan></text>
       <!-- Vos battery in series with + input -->
-      <path class="wire" d="M 115 170 L 142 170"/>
-      <line x1="142" y1="156" x2="142" y2="184" class="comp"/>
-      <line x1="150" y1="163" x2="150" y2="177" class="comp" stroke-width="3"/>
-      <text x="124" y="136" class="lbl" fill="var(--series-8)" id="vos-lbl">V₀ₛ = 2 mV</text>
-      <path class="wire" d="M 150 170 L 196 170"/>
+      <path class="wire" d="M 115 134 L 142 134"/>
+      <line x1="142" y1="120" x2="142" y2="148" class="comp"/>
+      <line x1="150" y1="127" x2="150" y2="141" class="comp" stroke-width="3"/>
+      <text x="112" y="176" class="lbl" fill="var(--series-8)" id="vos-lbl">V₀ₛ = 2 mV</text>
+      <path class="wire" d="M 150 134 L 196 134"/>
       <!-- bias current arrow into + input -->
-      <path class="comp" d="M 168 212 L 184 196 m 0 0 l -8 1 m 8 -1 l -1 8" stroke="var(--series-6)"/>
-      <text x="140" y="230" class="lbl" fill="var(--series-6)" id="ib-lbl">I_b = 80 nA</text>
+      <path class="comp" d="M 164 100 L 180 116 m 0 0 l -8 -1 m 8 1 l -1 -8" stroke="var(--series-6)"/>
+      <text x="122" y="94" class="lbl" fill="var(--series-6)" id="ib-lbl">I_b = 80 nA</text>
       <!-- op-amp triangle -->
       <path class="comp" d="M 196 110 L 196 230 L 300 170 Z"/>
-      <text x="204" y="176" class="lbl big">+</text>
-      <text x="204" y="140" class="lbl big">−</text>
-      <!-- inverting input, feedback network -->
-      <path class="wire" d="M 196 134 L 170 134 L 170 250"/>
+      <text x="204" y="140" class="lbl big">+</text>
+      <text x="204" y="212" class="lbl big">−</text>
+      <!-- inverting input, feedback network (below — no crossings) -->
+      <path class="wire" d="M 196 206 L 170 206 L 170 250"/>
       <circle cx="170" cy="250" r="3.5" class="node"/>
       <!-- Rg to ground (horizontal, left) -->
       <path class="comp" d="M 170 250 l -4 0 l -4 -8 l -8 16 l -8 -16 l -8 16 l -8 -16 l -8 16 l -4 -8 l -4 0"/>
@@ -294,9 +294,9 @@ almost any datasheet on the map:</p>
       <path class="gnd" d="M 96 250 L 88 250 M 88 240 L 88 260 M 83 244 L 83 256 M 79 248 L 79 252"/>
       <text x="122" y="238" class="lbl">R<tspan baseline-shift="sub" font-size="10">g</tspan></text>
       <!-- Rf from node to output -->
-      <path class="comp" d="M 170 250 l 24 0 l 4 -8 l 8 16 l -0 0 l 8 -16 l 8 16 l 8 -16 l 8 16 l 4 -8 l 24 0"/>
+      <path class="comp" d="M 170 250 l 24 0 l 4 -8 l 8 16 l 8 -16 l 8 16 l 8 -16 l 8 16 l 4 -8 l 24 0"/>
       <text x="212" y="238" class="lbl">R<tspan baseline-shift="sub" font-size="10">f</tspan></text>
-      <path class="wire" d="M 266 250 L 336 250 L 336 170"/>
+      <path class="wire" d="M 258 250 L 336 250 L 336 170"/>
       <!-- output -->
       <path class="wire" d="M 300 170 L 388 170"/>
       <circle cx="336" cy="170" r="3.5" class="node"/>

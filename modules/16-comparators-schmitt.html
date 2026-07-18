@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>16 · Comparators &amp; Schmitt Triggers — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part III · Module 16</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Comparators &amp; Schmitt Triggers</h1>
+  <p class="subtitle">The circuit that turns an analog voltage into a yes-or-no answer — and the
+  positive-feedback trick that keeps the answer from stuttering. <em>AoE 3rd ed. §4.3.2 &amp;
+  §12.3.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>The world is analog; decisions are digital. Somewhere in almost every instrument a smoothly
+varying voltage has to become a clean yes or no: <em>is the battery low? is the heatsink too hot?
+has the sine wave crossed zero yet? is this logic input a 1 or a 0?</em> Every one of those
+questions is answered by a <strong>comparator</strong> — a circuit whose entire job is to report
+which of its two inputs is higher. It is the border crossing between Part III's analog world and
+the digital circuits ahead, and it appears inside ADCs, timers, reset supervisors, switching
+regulators, and every logic gate's input stage.</p>
+<p>And here is the part that separates working designs from bench curiosities: <strong>every real
+comparator needs hysteresis</strong>. A single threshold plus real-world noise equals an output
+that buzzes like an angry wasp exactly when the decision matters most — slowly crossing the line.
+The fix, the <strong>Schmitt trigger</strong>, is our first deliberate use of <em>positive</em>
+feedback, after two modules of carefully cultivated negative feedback. Same op-amp topology,
+opposite sign, completely different personality: instead of a smooth linear servo you get a snap-action
+switch with memory.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — an op-amp with the feedback removed</span>
+  <p>A comparator is conceptually just an op-amp running <em>open-loop</em>. Recall the numbers
+  from Module 14: open-loop gain of 10⁵–10⁶. With no feedback network to tame it, a difference of
+  a few <em>microvolts</em> between V₊ and V₋ is amplified into volts — the output slams into
+  whichever supply rail the sign of the difference selects and stays there. The "linear region"
+  between the rails is only tens of microvolts wide: for any practical input, the output is a
+  two-state device. V₊&nbsp;&gt;&nbsp;V₋ → output high; V₊&nbsp;&lt;&nbsp;V₋ → output low.
+  That's the entire truth table.</p>
+  <p>So why do dedicated comparator ICs exist at all? Because an op-amp is <em>built for</em>
+  negative feedback and pays for it when you take the feedback away. (1) <strong>Speed:</strong>
+  an op-amp's internal phase-compensation capacitor — the thing that keeps it stable in a feedback
+  loop — deliberately slows it down, and its saturated output stage takes microseconds to crawl
+  back off a rail. A comparator has no compensation capacitor and is designed to bang between
+  states in nanoseconds. (2) <strong>Logic-friendly outputs:</strong> a comparator's output stage
+  swings between ground and a logic level, not to within a volt or two of split supplies.
+  (3) Many comparators offer an <strong>open-collector</strong> output — the output "transistor"
+  is Module 08's saturated BJT switch with the collector left floating for you: it can pull the
+  output <em>down</em> hard, but going <em>up</em> is your job, via an external pull-up resistor
+  to whatever logic voltage you like. More on why that's a feature, not a cost-cut, below.</p>
+</div>
+
+<h2>The naked comparator</h2>
+<p>The minimal decision circuit: put a reference voltage on one input and the signal on the
+other. The reference almost always comes from Module 02's favorite subcircuit — a voltage
+divider. A 10&nbsp;kΩ/10&nbsp;kΩ divider from a 5&nbsp;V rail parks the reference at
+2.5&nbsp;V; the comparator then reports "above" or "below" with a rail-to-rail output:</p>
+<div class="formula">
+  V₊ &gt; V₋ &nbsp;→&nbsp; V<sub>out</sub> = high rail &nbsp;&nbsp;&nbsp;&nbsp;
+  V₊ &lt; V₋ &nbsp;→&nbsp; V<sub>out</sub> = low rail
+  <small>with the signal on V₋ and the reference on V₊, the output is high while the signal is <em>below</em> the reference — the inverting arrangement we'll standardize on</small>
+</div>
+<p>On paper this works perfectly. On the bench it fails in a specific, maddening way.</p>
+
+<h3>The chatter problem</h3>
+<p>Real signals carry noise — thermal hiss, mains pickup, ripple from the switching supply two
+boards over. Millivolts, usually; harmless, usually. But a comparator has <em>microvolt</em>
+sensitivity and no short-term memory. As a slowly rising signal approaches the threshold, the
+noise riding on it crosses the line dozens of times before the underlying trend finally carries
+it clear. Each tiny crossing is a full-scale output transition: instead of one clean edge, the
+output emits a burst of hash. <strong>The slower the signal, the longer it loiters inside the
+noise band around the threshold, and the worse the buzz.</strong> If that output is clocking a
+counter, you count one sunrise as fifty. If it's driving a relay, the contacts machine-gun
+themselves to death.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the chatter lab</div>
+  <div class="widget-hint">A slow 1&nbsp;Hz sine (1&nbsp;V amplitude around a 2.5&nbsp;V
+  threshold) feeds a comparator. Add noise with the first slider and watch the output — the blue
+  trace in the lower band — buzz at every crossing. Then feed in hysteresis with the second
+  slider (the next section explains where it comes from) and watch the decision clean up. The
+  noise is a frozen pseudo-random sequence, so identical settings always draw identical
+  waveforms — honest A/B comparisons.</div>
+  <canvas id="chatter-plot" class="hh-plot" data-height="360"></canvas>
+  <div class="controls">
+    <div class="control">
+      <label for="noise-slider">Noise amplitude (peak) <span class="val"></span></label>
+      <input type="range" id="noise-slider" min="0" max="200" step="5" value="60">
+    </div>
+    <div class="control">
+      <label for="hyst-slider">Hysteresis width <span class="val"></span></label>
+      <input type="range" id="hyst-slider" min="0" max="400" step="10" value="0">
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout"><div class="k">Output transitions / cycle</div><div class="v" id="trans-read">—</div></div>
+    <div class="readout"><div class="k">Upper threshold</div><div class="v" id="chat-up-read">—</div></div>
+    <div class="readout"><div class="k">Lower threshold</div><div class="v" id="chat-dn-read">—</div></div>
+  </div>
+  <p class="widget-hint" id="chatter-verdict" style="margin-top:10px"></p>
+</div>
+
+<h2>Positive feedback on purpose</h2>
+<p>The cure for chatter is to give the comparator a memory: <strong>after it decides, move the
+threshold away from the signal.</strong> Once the output snaps high, raise the bar; once it snaps
+low, lower it. Now a noise wiggle that re-crosses the <em>old</em> threshold finds the goalposts
+gone — to undo the decision, the signal must traverse the whole gap between the two thresholds.
+That gap is the <strong>hysteresis</strong>, and the circuit is the <strong>Schmitt
+trigger</strong>.</p>
+<p>The implementation costs one resistor. Take the inverting comparator — signal into V₋,
+divider reference into V₊ — and add a feedback resistor <code>Rh</code> from the output back to
+V₊. Because the feedback returns to the <em>non-inverting</em> input, it is positive: the output
+state itself tugs the reference in the direction that entrenches that state.</p>
+<p>Here is our canonical circuit for the whole module. Comparator powered from 5&nbsp;V with a
+push-pull output swinging essentially 0&nbsp;V / 5&nbsp;V; reference set by <code>R1</code>
+(from +5&nbsp;V) and <code>R2</code> (to ground); <code>Rh</code> from output to the V₊ node.
+Three resistors meet at V₊, so the node voltage is a three-way weighted average — and
+superposition (Module 02, again) hands us each threshold in one line. Looking into the node,
+each source drives it through its own resistor with the other two resistors going to AC-ground:</p>
+<div class="formula">
+  V<sub>T</sub> = 5&nbsp;V · <span style="white-space:nowrap">(R₂∥R<sub>h</sub>)/(R₁ + R₂∥R<sub>h</sub>)</span>
+  &nbsp;+&nbsp; V<sub>out</sub> · <span style="white-space:nowrap">(R₁∥R₂)/(R<sub>h</sub> + R₁∥R₂)</span>
+  <small>superposition at the V₊ node: the rail's share plus the output's share</small>
+</div>
+<p>With the output <strong>low</strong> (V<sub>out</sub>&nbsp;=&nbsp;0) the second term vanishes
+and the node sits at the <em>lower</em> threshold; with the output <strong>high</strong>
+(V<sub>out</sub>&nbsp;=&nbsp;5&nbsp;V) the second term adds on top and the node sits at the
+<em>upper</em> threshold:</p>
+<div class="formula">
+  V<sub>T−</sub> = 5 · (R₂∥R<sub>h</sub>)/(R₁ + R₂∥R<sub>h</sub>) &nbsp;&nbsp;&nbsp;&nbsp;
+  V<sub>T+</sub> = V<sub>T−</sub> + 5 · (R₁∥R₂)/(R<sub>h</sub> + R₁∥R₂)
+  <small>two thresholds from one node; hysteresis ΔV = V<sub>T+</sub> − V<sub>T−</sub> = V<sub>swing</sub> · (R₁∥R₂)/(R<sub>h</sub> + R₁∥R₂)</small>
+</div>
+<p>Numbers, and a cross-check. Take R₁&nbsp;=&nbsp;R₂&nbsp;=&nbsp;10&nbsp;kΩ,
+R<sub>h</sub>&nbsp;=&nbsp;100&nbsp;kΩ. Then R₂∥R<sub>h</sub>&nbsp;=&nbsp;9.09&nbsp;kΩ, so
+V<sub>T−</sub>&nbsp;=&nbsp;5&nbsp;×&nbsp;9.09/19.09&nbsp;=&nbsp;<strong>2.381&nbsp;V</strong>;
+and R₁∥R₂&nbsp;=&nbsp;5&nbsp;kΩ, so the output's contribution is
+5&nbsp;×&nbsp;5/105&nbsp;=&nbsp;0.238&nbsp;V, giving
+V<sub>T+</sub>&nbsp;=&nbsp;<strong>2.619&nbsp;V</strong> and
+ΔV&nbsp;=&nbsp;<strong>238&nbsp;mV</strong>. Never trust one method: write KCL at the node
+directly. Currents in = currents out: (5&nbsp;−&nbsp;V)/R₁&nbsp;+&nbsp;(V<sub>out</sub>&nbsp;−&nbsp;V)/R<sub>h</sub>&nbsp;=&nbsp;V/R₂,
+so V&nbsp;=&nbsp;(5/R₁&nbsp;+&nbsp;V<sub>out</sub>/R<sub>h</sub>)&nbsp;/&nbsp;(1/R₁&nbsp;+&nbsp;1/R₂&nbsp;+&nbsp;1/R<sub>h</sub>).
+Plug in V<sub>out</sub>&nbsp;=&nbsp;0: V&nbsp;=&nbsp;(5×10⁻⁴)/(2.1×10⁻⁴)&nbsp;=&nbsp;2.381&nbsp;V.
+Plug in V<sub>out</sub>&nbsp;=&nbsp;5: V&nbsp;=&nbsp;(5.5×10⁻⁴)/(2.1×10⁻⁴)&nbsp;=&nbsp;2.619&nbsp;V.
+Same answers to the last digit — superposition and the node equation are the same physics wearing
+different notation.</p>
+<p>Why does the transition <em>snap</em>? Regeneration. The instant the signal edges past the
+threshold, the output starts to move; the moving output drags V₊ <em>away</em> from the signal
+through R<sub>h</sub>, which increases the input difference, which drives the output harder — a
+self-reinforcing avalanche limited only by the comparator's own speed. Negative feedback fights
+change; positive feedback finishes it. The output spends essentially zero time in between states,
+no matter how lazily the input crawls.</p>
+<p><em>The non-inverting flavor, for completeness:</em> put the signal into V₊ through a series
+resistor R<sub>in</sub>, a fixed reference on V₋, and R<sub>h</sub> from output to V₊ as before.
+Now the signal and the output share the V₊ node in an R<sub>in</sub>/R<sub>h</sub> tug-of-war,
+and the signal must overpower the output's vote to trip: with the reference at mid-rail the
+thresholds land symmetrically at V<sub>ref</sub>&nbsp;±&nbsp;V<sub>ref</sub>·R<sub>in</sub>/R<sub>h</sub>,
+for a hysteresis of ΔV&nbsp;=&nbsp;V<sub>swing</sub>·R<sub>in</sub>/R<sub>h</sub> (check:
+R<sub>in</sub>&nbsp;=&nbsp;10&nbsp;k, R<sub>h</sub>&nbsp;=&nbsp;100&nbsp;k, 2.5&nbsp;V reference →
+trips at 2.25 and 2.75&nbsp;V; the node equation confirms V₊ hits exactly 2.5&nbsp;V at both).
+It's handy when the signal's own source impedance
+can serve as R<sub>in</sub> (Design bench Task 1 flirts with this), but we'll keep the inverting
+version as the module's canonical circuit and nail its math cold rather than juggling both.</p>
+
+<div class="panel analogy">
+  <span class="panel-label">Household analogy — the thermostat's dead band</span>
+  <p>Your home thermostat is a Schmitt trigger with a furnace for an output stage. It does
+  <em>not</em> hold the house at exactly 20&nbsp;°C — it kicks the furnace on when the room drifts
+  down to 19&nbsp;°C and off when it climbs to 21&nbsp;°C. That 2-degree <strong>dead band</strong>
+  is hysteresis, and it exists for exactly our reason: without it, the thermostat would sit at
+  the threshold and cycle the furnace every few seconds as tiny drafts — thermal noise, literally —
+  wobbled the sensor across the line. Chatter, with a gas bill.</p>
+  <p>The toggle light switch on your wall makes the other half of the argument: its over-center
+  spring is mechanical positive feedback. Push it past the balance point and the spring itself
+  finishes the throw — <em>snap</em>. It cannot hover between states, which is precisely what you
+  want from anything driving a set of contacts (or a logic input).</p>
+  <p>Where the analogy fails, as they all do: the dead band isn't free — the room genuinely
+  wanders two degrees, and hysteresis likewise costs you threshold <em>precision</em>: you no
+  longer know "the" switching point, only a band. That's an engineering trade, not a flaw. And
+  real comparators have offset voltages and response-time limits that the spring picture hides;
+  the snap is fast, not instantaneous.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the threshold designer</div>
+  <div class="widget-hint">The canonical inverting Schmitt, live. R₁ is fixed at 10&nbsp;kΩ;
+  set the reference with R₂ and the hysteresis with R<sub>h</sub> (both log scales). The plot is
+  the circuit's transfer function — V<sub>out</sub> versus V<sub>in</sub> — showing the two
+  branches of the hysteresis rectangle with their travel directions. The output is assumed
+  push-pull, swinging a full 0–5&nbsp;V.</div>
+
+  <div class="viz-row">
+    <svg id="schmitt-svg" class="schematic" viewBox="0 0 400 240" width="400" height="240" role="img"
+         aria-label="Inverting Schmitt trigger: signal to the inverting input, reference divider R1 R2 plus feedback resistor Rh on the non-inverting input">
+      <!-- +5 V rail into R1 -->
+      <text x="76" y="24" class="lbl big">+5 V</text>
+      <path class="wire" d="M 110 28 L 110 36"/>
+      <path class="comp" d="M 110 36 L 110 40 L 100 44 L 120 52 L 100 60 L 120 68 L 100 76 L 120 84 L 110 88 L 110 92"/>
+      <text x="126" y="66" class="lbl">R1 10 kΩ</text>
+      <path class="wire" d="M 110 92 L 110 125 L 180 125"/>
+      <!-- R2 to ground -->
+      <path class="comp" d="M 110 125 L 110 140 L 100 144 L 120 152 L 100 160 L 120 168 L 100 176 L 120 184 L 110 188 L 110 192"/>
+      <text x="126" y="166" class="lbl" id="r2-lbl">R2 10 kΩ</text>
+      <g class="gnd">
+        <line x1="110" y1="192" x2="110" y2="200"/>
+        <line x1="100" y1="200" x2="120" y2="200"/>
+        <line x1="104" y1="205" x2="116" y2="205"/>
+        <line x1="108" y1="210" x2="112" y2="210"/>
+      </g>
+      <!-- node A -->
+      <circle cx="145" cy="125" r="4" class="node"/>
+      <text x="8" y="148" class="lbl" fill="var(--series-1)" id="vt-lbl">V₊ = 2.38 / 2.62 V</text>
+      <!-- signal into V- -->
+      <path class="wire" d="M 30 85 L 180 85"/>
+      <text x="6" y="80" class="lbl big">Vin</text>
+      <!-- comparator triangle -->
+      <path class="comp" d="M 180 65 L 180 145 L 260 105 Z"/>
+      <text x="188" y="90" class="lbl big">−</text>
+      <text x="188" y="131" class="lbl big vplus">+</text>
+      <!-- output -->
+      <path class="wire" d="M 260 105 L 340 105"/>
+      <circle cx="285" cy="105" r="4" class="node"/>
+      <text x="344" y="100" class="lbl big">Vout</text>
+      <text x="344" y="116" class="lbl">0 / 5 V</text>
+      <!-- Rh feedback: output node up, zigzag left, down into node A -->
+      <path class="wire" d="M 285 105 L 285 60"/>
+      <path class="comp" d="M 285 60 L 281 60 L 277 50 L 269 70 L 261 50 L 253 70 L 245 50 L 237 70 L 233 60 L 229 60"/>
+      <text x="234" y="40" class="lbl" id="rh-lbl">Rh 100 kΩ</text>
+      <path class="wire" d="M 229 60 L 145 60 L 145 125"/>
+    </svg>
+
+    <div style="flex:1 1 260px">
+      <div class="controls" style="flex-direction:column; gap:14px">
+        <div class="control">
+          <label for="r2-slider">R2 (reference) <span class="val"></span></label>
+          <!-- log: 10^3 .. 10^5  (1 kΩ .. 100 kΩ) -->
+          <input type="range" id="r2-slider" min="3" max="5" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="rh-slider">Rh (feedback) <span class="val"></span></label>
+          <!-- log: 10^4 .. 10^6.3  (10 kΩ .. 2 MΩ) -->
+          <input type="range" id="rh-slider" min="4" max="6.3" step="0.01" value="5">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">V upper (V<sub>T+</sub>)</div><div class="v" id="vtp-read">—</div></div>
+        <div class="readout"><div class="k">V lower (V<sub>T−</sub>)</div><div class="v" id="vtm-read">—</div></div>
+        <div class="readout"><div class="k">Hysteresis ΔV</div><div class="v" id="dv-read">—</div></div>
+      </div>
+      <p class="widget-hint" id="designer-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+  <canvas id="transfer-plot" class="hh-plot" data-height="300"></canvas>
+</div>
+
+<h2>Sizing the hysteresis</h2>
+<p>How wide should the band be? Squeeze it between two constraints:</p>
+<ul>
+  <li><strong>Wider than the noise.</strong> If peak noise is ±n, the band must exceed 2n or
+  noise alone can carry the signal across both thresholds — that's the <strong>≥&nbsp;2× peak
+  noise</strong> rule. And since bad days are noisier than average days, margin beyond the
+  minimum is cheap insurance.</li>
+  <li><strong>Narrower than the signal.</strong> The signal must actually reach both thresholds
+  or the output never switches at all. A sensor that swings 300&nbsp;mV can't drive a 400&nbsp;mV
+  band — the comparator would make one decision at power-up and retire.</li>
+</ul>
+<p>Worked numbers on the canonical circuit: suppose the signal arrives with ±50&nbsp;mV of noise.
+The rule's minimum is 2&nbsp;×&nbsp;50&nbsp;=&nbsp;100&nbsp;mV; take a comfortable 2× margin on
+top and aim for ΔV&nbsp;≈&nbsp;200&nbsp;mV. With
+R₁&nbsp;=&nbsp;R₂&nbsp;=&nbsp;10&nbsp;kΩ, R₁∥R₂&nbsp;=&nbsp;5&nbsp;kΩ and
+ΔV&nbsp;=&nbsp;5&nbsp;V&nbsp;·&nbsp;5k/(R<sub>h</sub>&nbsp;+&nbsp;5k). Solving for
+200&nbsp;mV gives R<sub>h</sub>&nbsp;=&nbsp;120&nbsp;kΩ — an E24 value, no less — and the
+thresholds land at a satisfying <strong>2.40&nbsp;V and 2.60&nbsp;V</strong> exactly
+(check: 1/R₁+1/R₂+1/R<sub>h</sub>&nbsp;=&nbsp;2.083×10⁻⁴&nbsp;S;
+5×10⁻⁴/2.083×10⁻⁴&nbsp;=&nbsp;2.400; add 5/120k&nbsp;÷&nbsp;2.083×10⁻⁴&nbsp;=&nbsp;0.200).
+Noise of ±50&nbsp;mV now has to fake a 200&nbsp;mV excursion to cause a false switch — it
+can't.</p>
+
+<h2>Open-collector outputs — bring your own pull-up</h2>
+<p>Classic comparators (the LM311, the ubiquitous LM393/LM339 family) don't have a push-pull
+output at all. The output pin is the bare collector of an internal NPN — Module 08's saturated
+switch with the collector resistor omitted on purpose. The transistor can sink current and pull
+the pin <em>low</em>, hard; when it turns off, the pin doesn't go high — it goes
+<strong>nowhere</strong>. It simply floats until <em>you</em> connect a pull-up resistor to the
+logic rail of your choice. <strong>No pull-up, no output</strong> — the number-one LM393 support
+question of all time is a perfectly fine circuit missing one 10&nbsp;kΩ resistor.</p>
+<p>Why build it this way? Two genuinely good reasons:</p>
+<ul>
+  <li><strong>Level shifting for free.</strong> The comparator can run from ±15&nbsp;V analog
+  supplies while its pull-up goes to 3.3&nbsp;V — the output swings 0–3.3&nbsp;V, perfectly
+  matched to the microcontroller reading it. The output logic level is set by the pull-up's rail,
+  not the comparator's supply.</li>
+  <li><strong>Wired-OR.</strong> Tie several open-collector outputs to one pull-up and the shared
+  line goes low if <em>any</em> comparator pulls it down — a free OR (of active-low flags) with
+  no gate. That's how a window comparator (too-high OR too-low → alarm) is built from two
+  LM393 halves and three resistors.</li>
+</ul>
+<p>One honest footnote for Schmitt duty: with an open-collector part, the "high" state reaches
+V₊ <em>through the pull-up</em>, so R<sub>p</sub> is in series with R<sub>h</sub> during half the
+cycle. Keep R<sub>p</sub>&nbsp;≪&nbsp;R<sub>h</sub> (1&nbsp;kΩ against our 100&nbsp;kΩ shifts
+V<sub>T+</sub> by about a millivolt) or fold it into the arithmetic. Rules of thumb are for
+starting, not for shipping.</p>
+
+<h2>The 555, previewed in one paragraph</h2>
+<p>Open the hood of the immortal 555 timer and you find this module twice over: a three-resistor
+divider (three equal 5&nbsp;kΩ resistors — hence, by legend, the name) pins two references at
+⅓&nbsp;V<sub>CC</sub> and ⅔&nbsp;V<sub>CC</sub>; two comparators watch the trigger and threshold
+pins against them; and their outputs set and reset a flip-flop that drives the output stage and a
+discharge transistor. The flip-flop <em>is</em> the hysteresis, made explicit as a memory
+element: the 555 is a Schmitt trigger with its two thresholds pulled a full third of the supply
+apart. Charge a capacitor between those thresholds and you have an oscillator — which is exactly
+where Module 19 picks up the story.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>No comparator without hysteresis</strong> — unless the signal is genuinely fast
+    and clean (a logic-level edge, say). Slow or noisy signals through a naked comparator
+    chatter. Always.</li>
+    <li>Size the band generously: <strong>hysteresis ≥ 2× the peak noise</strong> you expect,
+    while staying comfortably inside the signal's swing.</li>
+    <li><strong>Open-collector needs a pull-up — no pull-up, no output.</strong> Check this
+    first when a comparator "doesn't work". And keep R<sub>p</sub> small next to R<sub>h</sub>.</li>
+    <li><strong>Don't use op-amps as comparators:</strong> the compensation capacitor that makes
+    them docile in feedback makes them slow open-loop, and recovery from output saturation adds
+    microseconds of sluggish limbo per edge.</li>
+    <li><strong>Don't use comparators as op-amps:</strong> no internal compensation means a
+    comparator inside a negative-feedback loop oscillates merrily. Each part does one job.</li>
+  </ul>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the two threshold formulas. Check the box when you've worked the task and
+compared against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — battery-low indicator</label>
+  </div>
+  <p>A 12&nbsp;V lead-acid battery powers a small instrument that also has a clean 5&nbsp;V logic
+  rail and a comparator with a 2.5&nbsp;V-ish reference network. Design a monitor: an LED turns
+  <em>on</em> when the battery sags below 11.0&nbsp;V and doesn't turn off again until it
+  recovers above 11.5&nbsp;V (so it can't flicker as the load pulses). Scale the battery down
+  with a divider, build the thresholds with our canonical Schmitt, and verify the numbers
+  honestly.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Two sub-designs: a divider to bring 11–11.5&nbsp;V into comparator territory, and a
+      Schmitt whose two thresholds land on the divided values. Work backwards from the ratio the
+      battery spec demands: V<sub>T+</sub>/V<sub>T−</sub> must equal 11.5/11&nbsp;=&nbsp;23/22.
+      For our Schmitt that ratio is (from the node equation)
+      V<sub>T+</sub>/V<sub>T−</sub>&nbsp;=&nbsp;1&nbsp;+&nbsp;R₁/R<sub>h</sub> — so we need
+      R<sub>h</sub>&nbsp;=&nbsp;22·R₁. Take <strong>R₁&nbsp;=&nbsp;R₂&nbsp;=&nbsp;10&nbsp;kΩ,
+      R<sub>h</sub>&nbsp;=&nbsp;220&nbsp;kΩ</strong> (all E24). Node math:
+      ΣG&nbsp;=&nbsp;10⁻⁴+10⁻⁴+1/220k&nbsp;=&nbsp;2.045×10⁻⁴&nbsp;S, so
+      V<sub>T−</sub>&nbsp;=&nbsp;5×10⁻⁴/2.045×10⁻⁴&nbsp;=&nbsp;<strong>2.444&nbsp;V</strong> and
+      V<sub>T+</sub>&nbsp;=&nbsp;5.227×10⁻⁴/2.045×10⁻⁴&nbsp;=&nbsp;<strong>2.556&nbsp;V</strong>
+      (ΔV&nbsp;=&nbsp;111&nbsp;mV; ratio 2.556/2.444&nbsp;=&nbsp;23/22 exactly, as designed).</p>
+      <p>Now the divider ratio: k&nbsp;=&nbsp;2.444/11.0&nbsp;=&nbsp;2/9 exactly. With the lower
+      resistor 10&nbsp;kΩ, the upper must be 35&nbsp;kΩ — build it as <strong>33&nbsp;kΩ&nbsp;+&nbsp;2&nbsp;kΩ
+      in series</strong> (both E24) over <strong>10&nbsp;kΩ</strong>. Check both ends:
+      11.0&nbsp;×&nbsp;10/45&nbsp;=&nbsp;2.444&nbsp;V&nbsp;=&nbsp;V<sub>T−</sub> ✓ (LED on), and
+      11.5&nbsp;×&nbsp;10/45&nbsp;=&nbsp;2.556&nbsp;V&nbsp;=&nbsp;V<sub>T+</sub> ✓ (LED off).
+      The spec is hit <em>exactly</em> — before 1% resistor tolerance, which moves each point by
+      a couple of percent; the hysteresis ordering, though, is guaranteed by topology.</p>
+      <p>Loose ends an honest designer ties off: the divider drains 12/45k&nbsp;≈&nbsp;267&nbsp;µA
+      forever (3&nbsp;mW — negligible on a lead-acid, worth rethinking on a coin cell); the tap's
+      Thévenin impedance is 35k∥10k&nbsp;≈&nbsp;7.8&nbsp;kΩ, fine against a comparator's
+      nanoamp inputs (Module 02's 10× rule, satisfied by four orders of magnitude). LED drive:
+      the tap goes to V₋, so the output sits <em>high</em> when the battery is low — with a
+      push-pull comparator, LED&nbsp;+&nbsp;470&nbsp;Ω from output to ground gives
+      (5−2)/470&nbsp;≈&nbsp;6&nbsp;mA. With an LM393, remember the output only pulls low: either
+      re-plumb so "battery low" is the low state, or add Module 08's NPN buffer — and note that
+      whatever hangs on the output node changes the high level that R<sub>h</sub> feeds back, so
+      re-check the thresholds with the real V<sub>OH</sub>.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — a night-light that doesn't flicker</label>
+  </div>
+  <p>A photoresistor (LDR) reads roughly 5&nbsp;kΩ in daylight and hundreds of kΩ in darkness,
+  passing through ~10&nbsp;kΩ around dusk. Wire it as the top half of a divider (Module 02) with
+  10&nbsp;kΩ below, feed the tap to our canonical Schmitt (10k/10k reference, 100&nbsp;kΩ
+  feedback, thresholds 2.381/2.619&nbsp;V), and drive an LED. At what LDR resistances does the
+  light switch on and off? Why is hysteresis essential here — and what does too much of it
+  cost?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>The tap voltage is 5&nbsp;·&nbsp;10k/(R<sub>LDR</sub>&nbsp;+&nbsp;10k): high in daylight
+      (LDR small), falling as night comes. Tap to V₋ means the output goes high — LED on — when
+      the tap drops below a threshold. Falling tap trips at V<sub>T−</sub>&nbsp;=&nbsp;2.381&nbsp;V:
+      solve 5·10k/(R+10k)&nbsp;=&nbsp;2.381 → R&nbsp;=&nbsp;<strong>21.0k&nbsp;−&nbsp;10k&nbsp;=&nbsp;11.0&nbsp;kΩ</strong>.
+      Light turns <em>off</em> next morning when the rising tap crosses
+      V<sub>T+</sub>&nbsp;=&nbsp;2.619&nbsp;V → R&nbsp;=&nbsp;19.09k&nbsp;−&nbsp;10k&nbsp;=&nbsp;<strong>9.09&nbsp;kΩ</strong>.
+      So: on when the LDR darkens past 11&nbsp;kΩ, off only after it brightens past
+      9.1&nbsp;kΩ.</p>
+      <p>Why it matters: dusk is the <em>slowest</em> signal in this module — the tap crawls
+      through the threshold over many minutes while clouds, headlights and the LED's own glow
+      (optical feedback! mount it away from the sensor) add noise. A naked comparator would
+      flicker for half an hour. The ~240&nbsp;mV band means the ambient light must change by a
+      solid, deliberate amount to reverse the decision.</p>
+      <p>The trade: hysteresis here <em>is</em> annoyance, in lux. Too wide a band and the lamp
+      ignores real twilight — on absurdly late, off absurdly late — exactly the thermostat's
+      comfort-versus-cycling bargain. Size it to straddle the flicker sources (minutes of cloud
+      noise), not the phenomenon (the day/night swing). If flicker persists, an RC low-pass on
+      the tap (Module 03) slows the noise before the decision — filtering and hysteresis stack
+      politely.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — zero-crossing detector</label>
+  </div>
+  <p>A function generator's 1&nbsp;kHz, 5&nbsp;V<sub>pp</sub> sine must become a square wave
+  marking each zero crossing. Why should the comparator get minimal — but not zero — hysteresis?
+  Estimate the timing error a 50&nbsp;mV hysteresis band introduces at the crossings, and express
+  it as a fraction of the period.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Zero, because timing accuracy is the whole product: every millivolt of threshold offset
+      shifts the reported crossing. Not zero, because a generator output still carries a few
+      millivolts of noise and the sine spends its steepest-but-still-finite time near zero — a
+      naked comparator would double-trigger. So: the smallest band that clears the noise,
+      per the 2× rule. (This is the one case the rule panel concedes: a truly fast, clean signal
+      can go without.)</p>
+      <p>Timing error. The sine is v(t)&nbsp;=&nbsp;2.5&nbsp;·&nbsp;sin(2πft) volts
+      (5&nbsp;V<sub>pp</sub> → 2.5&nbsp;V amplitude), and its slope at a zero crossing is the
+      steepest it ever gets: dv/dt&nbsp;=&nbsp;2π·f·A&nbsp;=&nbsp;2π&nbsp;×&nbsp;1000&nbsp;×&nbsp;2.5&nbsp;≈&nbsp;15,700&nbsp;V/s.
+      The two thresholds sit 50&nbsp;mV apart, so the rising and falling switch points are
+      separated in voltage by ΔV and in time by</p>
+      <p style="text-align:center">dt&nbsp;=&nbsp;ΔV&nbsp;/&nbsp;(dv/dt)&nbsp;=&nbsp;0.05&nbsp;/&nbsp;15,708&nbsp;≈&nbsp;<strong>3.2&nbsp;µs</strong></p>
+      <p>— or ±1.6&nbsp;µs per edge if the band is centered on zero. Against the 1&nbsp;ms
+      period that's 0.32% of a cycle, about 1.1° of phase (0.57° per edge, centered).
+      Whether that's negligible or fatal depends entirely on the job — timestamping mains cycles,
+      fine; phase-measuring instrument, budget for it or shrink ΔV toward the noise floor. Note
+      the scaling: dt&nbsp;∝&nbsp;ΔV/(f·A), so slower or smaller signals hurt more — which is
+      exactly why the chatter lab's lazy 1&nbsp;Hz sine was such easy prey.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="15-opamp-toolbox.html"><span class="dir">Previous</span><span class="name">15 · The Op-Amp Toolbox</span></a>
+  <a href="17-active-filters.html"><span class="dir">Next</span><span class="name">17 · Active Filters</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("16");
+
+  function par(a, b) { return (a * b) / (a + b); }
+
+  /* ============================================================
+     Widget 1 — the chatter lab
+     Slow sine + frozen pseudo-random noise into a comparator /
+     Schmitt; count output transitions honestly from the samples.
+     ============================================================ */
+
+  /* Seeded LCG (numerical-recipes constants) so the noise sequence is
+     identical on every redraw — slider comparisons stay honest. */
+  function lcg(seed) {
+    var s = seed >>> 0;
+    return function () {
+      s = (Math.imul(1664525, s) + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+
+  var N = 900;
+  var noiseSeq = (function () {
+    var rnd = lcg(0xC0FFEE);
+    var seq = new Array(N);
+    for (var i = 0; i < N; i++) seq[i] = 2 * rnd() - 1;  /* uniform in [-1, 1] */
+    return seq;
+  })();
+
+  var chat = { noise: 0.06, hyst: 0 };      /* volts */
+  var CENTER = 2.5, AMP = 1.0;
+  var OUT_LO = -1.6, OUT_HI = -0.3;         /* plot band for the output trace */
+
+  var transRead = document.getElementById("trans-read");
+  var chatUpRead = document.getElementById("chat-up-read");
+  var chatDnRead = document.getElementById("chat-dn-read");
+  var chatterVerdict = document.getElementById("chatter-verdict");
+
+  /* simulate once per update; cache for hover readouts */
+  var sim = { vin: [], out: [], transitions: 0, up: CENTER, dn: CENTER };
+
+  function runSim() {
+    var up = CENTER + chat.hyst / 2;
+    var dn = CENTER - chat.hyst / 2;
+    var vin = new Array(N), out = new Array(N);
+    var state = false;                       /* start low: sine starts at its trough */
+    var transitions = 0;
+    for (var i = 0; i < N; i++) {
+      var t = i / (N - 1);                   /* one 1 s cycle across the plot */
+      var v = CENTER + AMP * Math.sin(2 * Math.PI * t - Math.PI / 2) + chat.noise * noiseSeq[i];
+      vin[i] = v;
+      if (!state && v > up) { state = true; transitions++; }
+      else if (state && v < dn) { state = false; transitions++; }
+      out[i] = state;
+    }
+    sim = { vin: vin, out: out, transitions: transitions, up: up, dn: dn };
+  }
+
+  var chatterPlot = HH.plot(document.getElementById("chatter-plot"), {
+    xlabel: "time (s) — one cycle of a 1 Hz signal",
+    ylabel: "input volts · output state",
+    xmin: 0, xmax: 1, ymin: -2.2, ymax: 4.2,
+    xticks: [0, 0.25, 0.5, 0.75, 1],
+    yticks: [OUT_LO, OUT_HI, 1, 2, 3, 4],
+    xfmt: function (v) { return v.toFixed(2); },
+    yfmt: function (v) {
+      if (v === OUT_LO) return "low";
+      if (v === OUT_HI) return "high";
+      return String(v);
+    },
+    hover: function (x) {
+      var i = Math.max(0, Math.min(N - 1, Math.round(x * (N - 1))));
+      return [
+        { text: "t = " + x.toFixed(3) + " s" },
+        { color: "--muted", text: "Vin = " + sim.vin[i].toFixed(3) + " V" },
+        { color: "--series-1", text: "output: " + (sim.out[i] ? "high" : "low") }
+      ];
+    }
+  });
+
+  function drawChatter() {
+    runSim();
+    var inPts = [], outPts = [];
+    for (var i = 0; i < N; i++) {
+      var t = i / (N - 1);
+      inPts.push([t, sim.vin[i]]);
+      outPts.push([t, sim.out[i] ? OUT_HI : OUT_LO]);
+    }
+    var series = [
+      { pts: inPts, color: "--muted", width: 1.5 },
+      { pts: outPts, color: "--series-1", width: 2.5 }
+    ];
+    if (chat.hyst > 0) {
+      series.push({ pts: [[0, sim.up], [1, sim.up]], color: "--series-4", width: 1.5, dash: [5, 4] });
+      series.push({ pts: [[0, sim.dn], [1, sim.dn]], color: "--series-4", width: 1.5, dash: [5, 4] });
+    } else {
+      series.push({ pts: [[0, CENTER], [1, CENTER]], color: "--series-4", width: 1.5, dash: [5, 4] });
+    }
+    chatterPlot.draw(series);
+
+    transRead.textContent = String(sim.transitions);
+    transRead.style.color = sim.transitions > 2 ? "var(--critical)" : "var(--good-text)";
+    chatUpRead.textContent = sim.up.toFixed(2) + " V";
+    chatDnRead.textContent = sim.dn.toFixed(2) + " V";
+
+    if (sim.transitions <= 2) {
+      chatterVerdict.textContent = "Clean: one decisive edge per crossing. " +
+        (chat.hyst === 0
+          ? "With zero noise even a naked comparator behaves — real signals are never this polite."
+          : chat.hyst >= 2 * chat.noise
+            ? "The " + Math.round(chat.hyst * 1000) + " mV band meets the 2× rule's minimum of " +
+              Math.round(2 * chat.noise * 1000) + " mV for this noise."
+            : "The " + Math.round(chat.hyst * 1000) + " mV band is below the 2× rule's " +
+              Math.round(2 * chat.noise * 1000) + " mV minimum — clean this time, but don't ship luck.");
+      chatterVerdict.style.color = "var(--muted)";
+    } else {
+      chatterVerdict.innerHTML = "⚠️ Chattering: " + sim.transitions +
+        " transitions where there should be 2. Every extra pair is a false edge into whatever " +
+        "this output drives. The 2× rule wants at least " + Math.round(2 * chat.noise * 1000) +
+        " mV of hysteresis for ±" + Math.round(chat.noise * 1000) + " mV noise — plus margin.";
+      chatterVerdict.style.color = "var(--critical)";
+    }
+  }
+
+  HH.slider("noise-slider", {
+    format: function (v) { return "±" + Math.round(v) + " mV"; },
+    onchange: function (v) { chat.noise = v / 1000; drawChatter(); }
+  });
+  HH.slider("hyst-slider", {
+    format: function (v) { return Math.round(v) + " mV"; },
+    onchange: function (v) { chat.hyst = v / 1000; drawChatter(); }
+  });
+
+  /* ============================================================
+     Widget 2 — the threshold designer
+     Canonical inverting Schmitt: R1 fixed 10k from +5 V, R2 to
+     ground, Rh from a 0/5 V push-pull output back to V+.
+     ============================================================ */
+
+  var des = { R1: 10000, R2: 10000, Rh: 100000, Vcc: 5 };
+
+  var vtpRead = document.getElementById("vtp-read");
+  var vtmRead = document.getElementById("vtm-read");
+  var dvRead = document.getElementById("dv-read");
+  var designerNote = document.getElementById("designer-note");
+  var r2Lbl = document.getElementById("r2-lbl");
+  var rhLbl = document.getElementById("rh-lbl");
+  var vtLbl = document.getElementById("vt-lbl");
+
+  /* Thresholds two ways — direct node solve (used for display) and
+     superposition (cross-check; they agree to floating-point). */
+  function thresholds() {
+    var G1 = 1 / des.R1, G2 = 1 / des.R2, Gh = 1 / des.Rh;
+    var S = G1 + G2 + Gh;
+    var lo = des.Vcc * G1 / S;                       /* output at 0 V */
+    var hi = (des.Vcc * G1 + des.Vcc * Gh) / S;      /* output at Vcc */
+    var loSup = des.Vcc * par(des.R2, des.Rh) / (des.R1 + par(des.R2, des.Rh));
+    var hiSup = loSup + des.Vcc * par(des.R1, des.R2) / (des.Rh + par(des.R1, des.R2));
+    /* verified: both derivations must agree */
+    if (Math.abs(lo - loSup) > 1e-9 || Math.abs(hi - hiSup) > 1e-9) {
+      throw new Error("threshold derivations disagree");
+    }
+    return { lo: lo, hi: hi, dv: hi - lo };
+  }
+
+  var transferPlot = HH.plot(document.getElementById("transfer-plot"), {
+    xlabel: "Vin (V) — signal at the inverting input",
+    ylabel: "Vout (V)",
+    xmin: 0, xmax: 5, ymin: -0.4, ymax: 5.6,
+    xticks: [0, 1, 2, 3, 4, 5],
+    yticks: [0, 1, 2, 3, 4, 5],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var t = thresholds();
+      var stateTxt;
+      if (x < t.lo) stateTxt = "output high (either history)";
+      else if (x > t.hi) stateTxt = "output low (either history)";
+      else stateTxt = "inside the band: output keeps its last state";
+      return [
+        { text: "Vin = " + x.toFixed(2) + " V" },
+        { color: "--series-1", text: stateTxt }
+      ];
+    }
+  });
+
+  /* small arrowheads drawn as extra line series, in data coordinates */
+  function arrowRight(x, y) { return { pts: [[x - 0.13, y + 0.22], [x, y], [x - 0.13, y - 0.22]], color: "--series-1", width: 2 }; }
+  function arrowLeft(x, y)  { return { pts: [[x + 0.13, y + 0.22], [x, y], [x + 0.13, y - 0.22]], color: "--series-2", width: 2 }; }
+  function arrowDown(x, y)  { return { pts: [[x - 0.09, y + 0.3], [x, y], [x + 0.09, y + 0.3]], color: "--series-1", width: 2 }; }
+  function arrowUp(x, y)    { return { pts: [[x - 0.09, y - 0.3], [x, y], [x + 0.09, y - 0.3]], color: "--series-2", width: 2 }; }
+
+  function drawDesigner() {
+    var t = thresholds();
+
+    vtpRead.innerHTML = t.hi.toFixed(3) + "<small> V</small>";
+    vtmRead.innerHTML = t.lo.toFixed(3) + "<small> V</small>";
+    dvRead.innerHTML = HH.fmt(t.dv, "V");
+
+    r2Lbl.textContent = "R2 " + HH.fmt(des.R2, "Ω");
+    rhLbl.textContent = "Rh " + HH.fmt(des.Rh, "Ω");
+    vtLbl.textContent = "V₊ = " + t.lo.toFixed(2) + " / " + t.hi.toFixed(2) + " V";
+
+    designerNote.textContent =
+      "Rising input (blue branch) trips down at " + t.hi.toFixed(3) +
+      " V; falling input (green branch) trips up at " + t.lo.toFixed(3) +
+      " V. Center " + ((t.hi + t.lo) / 2).toFixed(3) + " V, band " +
+      HH.fmt(t.dv, "V") + " — noise below ±" + HH.fmt(t.dv / 2, "V") + " peak cannot fake a switch.";
+
+    transferPlot.draw([
+      /* rising-input branch: output high until Vin exceeds VT+, then drops */
+      { pts: [[0, 5], [t.hi, 5], [t.hi, 0]], color: "--series-1", width: 2.5 },
+      /* falling-input branch: output low until Vin drops below VT-, then rises */
+      { pts: [[5, 0], [t.lo, 0], [t.lo, 5]], color: "--series-2", width: 2.5 },
+      arrowRight(Math.max(0.3, t.hi / 2), 5),
+      arrowDown(t.hi, 2.2),
+      arrowLeft(Math.min(4.7, (5 + t.lo) / 2), 0),
+      arrowUp(t.lo, 3.2)
+    ]);
+  }
+
+  HH.slider("r2-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { des.R2 = r; drawDesigner(); }
+  });
+  HH.slider("rh-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { des.Rh = r; drawDesigner(); }
+  });
+
+  drawChatter();
+  drawDesigner();
+
+  /* ============================================================
+     Quiz
+     ============================================================ */
+  HH.quiz("quiz", [
+    {
+      q: "The same op-amp symbol appears in an amplifier schematic and a comparator schematic. What actually distinguishes the two uses?",
+      opts: [
+        "The comparator runs from a single supply, the amplifier from split supplies",
+        "The amplifier closes a negative-feedback loop; the comparator runs open-loop (or with positive feedback)",
+        "The comparator uses much higher resistor values",
+        "Nothing — they are electrically identical circuits"
+      ],
+      answer: 1,
+      expl: "Feedback sign is everything. Negative feedback tames the huge open-loop gain into precise linear behavior (Modules 14–15). Remove the loop and the same gain slams the output rail-to-rail on microvolts — a comparator. Add <em>positive</em> feedback and you get a Schmitt trigger. Supplies and resistor values are incidental."
+    },
+    {
+      q: "Why does a naked (no-hysteresis) comparator \"chatter\" on a slowly rising signal?",
+      opts: [
+        "The comparator's gain is too low to decide firmly",
+        "Slow signals overheat the output stage",
+        "Noise riding on the signal re-crosses the single threshold many times while the trend crawls through it",
+        "The output impedance rises near the threshold"
+      ],
+      answer: 2,
+      expl: "Near the threshold, signal + noise crosses the line over and over until the slow trend finally carries it clear — and each microvolt crossing is a full output transition. The slower the signal, the longer it loiters in the noise band and the worse the buzz. The comparator is doing its job perfectly; the job was specified wrong."
+    },
+    {
+      q: "A comparator reference comes from a divider: 5 V through 27 kΩ on top, 33 kΩ to ground below. Where's the threshold?",
+      opts: ["2.25 V", "2.5 V", "2.75 V", "4.1 V"],
+      answer: 2,
+      expl: "Module 02's equation: V = 5 × 33/(27+33) = 5 × 0.55 = 2.75 V. Sanity check: the bottom resistor is the bigger of the pair, so the tap sits above half the rail."
+    },
+    {
+      q: "A Schmitt trigger switches at 2.7 V on the way up and 2.3 V on the way down. How much hysteresis, and how much peak noise survives without false switching?",
+      opts: [
+        "400 mV of hysteresis; noise under ±200 mV peak is rejected",
+        "400 mV of hysteresis; noise under ±400 mV peak is rejected",
+        "200 mV of hysteresis; noise under ±100 mV peak is rejected",
+        "2.5 V of hysteresis; almost any noise is rejected"
+      ],
+      answer: 0,
+      expl: "ΔV = 2.7 − 2.3 = 400 mV. Once switched, the signal sits at one threshold and the other is 400 mV away — so noise must exceed ±200 mV about the trip point (400 mV peak-to-peak) to fake a reversal. Hence the rule: hysteresis ≥ 2× the expected peak noise, with margin."
+    },
+    {
+      q: "An LM393's output pin is wired straight to a microcontroller input, nothing else. The input reads low forever, regardless of the comparator inputs. Most likely cause?",
+      opts: [
+        "The comparator is damaged",
+        "No pull-up resistor: an open-collector output can pull low but can only float, never drive high",
+        "The microcontroller input impedance is too high",
+        "The reference divider is loading the output"
+      ],
+      answer: 1,
+      expl: "The LM393's output is a bare NPN collector — Module 08's saturated switch with no collector resistor. It sinks current fine (reads low) but \"high\" is just… disconnected, which most logic inputs read as stuck or floating. One pull-up resistor to the logic rail fixes it. No pull-up, no output."
+    },
+    {
+      q: "In this module's inverting Schmitt trigger, where does the input signal connect?",
+      opts: [
+        "To the non-inverting (+) input, alongside Rh",
+        "To the inverting (−) input; the reference divider and feedback resistor own the (+) input",
+        "To both inputs through equal resistors",
+        "To the output through Rh"
+      ],
+      answer: 1,
+      expl: "The feedback must return to the <em>non-inverting</em> input to be positive (regenerative), so that node is reserved for the reference network plus Rh — and the signal takes the inverting input. That's what makes it \"inverting\": signal below threshold → V₊ > V₋ → output high."
+    },
+    {
+      q: "Why does a Schmitt trigger's output snap between states quickly even when the input crawls?",
+      opts: [
+        "The comparator's slew rate increases near threshold",
+        "Hysteresis stores energy in Rh and releases it during the transition",
+        "The transition is regenerative: the moving output shifts the threshold away from the signal, increasing overdrive, which drives the output harder still",
+        "The input capacitance differentiates the signal"
+      ],
+      answer: 2,
+      expl: "Positive feedback in action: the instant the output starts to move, it drags V₊ away from the signal through Rh, growing the input difference, accelerating the output — an avalanche that completes at the comparator's full speed regardless of how slowly the input arrived at the threshold. Negative feedback resists change; positive feedback commits to it."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
