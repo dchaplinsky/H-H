@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>14 · Op-Amp Golden Rules — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part III · Module 14</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Op-Amp Golden Rules</h1>
+  <p class="subtitle">A million-fold amplifier that is useless by itself — until negative feedback
+  tames it into exactly the circuit you asked for. Two rules replace two chapters of transistor
+  arithmetic. <em>AoE 3rd ed. §4.1–4.2.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Modules 08–11 were an apprenticeship in transistor honesty: every follower cost you 0.6&nbsp;V,
+every common-emitter stage drifted with temperature, every bias network was a negotiation. Then
+Module&nbsp;11 showed the endgame — a differential pair at the front, current mirrors passing bias
+around, a push-pull stage at the output. Put those blocks on one die, crank the gain to something
+absurd, and sell it for pennies: that is an <strong>op-amp</strong>, the perfected transistor
+circuit. It opens Part III because from here on you mostly stop building amplifiers out of
+transistors and start building <em>systems</em> out of op-amps.</p>
+<p>The magic ingredient is not the gain — it's what <strong>negative feedback</strong> does with
+it. Left open-loop, a gain of 10⁶ turns a 20&nbsp;µV thermal wobble into a rail-slammed output:
+useless. Close the loop through two resistors and that same ferocious gain spends itself enforcing
+a simple contract, and the circuit's behavior is set by the <em>resistors</em> — parts you can buy
+to 0.1% — not by the transistors inside. Two "golden rules" capture the whole contract, and with
+them you can read or design op-amp circuits in your head, no Ebers–Moll required.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — what's inside the triangle</span>
+  <p>Every op-amp is Module&nbsp;11 in a package: a <strong>differential pair</strong> at the
+  inputs (often with a mirror as its active load), so the device responds to the
+  <em>difference</em> V₊&nbsp;−&nbsp;V₋ and rejects common-mode garbage; a high-gain
+  <strong>voltage-gain stage</strong> in the middle; and a <strong>push-pull follower</strong>
+  muscling the output. Multiply the stage gains and the open-loop gain
+  A<sub>OL</sub> lands somewhere between 10⁵ and 10⁷ (100–140&nbsp;dB) — deliberately huge,
+  deliberately imprecise. The datasheet won't even pin it down; it varies part to part and with
+  temperature, and the designers don't care. Why not?</p>
+  <p>Because the gain isn't meant to be <em>used</em> — it's meant to be <em>spent</em>. Feed a
+  fraction of the output back to the inverting input and the amplifier now amplifies its own
+  <em>error</em>: any difference between its two inputs gets multiplied by 10⁶ and thrown at the
+  output <em>with a sign that reduces that difference</em>. The output slews until the error is
+  essentially zero — with A<sub>OL</sub>&nbsp;=&nbsp;2×10⁵, a 10&nbsp;V output needs only
+  50&nbsp;µV between the inputs. This is Horowitz &amp; Hill's central idea, and the rest of the
+  book is variations on it: <strong>an amplifier with enough gain, wrapped in negative feedback,
+  becomes whatever the feedback network says it is.</strong> The bigger the raw gain, the more
+  perfectly the closed-loop circuit obeys the resistors — which is why "absurdly huge and vague"
+  is exactly the right specification.</p>
+</div>
+
+<h2>The golden rules</h2>
+<p>H&amp;H compress the entire ideal-op-amp theory into two statements. Everything in this module
+— and most of Part III — is these two rules plus Ohm's law.</p>
+
+<div class="panel rule">
+  <span class="panel-label">The golden rules</span>
+  <ul>
+    <li><strong>I. The inputs draw no current.</strong></li>
+    <li><strong>II. With negative feedback, the output does whatever is necessary to make the
+    voltage difference between the two inputs zero.</strong></li>
+  </ul>
+</div>
+
+<p><strong>Rule I</strong> is a statement about the input stage: the diff pair's bases (or FET
+gates, in FET-input parts) sip nanoamps or picoamps — a million times less than the milliamps
+flowing in the surrounding resistors. Treat the inputs as perfect voltmeter probes: they
+<em>observe</em> a node without disturbing it. (The fine print — the nanoamps are not exactly zero
+and become the dominant error above roughly a megohm — is Module&nbsp;18's problem.)</p>
+<p><strong>Rule II</strong> is the feedback contract, and it is the one people misquote. The
+op-amp does not "have" equal inputs the way a wire has equal ends — it <em>drives its output</em>,
+through whatever network you connected, until the inputs are forced equal. Read it honestly and
+the preconditions jump out: there must <em>be</em> a feedback path, the feedback must be
+<em>negative</em> (output coupled back to the − input), and the output must actually be able to do
+"whatever is necessary" — it can't swing past its supply rails or source unlimited current. Break
+any of these and rule II is off; the op-amp reverts to what it really is, a differential amplifier
+with gain 10⁶, and slams into a rail. We'll break the rules deliberately below.</p>
+
+<h2>The follower — feedback at its simplest</h2>
+<p>Wire the output straight back to the − input and feed the signal into +. Apply rule II: the
+output must make V₋ equal V₊ — and V₋ <em>is</em> the output. So
+V<sub>out</sub>&nbsp;=&nbsp;V<sub>in</sub>, exactly. That's the whole derivation.</p>
+<div class="formula">
+  V<sub>out</sub> = V<sub>in</sub> &nbsp;&nbsp; (gain = 1)
+  <small>the op-amp follower: 100% feedback, the strongest contract the loop can enforce</small>
+</div>
+<p>Compare Module&nbsp;09's emitter follower: that one dropped 0.6&nbsp;V (and drifted
+−2&nbsp;mV/°C), sourced current better than it sank it, and showed the load an output impedance of
+r<sub>e</sub> — a few tens of ohms. The op-amp follower is the same idea <em>perfected by
+feedback</em>: no V<sub>BE</sub> offset (the loop cancels the output stage's drops — they're
+inside the loop, so the op-amp simply drives past them), input impedance in the gigohms (rule I),
+and an output impedance of the open-loop Z<sub>out</sub> <em>divided by the loop gain</em> — tens
+of ohms knocked down to milliohms. It's the ultimate buffer: Module&nbsp;02's "10× rule" for
+connecting circuits stops being a compromise and becomes a formality.</p>
+
+<h2>The inverting amplifier</h2>
+<p>Now the classic. Ground the + input. Feed the signal through R₁ into the − input, and connect
+R<sub>f</sub> from the − input to the output. Derive everything from the golden rules,
+step by step:</p>
+<ol>
+  <li><strong>Rule II:</strong> the + input sits at 0&nbsp;V, so the output drives the − input to
+  0&nbsp;V too. The − node sits at ground potential <em>without being connected to ground</em>.</li>
+  <li><strong>Ohm's law on R₁:</strong> the input side sees V<sub>in</sub> across R₁ (one end at
+  V<sub>in</sub>, the other pinned at 0), so a current
+  I&nbsp;=&nbsp;V<sub>in</sub>/R₁ flows toward the − node.</li>
+  <li><strong>Rule I:</strong> none of that current can enter the op-amp. It has exactly one
+  escape route: through R<sub>f</sub>.</li>
+  <li><strong>Ohm's law on R<sub>f</sub>:</strong> pushing I through R<sub>f</sub> from a 0&nbsp;V
+  node means the far end must sit at
+  V<sub>out</sub>&nbsp;=&nbsp;0&nbsp;−&nbsp;I·R<sub>f</sub>&nbsp;=&nbsp;−V<sub>in</sub>·R<sub>f</sub>/R₁.</li>
+</ol>
+<div class="formula">
+  G = −R<sub>f</sub> / R₁ &nbsp;&nbsp;&nbsp; Z<sub>in</sub> = R₁
+  <small>10&nbsp;k in, 100&nbsp;k back → gain −10; the minus sign means the output mirrors the input upside-down</small>
+</div>
+<p>Concrete numbers, worth doing once by hand: R₁&nbsp;=&nbsp;10&nbsp;k, R<sub>f</sub>&nbsp;=&nbsp;100&nbsp;k,
+V<sub>in</sub>&nbsp;=&nbsp;+1&nbsp;V. Current in: 1&nbsp;V&nbsp;/&nbsp;10&nbsp;k =
+100&nbsp;µA. That 100&nbsp;µA continues through the 100&nbsp;k, dropping 10&nbsp;V — so the output
+sits at −10&nbsp;V. Gain −10, and every volt of it is set by a resistor ratio.</p>
+
+<h3>The virtual ground — a place, not a wire</h3>
+<p>The − node deserves its own name: the <strong>virtual ground</strong>. It sits at 0&nbsp;V, yet
+no wire ties it there — the op-amp's output, acting through R<sub>f</sub>, holds it at zero by
+continuous active effort, the way a hovering drone "sits" at a fixed altitude. Two consequences.
+First, the input source only ever sees R₁ to a 0&nbsp;V node, so
+<strong>Z<sub>in</sub>&nbsp;=&nbsp;R₁, period</strong> — that is the inverting amplifier's hidden
+cost. A gain of −100 with a 1&nbsp;MΩ input impedance would need R<sub>f</sub>&nbsp;=&nbsp;100&nbsp;MΩ;
+you can't have both. Second, the virtual ground is a <em>current-summing point</em>: several input
+resistors can all dump current into it and the currents simply add through R<sub>f</sub>, with no
+interaction between sources — the summing amplifier, coming in Module&nbsp;15, falls out for free.
+And a diagnostic gift: probe the − pin of any working inverting stage and you should read
+millivolts. If you read anything else, rule II has failed and the stage is broken — see below.</p>
+
+<h2>The non-inverting amplifier</h2>
+<p>Move the signal to the + input, and feed back a <em>fraction</em> of the output: R<sub>f</sub>
+from output to the − input, R<sub>g</sub> from the − input to ground — a plain Module&nbsp;02
+voltage divider hanging off the output. Rule I says the − input doesn't load the divider, so
+V₋&nbsp;=&nbsp;V<sub>out</sub>·R<sub>g</sub>/(R<sub>g</sub>+R<sub>f</sub>). Rule II says the
+output makes V₋&nbsp;=&nbsp;V<sub>in</sub>. Set them equal and solve:</p>
+<div class="formula">
+  G = 1 + R<sub>f</sub> / R<sub>g</sub>
+  <small>the output is V<sub>in</sub> "un-divided": whatever the divider keeps, the loop makes up — gain ≥ 1 always</small>
+</div>
+<p>With R<sub>g</sub>&nbsp;=&nbsp;10&nbsp;k and R<sub>f</sub>&nbsp;=&nbsp;100&nbsp;k the divider
+returns 1/11 of the output, so the output must be 11× the input: gain +11, no inversion. Notice
+the shape of the argument — the feedback divider <em>reports</em> a scaled-down copy of the
+output, and the op-amp raises the output until the report matches the input. Divide by eleven,
+multiply by eleven.</p>
+<p>The win over the inverting topology: the signal now enters the op-amp's <em>input pin</em>
+directly, and by rule I that pin draws (essentially) nothing. <strong>Input impedance: gigohms</strong>
+— hundreds of megohms even for bipolar parts, teraohms for FET-input ones — instead of R₁'s few
+kilohms. When the source is feeble (a high-impedance sensor, a long probe, Module&nbsp;02's
+divider that mustn't be loaded), non-inverting is the only respectful choice. The price: no
+virtual ground, no free summing node, gain can never dip below 1 — set
+R<sub>f</sub>&nbsp;=&nbsp;0 (or R<sub>g</sub>&nbsp;=&nbsp;∞) and you're back to the follower,
+which is exactly the limiting case G&nbsp;=&nbsp;1.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the two amplifiers</div>
+  <div class="widget-hint">Toggle the topology, then drag the resistors and the input. Watch the
+  golden rules do the work: in inverting mode the V₋ label pins itself to 0.000&nbsp;V (virtual
+  ground) — until you demand an output beyond the ±12&nbsp;V rails and rule II breaks. The same
+  current readout flows through the whole feedback path in both modes (rule I: none of it enters
+  the op-amp).</div>
+
+  <div style="display:flex; gap:10px; margin:0 0 12px; flex-wrap:wrap">
+    <button class="btn" id="w1-inv-btn">Inverting</button>
+    <button class="btn ghost" id="w1-non-btn">Non-inverting</button>
+  </div>
+
+  <div class="viz-row">
+    <svg id="w1-sch" class="schematic" viewBox="0 0 430 245" width="430" height="245" role="img"
+         aria-label="Op-amp amplifier schematic, switchable between inverting and non-inverting topologies">
+      <!-- ============ inverting topology ============ -->
+      <g id="w1-inv">
+        <!-- Vin, R1, into virtual-ground node -->
+        <circle cx="40" cy="99" r="3.2" class="node"/>
+        <text x="14" y="86" class="lbl big">V<tspan dy="3" font-size="11">in</tspan></text>
+        <path class="wire" d="M 40 99 L 78 99"/>
+        <path class="comp" d="M 78 99 l 10 0 l 5 -9 l 10 18 l 10 -18 l 10 18 l 10 -18 l 5 9 l 10 0"/>
+        <text x="113" y="78" class="lbl" text-anchor="middle" id="w1i-r1">R₁ = 10 kΩ</text>
+        <path class="wire" d="M 148 99 L 226 99"/>
+        <!-- virtual ground node -->
+        <circle cx="186" cy="99" r="4" fill="var(--series-7)" stroke="none"/>
+        <text x="150" y="124" class="lbl" text-anchor="end" fill="var(--series-7)" id="w1i-vg">V− = 0.000 V</text>
+        <text x="150" y="140" class="lbl" text-anchor="end" fill="var(--series-7)" font-size="11" id="w1i-vgname">virtual ground</text>
+        <!-- Rf over the top -->
+        <path class="wire" d="M 186 99 L 186 40 L 216 40"/>
+        <path class="comp" d="M 216 40 l 10 0 l 5 -9 l 10 18 l 10 -18 l 10 18 l 10 -18 l 5 9 l 10 0"/>
+        <text x="251" y="20" class="lbl" text-anchor="middle" id="w1i-rf">Rf = 100 kΩ</text>
+        <path class="wire" d="M 286 40 L 322 40 L 322 110"/>
+        <!-- op-amp triangle (Module 07 symbol style) -->
+        <path class="comp" d="M 226 86 L 226 134 L 300 110 Z"/>
+        <text x="231" y="104" class="lbl">−</text>
+        <text x="231" y="126" class="lbl">+</text>
+        <text x="240" y="153" class="lbl" font-size="11">±12 V supplies</text>
+        <!-- + input to ground -->
+        <path class="wire" d="M 226 121 L 208 121 L 208 142"/>
+        <path class="gnd" d="M 208 142 L 208 148 M 198 148 L 218 148 M 202 153 L 214 153 M 206 158 L 210 158"/>
+        <!-- output -->
+        <path class="wire" d="M 300 110 L 356 110"/>
+        <circle cx="322" cy="110" r="3.2" class="node"/>
+        <circle cx="356" cy="110" r="3.2" class="node"/>
+        <text x="364" y="102" class="lbl big">V<tspan dy="3" font-size="11">out</tspan></text>
+        <text x="364" y="122" class="lbl" id="w1i-vout">0.00 V</text>
+      </g>
+      <!-- ============ non-inverting topology ============ -->
+      <g id="w1-non" style="display:none">
+        <!-- Vin straight into + (drawn on top here, as is conventional) -->
+        <circle cx="40" cy="99" r="3.2" class="node"/>
+        <text x="14" y="86" class="lbl big">V<tspan dy="3" font-size="11">in</tspan></text>
+        <path class="wire" d="M 40 99 L 226 99"/>
+        <!-- feedback node on the − input (bottom) -->
+        <path class="wire" d="M 226 121 L 186 121"/>
+        <circle cx="186" cy="121" r="3.2" class="node"/>
+        <!-- Rg down to ground -->
+        <path class="wire" d="M 186 121 L 186 138"/>
+        <path class="comp" d="M 186 138 l 0 4 l -8 4 l 16 8 l -16 8 l 16 8 l -16 8 l 16 8 l -8 4 l 0 4"/>
+        <text x="200" y="172" class="lbl" id="w1n-rg">Rg = 10 kΩ</text>
+        <path class="wire" d="M 186 194 L 186 206"/>
+        <path class="gnd" d="M 186 206 L 186 212 M 176 212 L 196 212 M 180 217 L 192 217 M 184 222 L 188 222"/>
+        <!-- Rf over the top (crossing Vin wire at x=170: no dot, no connection) -->
+        <path class="wire" d="M 186 121 L 170 121 L 170 40 L 216 40"/>
+        <path class="comp" d="M 216 40 l 10 0 l 5 -9 l 10 18 l 10 -18 l 10 18 l 10 -18 l 5 9 l 10 0"/>
+        <text x="251" y="20" class="lbl" text-anchor="middle" id="w1n-rf">Rf = 100 kΩ</text>
+        <path class="wire" d="M 286 40 L 322 40 L 322 110"/>
+        <!-- op-amp triangle: + on top this time -->
+        <path class="comp" d="M 226 86 L 226 134 L 300 110 Z"/>
+        <text x="231" y="104" class="lbl">+</text>
+        <text x="231" y="126" class="lbl">−</text>
+        <text x="240" y="153" class="lbl" font-size="11">±12 V supplies</text>
+        <!-- output -->
+        <path class="wire" d="M 300 110 L 356 110"/>
+        <circle cx="322" cy="110" r="3.2" class="node"/>
+        <circle cx="356" cy="110" r="3.2" class="node"/>
+        <text x="364" y="102" class="lbl big">V<tspan dy="3" font-size="11">out</tspan></text>
+        <text x="364" y="122" class="lbl" id="w1n-vout">0.00 V</text>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="w1-r1"><span id="w1-r1name">R₁ (input)</span> <span class="val"></span></label>
+          <input type="range" id="w1-r1" min="3" max="5" step="0.01" value="4">
+        </div>
+        <div class="control">
+          <label for="w1-rf">R<sub>f</sub> (feedback) <span class="val"></span></label>
+          <input type="range" id="w1-rf" min="3" max="6" step="0.01" value="5">
+        </div>
+        <div class="control">
+          <label for="w1-vin">V<sub>in</sub> <span class="val"></span></label>
+          <input type="range" id="w1-vin" min="-2" max="2" step="0.01" value="0.5">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Gain</div><div class="v" id="w1-gain">—</div></div>
+        <div class="readout"><div class="k">V<sub>out</sub></div><div class="v" id="w1-vout">—</div></div>
+        <div class="readout"><div class="k">Z<sub>in</sub></div><div class="v" id="w1-zin">—</div></div>
+        <div class="readout"><div class="k">I through feedback</div><div class="v" id="w1-ifb">—</div></div>
+      </div>
+      <p class="widget-hint" id="w1-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+</div>
+
+<h2>When the rules break</h2>
+<p>Rule II begins "with negative feedback" and ends "whatever is necessary" — and each clause is a
+way to break it.</p>
+<p><strong>The rails.</strong> The output stage runs off the supplies; it cannot swing past them
+(most classic parts give up a volt or two short — our ±12&nbsp;V amplifier saturates near ±11&nbsp;V;
+"rail-to-rail" parts get within millivolts). Ask a gain-of-−10 stage for −15&nbsp;V and the output
+travels to −11&nbsp;V and <strong>stops</strong>. The moment it stops, the feedback current can no
+longer balance the input current, the virtual ground floats away from zero, the inputs are no
+longer equal — the amplifier is <em>saturated</em>, or "railed," and the transfer function goes
+flat. The signal comes out clipped: flat-topped where the demand exceeded the supply. Widget 2
+below draws exactly this.</p>
+<p><strong>No feedback, or positive feedback.</strong> Remove R<sub>f</sub> and the op-amp is
+open-loop: gain 10⁶ means the inputs' unavoidable microvolt-scale disagreement picks a rail, and
+the output sits there. Swap the inputs — feedback to the + terminal — and it's worse: now the
+output <em>reinforces</em> its own input error. Any wobble grows, the loop runs away, and the
+output latches hard at a rail (and if the input crosses far enough, snaps to the other one). This
+isn't a defective op-amp; it's a different circuit — the <strong>comparator</strong>, and done on
+purpose with a little positive feedback it becomes the Schmitt trigger, Module&nbsp;16's opening
+act. The moral for now: <em>an op-amp only obeys rule II if the net feedback is negative.</em></p>
+<p><strong>Current limits.</strong> "Whatever is necessary" also assumes the output can supply the
+current. A typical op-amp sources or sinks ~25&nbsp;mA, politely limited to protect itself. Hang a
+100&nbsp;Ω load on an output trying to deliver 11&nbsp;V (110&nbsp;mA) and the output current-limits,
+the voltage sags, and — same story — the inputs unstick. Feedback makes the op-amp look ideal only
+within its muscle.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: transfer function &amp; the rails</div>
+  <div class="widget-hint">V<sub>out</sub> versus V<sub>in</sub> for the amplifier configured
+  above (same sliders, same topology). Inside the rails: a straight line through the origin with
+  slope = gain — the resistor ratio, nothing else. At ±11&nbsp;V the line breaks flat: rule II has
+  failed and the op-amp is saturated. The dot is the current operating point; hover to read the
+  curve.</div>
+  <canvas id="w2-plot" class="hh-plot" data-height="320"></canvas>
+  <p class="widget-hint" id="w2-caption" style="margin-top:10px"></p>
+</div>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H habits</span>
+  <ul>
+    <li><strong>Golden rules first, algebra second.</strong> Before writing any equation, ask:
+    where does the feedback hold the − input, and where must the input current go? Most op-amp
+    circuits solve themselves in two sentences.</li>
+    <li><strong>Inverting: G = −R<sub>f</sub>/R₁ and Z<sub>in</sub> = R₁.</strong> Say both every
+    time — the input impedance is the part beginners forget they chose.</li>
+    <li><strong>Non-inverting: G = 1 + R<sub>f</sub>/R<sub>g</sub>,</strong> never less than 1;
+    the follower is the R<sub>f</sub>&nbsp;=&nbsp;0 limit.</li>
+    <li><strong>Keep feedback resistors roughly 1&nbsp;k–1&nbsp;MΩ.</strong> Much below 1&nbsp;k
+    and the feedback network itself becomes a heavy load on the output (and on the source, in the
+    inverting case); much above 1&nbsp;M and the "zero" input current stops being zero — tens of
+    nanoamps of bias current across a megohm is tens of millivolts of error, and big resistors
+    hiss (Johnson noise). Module&nbsp;18 makes this quantitative.</li>
+    <li><strong>The output is only as good as the feedback network.</strong> The op-amp
+    contributes gain; the <em>resistors</em> contribute the accuracy. A gain-of-−10 built from 5%
+    resistors is a 5%-ish amplifier no matter how heroic the op-amp. Spend your money on the
+    ratio.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Thermostat analogy</span>
+  <p>A cruise control (or a thermostat) is a negative-feedback loop you already trust your life
+  to. The engine can deliver a hundred kilowatts — enormous, imprecise muscle, the open-loop gain.
+  The controller never meters that muscle directly; it just compares <em>measured</em> speed with
+  <em>requested</em> speed and leans on the throttle in whatever direction shrinks the error. The
+  system settles precisely where the error is zero — speedometer equals setpoint — and it holds
+  there up hills and down, because any deviation instantly recruits the muscle against itself.
+  That settling-to-zero-error is exactly rule II: the op-amp's inputs equalize because the output
+  fights until they do.</p>
+  <p>And the feedback network? It's the <strong>gear ratio on the speedometer cable</strong> — it
+  decides what "equal" means. Report the speed halved and the controller innocently drives at
+  double the setpoint; report 1/11 of the output (our 10&nbsp;k/100&nbsp;k divider) and the output
+  runs at 11× the input. The muscle sets what's <em>possible</em>; the reporting network sets
+  what's <em>true</em>.</p>
+  <p>Where the analogy fails — instructively: real loops have finite speed and inertia. A cruise
+  control that reacts too aggressively overshoots the setpoint and hunts around it; so does an
+  op-amp, whose finite bandwidth and phase lag can turn negative feedback into positive at high
+  frequency and make the "amplifier" oscillate. Compensation, bandwidth, and the price of the
+  loop's dynamics are Module&nbsp;18. And the engine analogy carries the rails with it: no
+  controller can cruise at 200&nbsp;km/h in a car whose engine tops out at 140.</p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Golden rules, Ohm's law, and the 1&nbsp;k–1&nbsp;MΩ habit. Check the box when you've done it
+and verified against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — an inverting amp with an impedance spec</label>
+  </div>
+  <p>Design an inverting amplifier with a gain of −5 whose input impedance is at least
+  20&nbsp;kΩ. Choose R₁ and R<sub>f</sub>, then explain what limits how high you'd push the
+  values.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The constraint does the choosing.</strong> For the inverting topology
+      Z<sub>in</sub>&nbsp;=&nbsp;R₁, full stop — so the impedance spec pins
+      <strong>R₁&nbsp;=&nbsp;20&nbsp;kΩ</strong> (the minimum that satisfies it). Gain −5 then
+      demands R<sub>f</sub>&nbsp;=&nbsp;5&nbsp;×&nbsp;20&nbsp;k&nbsp;=&nbsp;<strong>100&nbsp;kΩ</strong>.
+      Both are standard values and both sit comfortably in the 1&nbsp;k–1&nbsp;M window. Done in
+      two lines — the golden rules turned a design problem into arithmetic.</p>
+      <p><strong>Why not R₁ = 200&nbsp;k, R<sub>f</sub> = 1&nbsp;M for a lordly 200&nbsp;k
+      input impedance?</strong> It "works," but you're buying Z<sub>in</sub> with error: bias
+      current flowing in hundred-kilohm resistors leaves millivolt-scale offsets, and the Johnson
+      noise of the resistors themselves grows with √R (Module&nbsp;18). The inverting topology
+      fundamentally <em>trades</em> input impedance against precision — need real input impedance?
+      That's what Task&nbsp;2's topology is for.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — amplifying a delicate sensor</label>
+  </div>
+  <p>A sensor with a 100&nbsp;kΩ source impedance delivers up to 0.9&nbsp;V and needs a gain of
+  11. Pick the topology (and defend it against the alternative), then choose the resistor
+  values.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Non-inverting is mandatory.</strong> Module&nbsp;02's rule: to leave a source
+      undisturbed, look at it with an impedance much larger than its own. An inverting stage would
+      present Z<sub>in</sub>&nbsp;=&nbsp;R₁ — and worse, the 100&nbsp;kΩ source impedance sits
+      <em>in series with R₁ inside the gain equation</em>. Try R₁&nbsp;=&nbsp;10&nbsp;k,
+      R<sub>f</sub>&nbsp;=&nbsp;110&nbsp;k (nominal gain −11): actual gain =
+      −110&nbsp;k/(10&nbsp;k&nbsp;+&nbsp;100&nbsp;k) = <strong>−1</strong>. Eleven times off, and
+      it drifts with the sensor's impedance. The non-inverting input, by rule I, draws essentially
+      nothing — the sensor doesn't even notice it's connected (Module&nbsp;09's buffering job,
+      done perfectly).</p>
+      <p><strong>Values:</strong> G&nbsp;=&nbsp;1&nbsp;+&nbsp;R<sub>f</sub>/R<sub>g</sub>&nbsp;=&nbsp;11
+      → R<sub>f</sub>/R<sub>g</sub>&nbsp;=&nbsp;10: take
+      <strong>R<sub>g</sub>&nbsp;=&nbsp;10&nbsp;kΩ, R<sub>f</sub>&nbsp;=&nbsp;100&nbsp;kΩ</strong>.
+      Sanity-check the output: 0.9&nbsp;V&nbsp;×&nbsp;11&nbsp;=&nbsp;9.9&nbsp;V — inside ±11&nbsp;V
+      rails with a little headroom to spare. (On a ±5&nbsp;V supply this design would clip; always
+      run the full-scale input against the rails before declaring victory.)</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — "it's stuck at the rail"</label>
+  </div>
+  <p>A lab partner breadboards the gain-of-−10 inverting amp, but the output sits pinned at
+  +11&nbsp;V no matter what the input does (tiny inputs, grounded input — nothing helps). Probing
+  shows R₁ and R<sub>f</sub> correct and the supplies fine, but R<sub>f</sub> was accidentally
+  returned to the <strong>+</strong> input, with the − input grounded. Explain the symptom, and
+  state the general debugging rule this teaches.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>What happened:</strong> the feedback polarity is flipped, so the loop is
+      <em>positive</em>. Suppose the output drifts a hair positive: the divider feeds a fraction
+      of that to the + input, which drives the output <em>more</em> positive, which feeds back
+      more still — the loop reinforces its own error at open-loop speed and slams into a rail,
+      then holds itself there (the railed output keeps the + input biased on the same side).
+      It <em>latches</em>: that's why the input hardly matters and why grounding it doesn't help.
+      Rule II never applies — it is conditional on <em>negative</em> feedback, and this circuit is
+      a comparator with hysteresis, not an amplifier (built on purpose, it's Module&nbsp;16's
+      Schmitt trigger).</p>
+      <p><strong>The debugging rule:</strong> when an op-amp output is stuck at a rail,
+      <em>check the feedback polarity first</em> — is the feedback network really returning to the
+      − input? Then check that the demanded output is inside the rails, and that the inputs are
+      inside their allowed range. Probing the two inputs tells you instantly: in a healthy
+      feedback circuit they read equal (millivolts apart); a railed one shows them split apart —
+      the golden rules used in reverse, as a diagnostic instrument.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="13-fet-switches.html"><span class="dir">Previous</span><span class="name">13 · FET Switches &amp; Analog Switching</span></a>
+  <a href="15-opamp-toolbox.html"><span class="dir">Next</span><span class="name">15 · The Op-Amp Toolbox</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("14");
+
+  /* ================= Widgets 1 & 2: shared amplifier model =================
+     Ideal op-amp with ±12 V supplies, output saturating at ±11 V.
+     Inverting:      G = −Rf/R1,  Zin = R1,  Ifb = (Vin − V−)/R1.
+       Railed case: the − node is a passive divider between Vin and the stuck
+       output: V− = (Vin·Rf + Vout·R1)/(R1 + Rf).  (Verified: R1=10k, Rf=100k,
+       Vin=1.5 → ideal −15 clips to −11, V− = +0.364 V.)
+     Non-inverting:  G = 1 + Rf/Rg, Zin ≫ 1 GΩ, Ifb = Vout/(Rf + Rg)
+       (the feedback divider is passive, so this holds railed or not).
+     Numerics verified with node: 100k/10k → −10; 1+100k/10k → 11;
+     Vin=1 V into 10k → 100 µA → 10 V across 100k. */
+
+  var VRAIL = 11, VSUP = 12;
+
+  var amp = { mode: "inv", R1: 1e4, Rf: 1e5, Vin: 0.5 };
+
+  function solve() {
+    var s = { mode: amp.mode, R1: amp.R1, Rf: amp.Rf, Vin: amp.Vin };
+    if (amp.mode === "inv") {
+      s.gain = -amp.Rf / amp.R1;
+      s.ideal = s.gain * amp.Vin;
+      s.vout = Math.max(-VRAIL, Math.min(VRAIL, s.ideal));
+      s.railed = Math.abs(s.ideal) > VRAIL + 1e-12;
+      s.vminus = s.railed
+        ? (amp.Vin * amp.Rf + s.vout * amp.R1) / (amp.R1 + amp.Rf)
+        : 0;
+      s.ifb = (amp.Vin - s.vminus) / amp.R1;
+      s.zin = amp.R1;
+    } else {
+      s.gain = 1 + amp.Rf / amp.R1; // R1 plays the part of Rg
+      s.ideal = s.gain * amp.Vin;
+      s.vout = Math.max(-VRAIL, Math.min(VRAIL, s.ideal));
+      s.railed = Math.abs(s.ideal) > VRAIL + 1e-12;
+      s.vminus = s.vout * amp.R1 / (amp.R1 + amp.Rf);
+      s.ifb = s.vout / (amp.Rf + amp.R1);
+      s.zin = Infinity;
+    }
+    return s;
+  }
+
+  /* transfer curve value for an arbitrary vin (used by widget 2) */
+  function transfer(vin) {
+    var g = amp.mode === "inv" ? -amp.Rf / amp.R1 : 1 + amp.Rf / amp.R1;
+    var ideal = g * vin;
+    return { ideal: ideal, vout: Math.max(-VRAIL, Math.min(VRAIL, ideal)) };
+  }
+
+  /* ---------- widget 1 DOM ---------- */
+  var invBtn = document.getElementById("w1-inv-btn");
+  var nonBtn = document.getElementById("w1-non-btn");
+  var invG = document.getElementById("w1-inv");
+  var nonG = document.getElementById("w1-non");
+  var r1Name = document.getElementById("w1-r1name");
+  var gainRead = document.getElementById("w1-gain");
+  var voutRead = document.getElementById("w1-vout");
+  var zinRead = document.getElementById("w1-zin");
+  var ifbRead = document.getElementById("w1-ifb");
+  var noteEl = document.getElementById("w1-note");
+  var svgI = {
+    r1: document.getElementById("w1i-r1"),
+    rf: document.getElementById("w1i-rf"),
+    vout: document.getElementById("w1i-vout"),
+    vg: document.getElementById("w1i-vg"),
+    vgname: document.getElementById("w1i-vgname")
+  };
+  var svgN = {
+    rg: document.getElementById("w1n-rg"),
+    rf: document.getElementById("w1n-rf"),
+    vout: document.getElementById("w1n-vout")
+  };
+
+  var r1Slider = HH.slider("w1-r1", {
+    log: true,
+    format: function (v) { return HH.fmt(v, "Ω"); },
+    onchange: function (v) { amp.R1 = v; updateAll(); }
+  });
+  HH.slider("w1-rf", {
+    log: true,
+    format: function (v) { return HH.fmt(v, "Ω"); },
+    onchange: function (v) { amp.Rf = v; updateAll(); }
+  });
+  HH.slider("w1-vin", {
+    format: function (v) { return (v >= 0 ? "+" : "") + v.toFixed(2) + " V"; },
+    onchange: function (v) { amp.Vin = v; updateAll(); }
+  });
+
+  function fmtGain(g) {
+    var a = Math.abs(g);
+    var d = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+    return (g > 0 ? "+" : "−") + a.toFixed(d);
+  }
+
+  function updateWidget1(s) {
+    gainRead.innerHTML = fmtGain(s.gain) + "<small> ×</small>";
+    voutRead.innerHTML = (s.vout >= 0 ? "+" : "−") + Math.abs(s.vout).toFixed(2) + "<small> V</small>";
+    voutRead.style.color = s.railed ? "var(--critical)" : "";
+    zinRead.innerHTML = s.mode === "inv" ? HH.fmt(s.zin, "Ω") : "≫ 1 GΩ";
+    ifbRead.innerHTML = HH.fmt(Math.abs(s.ifb), "A");
+
+    if (s.mode === "inv") {
+      svgI.r1.textContent = "R₁ = " + HH.fmt(s.R1, "Ω");
+      svgI.rf.textContent = "Rf = " + HH.fmt(s.Rf, "Ω");
+      svgI.vout.textContent = (s.vout >= 0 ? "+" : "−") + Math.abs(s.vout).toFixed(2) + " V";
+      svgI.vg.textContent = "V− = " + (s.vminus >= 0 ? "" : "−") + Math.abs(s.vminus).toFixed(3) + " V";
+      var vgCol = s.railed ? "var(--critical)" : "var(--series-7)";
+      svgI.vg.style.fill = vgCol;
+      svgI.vgname.style.fill = vgCol;
+      svgI.vgname.textContent = s.railed ? "virtual ground LOST" : "virtual ground";
+    } else {
+      svgN.rg.textContent = "Rg = " + HH.fmt(s.R1, "Ω");
+      svgN.rf.textContent = "Rf = " + HH.fmt(s.Rf, "Ω");
+      svgN.vout.textContent = (s.vout >= 0 ? "+" : "−") + Math.abs(s.vout).toFixed(2) + " V";
+    }
+
+    var note;
+    if (s.railed) {
+      note = "RAILED: the ideal output would be " + s.ideal.toFixed(1) + " V, but the output " +
+        "stage cannot swing past ±" + VRAIL + " V (±" + VSUP + " V supplies). Rule II has failed — " +
+        (s.mode === "inv"
+          ? "watch the virtual ground: V− has floated to " + s.vminus.toFixed(3) + " V. The inputs are no longer equal."
+          : "the inputs are no longer equal (V− is stuck at " + s.vminus.toFixed(2) + " V). The output is clipped flat.");
+      noteEl.style.color = "var(--critical)";
+    } else if (s.mode === "inv") {
+      note = "Rule II holds: the output (" + s.vout.toFixed(2) + " V) pins V− at exactly 0. The " +
+        "input current " + HH.fmt(Math.abs(s.ifb), "A") + " = Vin/R₁ has nowhere to go but Rf " +
+        "(rule I), and its drop across Rf is the output voltage. Gain = −Rf/R₁ = " + fmtGain(s.gain) + ".";
+      noteEl.style.color = "var(--muted)";
+    } else {
+      note = "Rule II holds: the Rf/Rg divider reports Vout/" + (s.gain).toFixed(2) + " back to " +
+        "the − input, and the output rises until that report equals Vin. Gain = 1 + Rf/Rg = " +
+        fmtGain(s.gain) + ". The source sees only the op-amp's input pin: Zin ≫ 1 GΩ.";
+      noteEl.style.color = "var(--muted)";
+    }
+    noteEl.textContent = note;
+  }
+
+  function setMode(mode) {
+    amp.mode = mode;
+    invBtn.className = mode === "inv" ? "btn" : "btn ghost";
+    nonBtn.className = mode === "non" ? "btn" : "btn ghost";
+    invG.style.display = mode === "inv" ? "" : "none";
+    nonG.style.display = mode === "non" ? "" : "none";
+    r1Name.innerHTML = mode === "inv" ? "R₁ (input)" : "R<sub>g</sub> (to ground)";
+    updateAll();
+  }
+  invBtn.addEventListener("click", function () { setMode("inv"); });
+  nonBtn.addEventListener("click", function () { setMode("non"); });
+
+  /* ---------- widget 2: transfer function ---------- */
+  var w2Caption = document.getElementById("w2-caption");
+  var w2Plot = HH.plot(document.getElementById("w2-plot"), {
+    xlabel: "Vin (V)",
+    ylabel: "Vout (V)",
+    xmin: -3, xmax: 3, ymin: -13, ymax: 13,
+    xticks: [-3, -2, -1, 0, 1, 2, 3],
+    yticks: [-11, -6, 0, 6, 11],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var t = transfer(x);
+      var lines = [
+        { text: "Vin = " + x.toFixed(2) + " V" },
+        { color: "--series-1", text: "Vout = " + t.vout.toFixed(2) + " V" }
+      ];
+      if (Math.abs(t.ideal) > VRAIL) {
+        lines.push({ color: "--series-8", text: "wanted " + t.ideal.toFixed(1) + " V — clipped" });
+      }
+      return lines;
+    }
+  });
+
+  function updateWidget2(s) {
+    var pts = [];
+    for (var v = -3; v <= 3.0001; v += 0.01) pts.push([v, transfer(v).vout]);
+    w2Plot.draw(
+      [
+        { pts: [[-3, VRAIL], [3, VRAIL]], color: "--series-8", width: 1.2, dash: [5, 4] },
+        { pts: [[-3, -VRAIL], [3, -VRAIL]], color: "--series-8", width: 1.2, dash: [5, 4] },
+        { pts: pts, color: "--series-1", width: 2.5 }
+      ],
+      { markers: [{ x: amp.Vin, y: s.vout, color: s.railed ? "--series-8" : "--series-1" }] }
+    );
+
+    /* where does the line hit the rails? */
+    var vinClip = VRAIL / Math.abs(s.gain);
+    var cap;
+    if (Math.abs(s.gain) <= VRAIL / 3) {
+      cap = "Slope = " + fmtGain(s.gain) + " — set purely by the resistor ratio (" +
+        (s.mode === "inv" ? "−Rf/R₁" : "1 + Rf/Rg") + "). At this gentle gain the line never " +
+        "reaches ±" + VRAIL + " V inside the ±3 V input window: the amplifier is linear everywhere here.";
+    } else {
+      cap = "Slope = " + fmtGain(s.gain) + " (" + (s.mode === "inv" ? "−Rf/R₁" : "1 + Rf/Rg") +
+        "). The line breaks flat where the demanded output crosses the ±" + VRAIL + " V rails — " +
+        "at Vin = ±" + vinClip.toFixed(2) + " V. On the flat shelves rule II is broken: the output " +
+        "is saturated and the \"amplifier\" ignores its input.";
+    }
+    if (s.railed) cap += " Your operating point is on a shelf right now.";
+    w2Caption.textContent = cap;
+    w2Caption.style.color = s.railed ? "var(--critical)" : "var(--muted)";
+  }
+
+  function updateAll() {
+    var s = solve();
+    updateWidget1(s);
+    updateWidget2(s);
+  }
+  updateAll();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "Golden rule I says the inputs draw no current. What does that imply about connecting an op-amp (non-inverting) to a high-impedance sensor?",
+      opts: [
+        "The sensor must be buffered by an emitter follower first",
+        "The op-amp reads the sensor's voltage without loading it — the sensor behaves as if nothing were connected",
+        "The sensor's impedance adds to the op-amp's gain",
+        "The op-amp will oscillate unless the sensor impedance is below 1 kΩ"
+      ],
+      answer: 1,
+      expl: "An input that draws no current is a perfect voltmeter probe: no current through the sensor's source impedance means no voltage lost across it (Module 02's loading problem, dissolved). That's precisely why the non-inverting topology is the choice for feeble sources — the signal lands directly on an input pin. No transistor pre-buffer needed; the op-amp <em>is</em> the perfected buffer."
+    },
+    {
+      q: "Inverting amplifier, R₁ = 10 kΩ, Rf = 100 kΩ. What's the gain?",
+      opts: ["−11", "+10", "−10", "−0.1"],
+      answer: 2,
+      expl: "G = −Rf/R₁ = −100k/10k = −10. Walk it with the rules: V− is held at 0, so Vin drives Vin/10k toward the node; all of it must continue through the 100k (rule I), dropping 10× Vin below the 0 V node — output = −10·Vin. Note it's a plain ratio, with no \"+1\": that belongs to the other topology."
+    },
+    {
+      q: "Non-inverting amplifier, Rf = 100 kΩ, Rg = 10 kΩ. What's the gain?",
+      opts: ["+10", "+11", "−10", "+1.1"],
+      answer: 1,
+      expl: "G = 1 + Rf/Rg = 1 + 10 = 11. The feedback divider returns Rg/(Rg+Rf) = 1/11 of the output; the output must rise to 11× the input before the returned fraction equals Vin. The \"+1\" is the giveaway difference from the inverting formula — and the reason this topology can never attenuate."
+    },
+    {
+      q: "In the working inverting amplifier, why does the − input sit at 0 V?",
+      opts: [
+        "It's wired to ground through the op-amp's internals",
+        "The output, acting through Rf, actively drives it to match the grounded + input",
+        "R₁ and Rf form a divider that happens to output 0 V",
+        "The input bias current pulls it to ground"
+      ],
+      answer: 1,
+      expl: "There is no wire to ground — that's why it's called a <em>virtual</em> ground. Rule II: the output does whatever is necessary to equalize the inputs, and since + is grounded, \"equal\" means 0 V at the − input. Proof it's active, not structural: saturate the output (or break the feedback path) and V− immediately floats away from zero. A passive divider only gives 0 V for one particular Vin/Vout pair; the loop enforces it for all of them."
+    },
+    {
+      q: "What input impedance does each topology present to the signal source?",
+      opts: [
+        "Both: essentially infinite — rule I",
+        "Inverting: Rf; non-inverting: Rg",
+        "Inverting: R₁; non-inverting: essentially infinite (the op-amp's input pin)",
+        "Inverting: R₁ + Rf; non-inverting: Rg + Rf"
+      ],
+      answer: 2,
+      expl: "The inverting input source looks into R₁ terminated on a 0 V node: Zin = R₁, usually a few kilohms to tens of kilohms — a real cost. The non-inverting source drives an op-amp input pin directly, and rule I makes that gigohms. Rule I applies to the op-amp's <em>pins</em>, not to the resistor network you built around them — that's the trap in the first option."
+    },
+    {
+      q: "A gain-of-−10 stage runs from ±12 V supplies (output swings to about ±11 V). What happens as Vin passes +1.1 V?",
+      opts: [
+        "The op-amp is destroyed",
+        "The gain smoothly decreases so the output approaches −12 V asymptotically",
+        "The output sticks at about −11 V; the waveform is clipped flat and the inputs are no longer equal",
+        "The output jumps to +11 V"
+      ],
+      answer: 2,
+      expl: "The demanded output, −10 × 1.1 = −11 V, is the most the output stage can deliver. Beyond that the output saturates: the transfer line breaks flat at −11 V, the virtual ground floats off zero, and rule II is suspended until the input retreats. Nothing is damaged — saturation is a normal (if usually unwanted) operating condition, and it's the flat-topped \"clipping\" you see on an overdriven signal."
+    },
+    {
+      q: "Can you build a non-inverting amplifier with a gain of 0.5?",
+      opts: [
+        "Yes — set Rf/Rg = 0.5",
+        "Yes — swap Rf and Rg",
+        "No — G = 1 + Rf/Rg is always at least 1; the follower (G = 1) is the floor",
+        "No — but only because standard resistor values don't allow it"
+      ],
+      answer: 2,
+      expl: "Rf/Rg is never negative, so 1 + Rf/Rg ≥ 1 always: at best Rf = 0 (or Rg = ∞) gives the unity-gain follower. The topology feeds back a <em>fraction</em> of the output, so the output must exceed (or equal) the input to make the fraction match. Need attenuation without inversion? Divide first (Module 02), then buffer or amplify — or accept the inverting topology, where −Rf/R₁ can be any size, including fractions."
+    }
+  ]);
+});
+</script>
+</body>
+</html>
