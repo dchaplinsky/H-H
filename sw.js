@@ -1,7 +1,7 @@
 /* Service worker: precache the whole app so it runs fully offline once visited.
    Bump CACHE_VERSION whenever any file changes; add new modules to FILES. */
 
-const CACHE_VERSION = "hh-v2";
+const CACHE_VERSION = "hh-v3";
 
 const FILES = [
   "./",

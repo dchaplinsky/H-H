@@ -63,7 +63,7 @@
 
   HH.initModule = function (id) {
     currentModuleId = id;
-    HH.progress.set(id, { visited: true });
+    HH.progress.set(id, { visited: true, lastVisit: Date.now() });
     // Wire any task checkboxes: <input type="checkbox" data-task="t1">
     const saved = HH.progress.get(id).tasks || {};
     document.querySelectorAll("input[data-task]").forEach(function (cb) {
@@ -77,6 +77,11 @@
       });
     });
   };
+
+  /* Modules should consult this before running ambient (non-user-triggered)
+     animations; user-initiated ones (e.g. "Charge" buttons) may still animate. */
+  HH.reducedMotion =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------------- formatting ---------------- */
 
@@ -375,6 +380,7 @@
     const root = typeof container === "string" ? document.getElementById(container) : container;
     root.classList.add("quiz");
     let answered = 0, correct = 0;
+    const missed = [];
 
     questions.forEach(function (q, qi) {
       const card = document.createElement("div");
@@ -403,6 +409,7 @@
           answered++;
           const ok = oi === q.answer;
           if (ok) correct++;
+          else missed.push(qi);
           card.querySelectorAll(".quiz-opt").forEach(function (el, idx) {
             el.classList.add("disabled");
             if (idx === q.answer) el.classList.add("correct");
@@ -437,9 +444,12 @@
       scoreEl.classList.add("show");
       if (currentModuleId) {
         const prev = HH.progress.get(currentModuleId);
+        const patch = { lastQuizAt: Date.now(), lastQuizPct: pct, missed: missed };
         if (!prev.quizBest || pct > prev.quizBest) {
-          HH.progress.set(currentModuleId, { quizBest: pct, quizTotal: questions.length });
+          patch.quizBest = pct;
+          patch.quizTotal = questions.length;
         }
+        HH.progress.set(currentModuleId, patch);
         scoreEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     }

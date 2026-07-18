@@ -29,9 +29,12 @@ and the feedback loop.
      solutions behind a disclosure
 5. **Estimation over calculation.** Following H&H's own ethos: every module drills
    "roughly what current/voltage/power is this?" reflexes.
-6. **Progress without accounts.** `localStorage` tracks visits, best quiz scores, and
-   completed tasks; the hub (`index.html`) renders it. A module counts as *complete*
-   at quiz ≥ 75% plus all bench tasks checked.
+6. **Progress without accounts.** `localStorage` tracks visits, best quiz scores,
+   missed questions, and completed tasks; the hub (`index.html`) renders it. A module
+   counts as *complete* at quiz ≥ 75% plus all bench tasks checked.
+7. **Light spaced repetition.** The hub surfaces a *Continue* card (most recently
+   visited incomplete module) and *Review due* cards: any quiz below 75%, or an
+   imperfect quiz older than 3 days, links straight back to that module's quiz.
 
 ## Repository layout
 

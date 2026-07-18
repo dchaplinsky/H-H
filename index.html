@@ -33,6 +33,8 @@
   <span class="pct" id="progress-pct">0%</span>
 </div>
 
+<div id="next-up"></div>
+
 <div id="curriculum"></div>
 
 <div class="panel">
@@ -179,6 +181,63 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("progress-fill").style.width = pct + "%";
   document.getElementById("progress-pct").textContent =
     pct + "% · " + completed + "/" + available + " built modules complete";
+
+  /* ---- Continue / Review strip ---- */
+  var flat = [];
+  PARTS.forEach(function (part) {
+    part.modules.forEach(function (m) { if (m.file) flat.push(m); });
+  });
+  function isComplete(m) {
+    var p = progress[m.id] || {};
+    var tasks = p.tasks || {};
+    var tdone = Object.keys(tasks).filter(function (k) { return tasks[k]; }).length;
+    return p.quizBest >= 75 && tdone >= 3;
+  }
+  var DAY = 24 * 60 * 60 * 1000;
+  var now = Date.now();
+
+  /* continue: most recently visited incomplete module, else first unvisited */
+  var cont = null, bestT = -1;
+  flat.forEach(function (m) {
+    var p = progress[m.id] || {};
+    if (isComplete(m)) return;
+    var t = p.lastVisit || 0;
+    if (cont === null || t > bestT) { cont = m; bestT = t; }
+  });
+
+  /* review due: weak score any time, or an imperfect quiz older than 3 days */
+  var reviews = [];
+  flat.forEach(function (m) {
+    var p = progress[m.id] || {};
+    if (cont && m.id === cont.id) return; /* already surfaced as Continue */
+    if (p.lastQuizAt == null || p.quizBest == null || p.quizBest === 100) return;
+    var age = now - p.lastQuizAt;
+    var missedN = (p.missed || []).length;
+    if (p.quizBest < 75) {
+      reviews.push({ m: m, why: "best score " + p.quizBest + "% — retake the quiz" });
+    } else if (age > 3 * DAY) {
+      reviews.push({
+        m: m,
+        why: (missedN ? missedN + " question" + (missedN > 1 ? "s" : "") + " missed, " : "") +
+             Math.round(age / DAY) + " days ago — quick refresh"
+      });
+    }
+  });
+
+  var strip = document.getElementById("next-up");
+  var html = "";
+  if (cont) {
+    html += '<a class="next-card" href="' + cont.file + '">' +
+      '<span class="tag">' + (progress[cont.id] && progress[cont.id].visited ? "Continue" : "Start here") + "</span>" +
+      '<span class="name">' + cont.id + " · " + cont.name + "</span></a>";
+  }
+  reviews.slice(0, 3).forEach(function (r) {
+    html += '<a class="next-card review" href="' + r.m.file + '#quiz">' +
+      '<span class="tag">Review due</span>' +
+      '<span class="name">' + r.m.id + " · " + r.m.name + "</span>" +
+      '<span class="why">' + r.why + "</span></a>";
+  });
+  strip.innerHTML = html;
 });
 </script>
 </body>

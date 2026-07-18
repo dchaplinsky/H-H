@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · Impedance, Reactance &amp; Passive Filters — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 05</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Impedance, Reactance &amp; Passive Filters</h1>
+  <p class="subtitle">Stop asking what a circuit does to a voltage <em>step</em> and start asking
+  what it does to each <em>frequency</em> — the viewpoint shift that turns one resistor and one
+  capacitor into a filter. <em>AoE 3rd ed. §1.7.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Everything so far lived in the <strong>time domain</strong>: flip a switch, watch an exponential.
+This module makes the one genuine conceptual leap of Chapter&nbsp;1 — moving to the
+<strong>frequency domain</strong>, where you describe a circuit not by what it does to a step but by
+what it does to each sine wave you could feed it. It sounds like a mere change of bookkeeping.
+It isn't. It's the difference between staring at a wiggly scope trace and saying "this passes the
+bass and kills the hiss." Every coupling capacitor, every tone control, every anti-alias filter in
+front of an ADC, every scope probe on your bench is exactly the circuit in this module — a resistor
+and a capacitor arranged as a frequency-dependent voltage divider. Learn to read it once and you'll
+recognize it, disguised, in half of all schematics ever drawn.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p><strong>Why sine waves, of all shapes?</strong> Because linear circuits — anything built from
+  R, L and C — treat them with unique courtesy: drive a linear circuit with a sine wave and the
+  steady-state answer at every node is a sine wave <em>of the same frequency</em>. Only two things
+  can happen to it: its amplitude changes, and it shifts in time (phase). A square wave in gives
+  some rounded mess out; a sine in gives a sine out, always. That's Fourier's great idea in one
+  paragraph: since <em>any</em> signal can be written as a sum of sines, and a linear circuit
+  processes each sine independently (scale it, shift it, sum the results), the entire behavior of a
+  circuit is captured by two curves — gain versus frequency and phase versus frequency. Characterize
+  the sines and you've characterized everything.</p>
+  <p>We'll write frequency two ways: <code>f</code> in hertz (cycles per second), and the
+  <em>angular</em> frequency <code>ω&nbsp;=&nbsp;2πf</code> in radians per second — the same
+  information with the 2π pre-paid, which unclutters the formulas.</p>
+  <p><strong>Reactance is not resistance.</strong> A resistor turns electrical energy into heat,
+  irreversibly, at any frequency. A capacitor (or inductor) instead <em>stores</em> energy for part
+  of each cycle and <em>hands it back</em> during the rest — the field charges up, then discharges,
+  twice per cycle, dissipating nothing (ideally). The opposition it presents to AC is called
+  <strong>reactance</strong>, and because it comes from energy storage rather than friction, it
+  depends on frequency and it shifts the current a quarter-cycle away from the voltage. Same units
+  as resistance — ohms — completely different personality.</p>
+</div>
+
+<h2>Reactance — opposition that depends on frequency</h2>
+<p>How hard does a capacitor fight an AC current? Recall Module&nbsp;03's law,
+I&nbsp;=&nbsp;C·dV/dt. A fast-wiggling voltage has a huge dV/dt, so it drives a big current through
+the same capacitor — the capacitor fights <em>less</em> as frequency rises. Do the calculus on
+V&nbsp;=&nbsp;V₀sin(ωt) and the ratio of voltage amplitude to current amplitude comes out to:</p>
+<div class="formula">
+  X<sub>C</sub> = 1 / (2πfC) = 1 / ωC
+  <small>capacitive reactance, in ohms — falls as frequency rises</small>
+</div>
+<p>Get a feel for the numbers. A 1&nbsp;µF capacitor at 50&nbsp;Hz (mains hum) presents about
+<strong>3.2&nbsp;kΩ</strong>; the same part at 10&nbsp;kHz presents about <strong>16&nbsp;Ω</strong>
+— two hundred times less. To DC (f&nbsp;=&nbsp;0) it presents infinite ohms: an open circuit, as
+Module&nbsp;03 promised. To a fast enough signal it's nearly a piece of wire. One component, every
+resistance value from zero to infinity — you just have to ask <em>at what frequency</em>.</p>
+<p>Inductors (Module&nbsp;04) mirror this exactly: <strong>X<sub>L</sub>&nbsp;=&nbsp;2πfL</strong>,
+<em>rising</em> with frequency. An inductor is a short at DC and an open at high frequency — the
+capacitor's temperamental opposite. Between them they let you steer any frequency anywhere, which
+is the whole art of filter design.</p>
+
+<h2>Impedance — resistance, generalized</h2>
+<p>Once reactances enter a circuit you need a slightly bigger idea than resistance:
+<strong>impedance</strong> (symbol Z, ohms) — the general ratio of voltage to current, carrying
+<em>two</em> numbers instead of one: a <strong>magnitude</strong> (how much opposition) and a
+<strong>phase</strong> (how far current is shifted in time relative to voltage).</p>
+<ul>
+  <li>A resistor's current is perfectly in step with its voltage: phase 0°.</li>
+  <li>A capacitor's current <em>leads</em> its voltage by 90° — current must flow first for
+  voltage to build up (I&nbsp;=&nbsp;C·dV/dt again).</li>
+  <li>An inductor's current <em>lags</em> by 90°.</li>
+</ul>
+<p>Because of those 90° angles, series resistance and reactance don't add lengthwise — they add
+like the sides of a right triangle:</p>
+<div class="formula">
+  |Z| = √(R² + X²)
+  <small>magnitude of a series R + C (or R + L) combination; the phase angle is atan(X/R)</small>
+</div>
+<p>H&amp;H (§1.7.5) do this properly with complex numbers — impedance becomes a single complex
+quantity Z&nbsp;=&nbsp;R&nbsp;+&nbsp;jX and all the algebra of Ohm's law survives intact. It's an
+elegant machine and worth learning soon. For this module, though, magnitudes plus the two 90° facts
+will take us everywhere we need to go, and keep the intuition in view the whole way.</p>
+
+<h2>The RC low-pass — a voltage divider that changes its mind</h2>
+<p>Here is the punchline of the module. Take Module&nbsp;02's voltage divider and replace the lower
+resistor with a capacitor: series R, then C to ground, output across the C. At low frequency the
+capacitor's reactance is enormous — the lower leg of the divider is huge, so essentially the full
+input appears at the output. At high frequency X<sub>C</sub> shrivels — the lower leg approaches a
+short and the output collapses. <strong>It is a voltage divider whose lower leg shrinks with
+frequency.</strong> That's the entire theory of the RC low-pass filter; everything else is
+bookkeeping.</p>
+<p>The bookkeeping (using |Z| for the divider ratio):
+gain&nbsp;=&nbsp;X<sub>C</sub>/√(R²&nbsp;+&nbsp;X<sub>C</sub>²)&nbsp;=&nbsp;1/√(1&nbsp;+&nbsp;(f/f<sub>3dB</sub>)²),
+where the crossover — the frequency at which R and X<sub>C</sub> are equal — is:</p>
+<div class="formula">
+  f<sub>3dB</sub> = 1 / (2πRC)
+  <small>the corner, breakpoint, or cutoff frequency — where R = X<sub>C</sub></small>
+</div>
+<p>At exactly f<sub>3dB</sub> the gain is 1/√2&nbsp;≈&nbsp;<strong>70.7%</strong> — not the ½ you
+might guess from "equal legs," because the two legs are 90° apart and divide like triangle sides.
+Since power goes as voltage squared, 70.7% of the voltage is exactly <strong>half the power</strong>
+— which is what "−3&nbsp;dB" means, as we'll see below. Beyond the corner, the gain falls by half
+for every doubling of frequency: <strong>6&nbsp;dB per octave</strong>, equivalently
+<strong>20&nbsp;dB per decade</strong>. A gentle slope — one RC can only do so much.</p>
+
+<h2>The RC high-pass — the same divider, flipped</h2>
+<p>Swap the two components: series C, then R to ground, output across the R. Now the
+<em>upper</em> leg is the one that shrinks with frequency. At DC the capacitor is an open circuit
+and nothing gets through — <strong>this is the "coupling capacitor" of Module&nbsp;03's bench, now
+with its theory attached</strong>. At high frequency the cap is a wire and the signal sails through
+untouched. Same corner formula, mirror-image response:
+gain&nbsp;=&nbsp;(f/f<sub>3dB</sub>)/√(1&nbsp;+&nbsp;(f/f<sub>3dB</sub>)²). The circuit passes
+everything above f<sub>3dB</sub>, blocks DC completely, and rolls off below the corner at the same
+6&nbsp;dB/octave. When you size a coupling cap "so the corner is below the lowest frequency you
+care about," this is the curve you're positioning.</p>
+
+<h2>Decibels — the logarithm you'll use daily</h2>
+<p>Filter responses span factors of thousands, so engineers quote voltage ratios logarithmically:</p>
+<div class="formula">
+  dB = 20 · log₁₀(V / V₀)
+  <small>the 20 (not 10) is because power goes as V², and decibels were born as power ratios</small>
+</div>
+<p>Memorize this small ladder and most filter talk becomes mental arithmetic:</p>
+<table>
+  <thead><tr><th>dB</th><th>Voltage ratio</th><th>Power ratio</th><th>Read as</th></tr></thead>
+  <tbody>
+    <tr><td>0 dB</td><td>×1</td><td>×1</td><td>unchanged</td></tr>
+    <tr><td>−3 dB</td><td>×0.707</td><td>×½</td><td>the corner — half power</td></tr>
+    <tr><td>−6 dB</td><td>×0.5</td><td>×¼</td><td>one octave past the corner</td></tr>
+    <tr><td>−20 dB</td><td>×0.1</td><td>×0.01</td><td>one decade past the corner</td></tr>
+  </tbody>
+</table>
+<p>And because it's a logarithm, cascaded stages simply <em>add</em> their dB — two −20&nbsp;dB
+stages make −40&nbsp;dB. (Whether they actually behave that way when connected depends on loading —
+see the rules below.)</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>f<sub>3dB</sub> = 1/(2πRC).</strong> Anchor: 1&nbsp;kΩ and 1&nbsp;µF give
+        159&nbsp;Hz — call it "160&nbsp;Hz" and scale by decades from there
+        (1&nbsp;kΩ &amp; 1&nbsp;nF → 160&nbsp;kHz; 10&nbsp;kΩ &amp; 1&nbsp;µF → 16&nbsp;Hz).</li>
+    <li><strong>One RC stage rolls off at 6 dB/octave = 20 dB/decade.</strong> No more, no less.
+        Need a steeper skirt? You need more stages, or an inductor, or an op-amp — not a
+        different R and C.</li>
+    <li><strong>At f<sub>3dB</sub> the phase shift is 45°</strong> (lagging for a low-pass,
+        leading for a high-pass), heading toward 90° far past the corner and 0° far before it.</li>
+    <li><strong>Load a filter with ≥10× its impedance</strong> — Module 02's divider rule, now
+        frequency-flavored. A load comparable to R drags the corner and the passband gain around;
+        ten-to-one keeps the errors in the few-percent bin.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Suspension analogy</span>
+  <p>A car's suspension is a mechanical filter, and it runs both filters at once:</p>
+  <ul>
+    <li><strong>Low-pass = the car body.</strong> A heavy body on soft springs follows the slow
+    undulations of the road — hills, dips, gentle swells — and simply cannot respond to gravel
+    buzz; the shaking is absorbed before it reaches your coffee. Slow components pass, fast ones
+    are smoothed away. Softer springs or a heavier body = a bigger "RC" = a lower corner.</li>
+    <li><strong>High-pass = the wheels.</strong> Watch a wheel instead: it hammers up and down over
+    every pebble (fast components faithfully followed) while staying, on average, a constant height
+    off the road — the slow hill-climbing is invisible in the wheel-to-body distance. The wheels
+    "pass the gravel and block the hills."</li>
+    <li><strong>A capacitor to ground is a pressure cushion.</strong> Plumbers hang a small
+    air-filled tank (a water-hammer arrestor) on a pipe: sudden pressure spikes compress the air
+    pocket and vanish — the tank swallows fast ripples. But a slow trend, like mains pressure
+    drifting over an hour, just refills the tank to a new level and marches on. Fast wiggles
+    absorbed, slow ones ignored: that's a decoupling capacitor in copper and air.</li>
+  </ul>
+  <p>Where the analogies fail: a real suspension has damping <em>and</em> a resonance — it can
+  bounce, which a plain RC never does (that needs an inductor's worth of "mass"; see
+  Module&nbsp;04). And the cushion tank saturates — compress the air pocket fully and it stops
+  working — while an ideal capacitor scales linearly forever.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: filter explorer (Bode plot)</div>
+  <div class="widget-hint">Pick low-pass or high-pass, then drag R and C. Both plot axes are
+  logarithmic — frequency spans 1&nbsp;Hz to 10&nbsp;MHz, gain is in dB. The dashed line marks
+  f<sub>3dB</sub>; the dot sits at −3&nbsp;dB. Hover (or drag on touch) to read gain <em>and
+  phase</em> at any frequency. Watch the whole curve slide left and right as R·C changes — the
+  shape never changes, only its position.</div>
+
+  <div class="viz-row">
+    <svg id="filt-sch" class="schematic" viewBox="0 0 380 200" width="380" height="200" role="img"
+         aria-label="RC filter schematic, switchable between low-pass and high-pass">
+      <!-- AC source -->
+      <circle cx="46" cy="95" r="16" class="comp"/>
+      <path class="comp" d="M 36 95 q 5 -9 10 0 q 5 9 10 0"/>
+      <text x="10" y="99" class="lbl big">Vin</text>
+      <path class="wire" d="M 46 79 L 46 42 L 96 42"/>
+      <path class="wire" d="M 46 111 L 46 166 L 330 166"/>
+      <!-- ground symbol on the bottom rail -->
+      <path class="gnd" d="M 188 166 L 188 174 M 178 174 L 198 174 M 182 179 L 194 179 M 186 184 L 190 184"/>
+      <!-- output node (common) -->
+      <path class="wire" d="M 240 42 L 300 42"/>
+      <circle cx="300" cy="42" r="3.5" class="node"/>
+      <text x="310" y="46" class="lbl big">Vout</text>
+
+      <!-- LOW-PASS: series R, shunt C -->
+      <g id="sch-lp">
+        <path class="comp" d="M 96 42 l 4 0 l 4 -9 l 8 18 l 8 -18 l 8 18 l 8 -18 l 8 18 l 4 -9 l 4 0"/>
+        <text x="102" y="20" class="lbl big" id="lp-r-lbl">1 kΩ</text>
+        <path class="wire" d="M 152 42 L 240 42"/>
+        <path class="wire" d="M 225 42 L 225 86"/>
+        <line x1="207" y1="86" x2="243" y2="86" class="comp" stroke-width="3"/>
+        <line x1="207" y1="96" x2="243" y2="96" class="comp" stroke-width="3"/>
+        <path class="wire" d="M 225 96 L 225 166"/>
+        <text x="251" y="95" class="lbl big" id="lp-c-lbl">1 µF</text>
+      </g>
+
+      <!-- HIGH-PASS: series C, shunt R -->
+      <g id="sch-hp" style="display:none">
+        <path class="wire" d="M 96 42 L 118 42"/>
+        <line x1="118" y1="26" x2="118" y2="58" class="comp" stroke-width="3"/>
+        <line x1="128" y1="26" x2="128" y2="58" class="comp" stroke-width="3"/>
+        <path class="wire" d="M 128 42 L 240 42"/>
+        <text x="102" y="16" class="lbl big" id="hp-c-lbl">1 µF</text>
+        <path class="wire" d="M 225 42 L 225 68"/>
+        <path class="comp" d="M 225 68 l 0 4 l -9 4 l 18 8 l -18 8 l 18 8 l -18 8 l 18 8 l -9 4 l 0 4"/>
+        <path class="wire" d="M 225 124 L 225 166"/>
+        <text x="245" y="100" class="lbl big" id="hp-r-lbl">1 kΩ</text>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div style="display:flex; gap:10px; margin:0 0 12px">
+        <button class="btn" id="filt-lp-btn">Low-pass</button>
+        <button class="btn ghost" id="filt-hp-btn">High-pass</button>
+      </div>
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="filt-r">Resistance R <span class="val"></span></label>
+          <!-- log: 10^2 .. 10^6  (100 Ω .. 1 MΩ) -->
+          <input type="range" id="filt-r" min="2" max="6" step="0.01" value="3">
+        </div>
+        <div class="control">
+          <label for="filt-c">Capacitance C <span class="val"></span></label>
+          <!-- log: 10^-10 .. 10^-5  (100 pF .. 10 µF) -->
+          <input type="range" id="filt-c" min="-10" max="-5" step="0.01" value="-6">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">f₃dB = 1/(2πRC)</div><div class="v" id="filt-fc">—</div></div>
+        <div class="readout"><div class="k">Gain at 50 Hz</div><div class="v" id="filt-g50">—</div></div>
+        <div class="readout"><div class="k">Gain at 10 kHz</div><div class="v" id="filt-g10k">—</div></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="filt-plot" class="hh-plot" data-height="320"></canvas>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: see it in the time domain</div>
+  <div class="widget-hint">The same filter (low-pass or high-pass, chosen above), now fed a
+  two-tone test signal: a slow 200&nbsp;Hz sine plus a fast 8&nbsp;kHz sine at equal amplitude.
+  Dashed grey: input. Blue: output, computed component-by-component with the correct gain
+  <em>and phase shift</em> for each sine — exactly what Fourier's recipe prescribes. Slide the
+  corner across the two tones and watch the filter choose which one survives.</div>
+  <div class="controls">
+    <div class="control" style="max-width:440px; margin:0 auto">
+      <label for="td-fc">Corner frequency f₃dB <span class="val"></span></label>
+      <!-- log: 20 Hz .. 100 kHz -->
+      <input type="range" id="td-fc" min="1.30103" max="5" step="0.005" value="3">
+    </div>
+  </div>
+  <canvas id="td-plot" class="hh-plot" data-height="300"></canvas>
+  <div class="readouts">
+    <div class="readout"><div class="k">200 Hz component</div><div class="v" id="td-g200">—</div></div>
+    <div class="readout"><div class="k">8 kHz component</div><div class="v" id="td-g8k">—</div></div>
+  </div>
+  <p class="widget-hint" id="td-caption" style="margin-top:10px"></p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and the 1&nbsp;kΩ&nbsp;+&nbsp;1&nbsp;µF&nbsp;=&nbsp;159&nbsp;Hz anchor. Check the
+box when you've done it and verified against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — the anti-rumble high-pass</label>
+  </div>
+  <p>A turntable preamp picks up subsonic "rumble" — warped-record and bearing wobble below
+  20&nbsp;Hz that wastes amplifier power and flaps woofer cones. Design a high-pass to cut below
+  20&nbsp;Hz, using the next stage's 47&nbsp;kΩ input impedance as the filter's R (a series cap
+  into that input — sound familiar?). Pick C, then the nearest standard value, and say what the
+  standard value does to the corner.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Solve the corner formula for C:
+      C&nbsp;=&nbsp;1/(2πRf)&nbsp;=&nbsp;1/(2π&nbsp;×&nbsp;47&nbsp;kΩ&nbsp;×&nbsp;20&nbsp;Hz)&nbsp;≈&nbsp;<strong>169&nbsp;nF</strong>.
+      No such drawer exists, so pick a neighbor — and here the direction matters, so think before
+      rounding:</p>
+      <p><strong>180&nbsp;nF</strong> (E12) → f<sub>3dB</sub>&nbsp;≈&nbsp;18.8&nbsp;Hz. Corner
+      slides slightly <em>below</em> 20&nbsp;Hz: a touch less rumble rejection, bass fully intact.
+      <strong>220&nbsp;nF</strong> → 15.4&nbsp;Hz: even gentler on bass, weaker on rumble.
+      <strong>150&nbsp;nF</strong> → 22.6&nbsp;Hz: strongest rumble cut, but now the corner sits
+      inside the audio band and 20&nbsp;Hz program material is already −3&nbsp;dB down.</p>
+      <p>For a <em>rumble</em> filter the priority is rejection, and a 6&nbsp;dB/octave skirt is
+      lazy anyway, so 150–180&nbsp;nF is the defensible zone; <strong>180&nbsp;nF</strong> is the
+      safe pick. The transferable lesson: a single RC corner is a soft boundary — decide which side
+      of the spec must not suffer, and round the corner <em>away</em> from it.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — kill the switching hash</label>
+  </div>
+  <p>A sensor line carries a wanted signal that lives below 1&nbsp;kHz, contaminated with
+  50&nbsp;kHz hash from a nearby switching regulator. Design an RC low-pass with
+  f<sub>3dB</sub>&nbsp;≈&nbsp;5&nbsp;kHz. One catch: the sensor itself has 1&nbsp;kΩ of source
+  impedance, which sits in series with whatever R you add — include it. Then compute the attenuation
+  at 50&nbsp;kHz and the droop at 1&nbsp;kHz. Is the wanted signal harmed?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The R you add isn't the R the filter sees.</strong> Total series resistance =
+      R<sub>added</sub>&nbsp;+&nbsp;1&nbsp;kΩ. Pick R<sub>added</sub>&nbsp;=&nbsp;2.2&nbsp;kΩ
+      (standard), total 3.2&nbsp;kΩ. Then
+      C&nbsp;=&nbsp;1/(2π&nbsp;×&nbsp;3.2&nbsp;kΩ&nbsp;×&nbsp;5&nbsp;kHz)&nbsp;≈&nbsp;9.9&nbsp;nF →
+      <strong>10&nbsp;nF</strong> standard, giving f<sub>3dB</sub>&nbsp;≈&nbsp;4.97&nbsp;kHz.
+      (Skipping the source impedance would have put the corner at 7.2&nbsp;kHz — a 45% miss from a
+      "hidden" resistor. Thévenin never stops being useful.)</p>
+      <p><strong>At 50 kHz:</strong> f/f<sub>c</sub>&nbsp;≈&nbsp;10, so gain ≈
+      1/√(1+100)&nbsp;≈&nbsp;0.099&nbsp;→&nbsp;<strong>−20&nbsp;dB</strong> — one decade above the
+      corner, 20&nbsp;dB down, exactly as the slope rule promises. The hash drops to a tenth.</p>
+      <p><strong>At 1 kHz:</strong> f/f<sub>c</sub>&nbsp;≈&nbsp;0.2, gain =
+      1/√(1.04)&nbsp;≈&nbsp;0.98&nbsp;→&nbsp;<strong>−0.17&nbsp;dB</strong>. The wanted signal
+      loses 2% — inaudible, unmeasurable in most contexts. That's the classic single-RC bargain:
+      park the corner ~5× above the signal and ~10× below the trash, and both sides are happy. If
+      a tenth of the hash is still too much, cascade another stage or reach for an LC.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — why your scope probe has a trimmer</label>
+  </div>
+  <p>A ×10 scope probe is a 9&nbsp;MΩ series resistor feeding the scope's input: 1&nbsp;MΩ in
+  parallel with ~15&nbsp;pF of unavoidable cable-plus-input capacitance. At DC that's a clean 10:1
+  divider. Compute what the 15&nbsp;pF does at higher frequencies — where's the corner of the
+  uncompensated divider, and what would a 1&nbsp;kHz square wave look like? Then explain the small
+  trimmer capacitor across the 9&nbsp;MΩ: what condition makes the divider frequency-independent?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The uncompensated disaster.</strong> Seen from the capacitor, the Thévenin
+      resistance is 9&nbsp;MΩ&nbsp;∥&nbsp;1&nbsp;MΩ&nbsp;=&nbsp;900&nbsp;kΩ, so the divider has a
+      corner at f&nbsp;=&nbsp;1/(2π&nbsp;×&nbsp;900&nbsp;kΩ&nbsp;×&nbsp;15&nbsp;pF)&nbsp;≈&nbsp;<strong>11.8&nbsp;kHz</strong>.
+      Below it you get the intended ÷10; above it the 15&nbsp;pF shorts out the 1&nbsp;MΩ and the
+      response keeps falling. Your "×10 probe" is secretly a 12&nbsp;kHz low-pass — hopeless for a
+      scope. A 1&nbsp;kHz square wave (edges full of harmonics far above 12&nbsp;kHz) would show
+      sagging, rounded corners: each edge arrives as an RC exponential with
+      τ&nbsp;=&nbsp;900&nbsp;kΩ&nbsp;×&nbsp;15&nbsp;pF&nbsp;≈&nbsp;13.5&nbsp;µs.</p>
+      <p><strong>The fix.</strong> Put a capacitor C₁ across the 9&nbsp;MΩ so <em>both</em> legs of
+      the divider are an R∥C pair. The divider stops caring about frequency when both legs have the
+      same corner — the condition <strong>R₁C₁&nbsp;=&nbsp;R₂C₂</strong>. At low frequency the
+      resistors set the ratio (1/10); at high frequency the capacitors set it (C's divide as
+      C₂/(C₁+C₂) — reactances are <em>inverse</em> in C), and R₁C₁&nbsp;=&nbsp;R₂C₂ makes both
+      ratios identical, so every frequency divides by 10. Here:
+      C₁&nbsp;=&nbsp;R₂C₂/R₁&nbsp;=&nbsp;1&nbsp;MΩ&nbsp;×&nbsp;15&nbsp;pF&nbsp;/&nbsp;9&nbsp;MΩ&nbsp;≈&nbsp;<strong>1.7&nbsp;pF</strong>
+      — adjustable, because the scope's 15&nbsp;pF isn't precise.</p>
+      <p><strong>Why a trimmer:</strong> mis-set it and the square wave tells on you — C₁ too big
+      overshoots the edges (highs over-delivered), too small rounds them (highs starved). That's
+      exactly what the "probe compensation" square-wave terminal on every scope is for, and now you
+      know what you're adjusting: making R₁C₁ equal R₂C₂.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="04-inductors-transformers.html"><span class="dir">Previous</span><span class="name">04 · Inductors &amp; Transformers</span></a>
+  <a href="06-diodes.html"><span class="dir">Next</span><span class="name">06 · Diodes &amp; Diode Circuits</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("05");
+
+  /* ---------- shared filter math ----------
+     Verified against the complex transfer functions
+     H_LP = 1/(1 + jf/fc), H_HP = j(f/fc)/(1 + jf/fc):
+       |H_LP| = 1/sqrt(1+(f/fc)^2)        arg = -atan(f/fc)
+       |H_HP| = (f/fc)/sqrt(1+(f/fc)^2)   arg = +90° - atan(f/fc)   */
+  function gain(f, fc, mode) {
+    var x = f / fc;
+    return mode === "lp" ? 1 / Math.sqrt(1 + x * x)
+                         : x / Math.sqrt(1 + x * x);
+  }
+  function phase(f, fc, mode) { // radians
+    var x = f / fc;
+    return mode === "lp" ? -Math.atan(x) : Math.PI / 2 - Math.atan(x);
+  }
+  function dB(g) { return 20 * Math.log10(g); }
+
+  var state = { mode: "lp", R: 1000, C: 1e-6 };
+  function f3dB() { return 1 / (2 * Math.PI * state.R * state.C); }
+
+  /* ================= Widget 1: filter explorer (Bode) ================= */
+
+  var fcRead = document.getElementById("filt-fc");
+  var g50Read = document.getElementById("filt-g50");
+  var g10kRead = document.getElementById("filt-g10k");
+  var lpBtn = document.getElementById("filt-lp-btn");
+  var hpBtn = document.getElementById("filt-hp-btn");
+  var schLp = document.getElementById("sch-lp");
+  var schHp = document.getElementById("sch-hp");
+  var lpRLbl = document.getElementById("lp-r-lbl");
+  var lpCLbl = document.getElementById("lp-c-lbl");
+  var hpRLbl = document.getElementById("hp-r-lbl");
+  var hpCLbl = document.getElementById("hp-c-lbl");
+
+  HH.slider("filt-r", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.R = r; refreshBode(); drawTd(); }
+  });
+  HH.slider("filt-c", {
+    log: true,
+    format: function (c) { return HH.fmt(c, "F"); },
+    onchange: function (c) { state.C = c; refreshBode(); drawTd(); }
+  });
+
+  var FREQ_LBL = ["1", "10", "100", "1k", "10k", "100k", "1M", "10M"];
+  var bodePlot = HH.plot(document.getElementById("filt-plot"), {
+    xlabel: "frequency (Hz, log scale)",
+    ylabel: "gain (dB)",
+    xmin: 0, xmax: 7, ymin: -60, ymax: 5,
+    xticks: [0, 1, 2, 3, 4, 5, 6, 7],
+    yticks: [-60, -50, -40, -30, -20, -10, 0],
+    xfmt: function (v) { return FREQ_LBL[Math.round(v)] || ""; },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var f = Math.pow(10, x);
+      var fc = f3dB();
+      var g = gain(f, fc, state.mode);
+      var ph = (phase(f, fc, state.mode) * 180) / Math.PI;
+      return [
+        { text: "f = " + HH.fmt(f, "Hz") },
+        { color: "--series-1", text: "gain = " + dB(g).toFixed(1) + " dB  (×" + g.toFixed(3) + ")" },
+        { color: "--series-5", text: "phase = " + (ph >= 0 ? "+" : "") + ph.toFixed(1) + "°" }
+      ];
+    }
+  });
+
+  function refreshBode() {
+    var fc = f3dB();
+    var pts = [];
+    for (var lx = 0; lx <= 7.0001; lx += 0.02) {
+      pts.push([lx, dB(gain(Math.pow(10, lx), fc, state.mode))]);
+    }
+    var lfc = Math.log10(fc);
+    var extras = {};
+    if (lfc >= 0 && lfc <= 7) {
+      extras.vline = lfc;
+      extras.markers = [{ x: lfc, y: dB(1 / Math.SQRT2), color: "--series-1" }];
+    }
+    bodePlot.draw([{ pts: pts, color: "--series-1", width: 2.5 }], extras);
+
+    fcRead.innerHTML = HH.fmt(fc, "Hz");
+    g50Read.innerHTML = dB(gain(50, fc, state.mode)).toFixed(1) + "<small> dB</small>";
+    g10kRead.innerHTML = dB(gain(1e4, fc, state.mode)).toFixed(1) + "<small> dB</small>";
+
+    lpRLbl.textContent = HH.fmt(state.R, "Ω");
+    hpRLbl.textContent = HH.fmt(state.R, "Ω");
+    lpCLbl.textContent = HH.fmt(state.C, "F");
+    hpCLbl.textContent = HH.fmt(state.C, "F");
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    schLp.style.display = mode === "lp" ? "" : "none";
+    schHp.style.display = mode === "hp" ? "" : "none";
+    lpBtn.className = mode === "lp" ? "btn" : "btn ghost";
+    hpBtn.className = mode === "hp" ? "btn" : "btn ghost";
+    refreshBode();
+    drawTd();
+  }
+  lpBtn.addEventListener("click", function () { setMode("lp"); });
+  hpBtn.addEventListener("click", function () { setMode("hp"); });
+
+  /* ================= Widget 2: time domain ================= */
+
+  var F_SLOW = 200, F_FAST = 8000; // Hz, equal amplitudes
+  var TD_WIN = 0.01;               // 10 ms window = 2 slow periods
+  var td = { fc: 1000 };           // slider overrides R·C to set fc directly
+
+  var g200Read = document.getElementById("td-g200");
+  var g8kRead = document.getElementById("td-g8k");
+  var tdCaption = document.getElementById("td-caption");
+
+  function tdIn(t) {
+    return Math.sin(2 * Math.PI * F_SLOW * t) + Math.sin(2 * Math.PI * F_FAST * t);
+  }
+  function tdOut(t) {
+    var m = state.mode, fc = td.fc;
+    return gain(F_SLOW, fc, m) * Math.sin(2 * Math.PI * F_SLOW * t + phase(F_SLOW, fc, m))
+         + gain(F_FAST, fc, m) * Math.sin(2 * Math.PI * F_FAST * t + phase(F_FAST, fc, m));
+  }
+
+  var tdPlot = HH.plot(document.getElementById("td-plot"), {
+    xlabel: "time (ms)",
+    ylabel: "voltage (× one component's amplitude)",
+    xmin: 0, xmax: 10, ymin: -2.3, ymax: 2.3,
+    xticks: [0, 2, 4, 6, 8, 10],
+    yticks: [-2, -1, 0, 1, 2],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var t = x / 1000;
+      return [
+        { text: "t = " + x.toFixed(2) + " ms" },
+        { color: "--muted", text: "Vin = " + tdIn(t).toFixed(2) },
+        { color: "--series-1", text: "Vout = " + tdOut(t).toFixed(2) }
+      ];
+    }
+  });
+
+  function drawTd() {
+    var N = 2200; // ~27 points per 8 kHz cycle — smooth enough
+    var inPts = [], outPts = [];
+    for (var i = 0; i <= N; i++) {
+      var t = (i / N) * TD_WIN;
+      inPts.push([t * 1000, tdIn(t)]);
+      outPts.push([t * 1000, tdOut(t)]);
+    }
+    tdPlot.draw([
+      { pts: inPts, color: "--muted", width: 1.2, dash: [4, 4] },
+      { pts: outPts, color: "--series-1", width: 2.4 }
+    ]);
+
+    var gS = gain(F_SLOW, td.fc, state.mode);
+    var gF = gain(F_FAST, td.fc, state.mode);
+    g200Read.innerHTML = dB(gS).toFixed(1) + "<small> dB (×" + gS.toFixed(2) + ")</small>";
+    g8kRead.innerHTML = dB(gF).toFixed(1) + "<small> dB (×" + gF.toFixed(2) + ")</small>";
+
+    var cap;
+    var slowOk = gS > 0.7, fastOk = gF > 0.7;
+    if (slowOk && fastOk) {
+      cap = "Corner is beyond both tones on the passband side — both survive nearly untouched. " +
+        "The output is almost a copy of the input (look closely for the small phase slide near the corner).";
+    } else if (!slowOk && !fastOk) {
+      cap = "Corner is past both tones on the stopband side — both are attenuated. " +
+        "You built a filter that mostly rejects your own test signal; slide the corner back between the tones.";
+    } else if (state.mode === "lp") {
+      cap = "The low-pass at work: the slow 200 Hz sine walks through while the 8 kHz buzz is " +
+        "shaved down to a ripple riding on it. This is exactly Task 2's hash-killer — and note the " +
+        "surviving sine is slightly delayed: that's the phase shift, made visible.";
+    } else {
+      cap = "The high-pass at work: the 8 kHz tone sails through while the slow 200 Hz swing is " +
+        "suppressed — the output hugs zero where the input swings wide. This is every coupling " +
+        "capacitor ever: fast signal passed, slow drift (and DC) blocked.";
+    }
+    tdCaption.textContent = "f₃dB = " + HH.fmt(td.fc, "Hz") + ": " + cap;
+  }
+
+  HH.slider("td-fc", {
+    log: true,
+    format: function (f) { return HH.fmt(f, "Hz"); },
+    onchange: function (f) { td.fc = f; drawTd(); }
+  });
+
+  refreshBode();
+  drawTd();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "What is the reactance of a 1 µF capacitor at 159 Hz?",
+      opts: ["About 1 kΩ", "About 159 Ω", "About 6.3 kΩ", "About 100 Ω"],
+      answer: 0,
+      expl: "X<sub>C</sub> = 1/(2πfC) = 1/(2π × 159 × 10⁻⁶) ≈ 1 kΩ. This is the module's anchor in reverse: 1 kΩ and 1 µF meet at 159 Hz — the frequency where this capacitor 'looks like' 1 kΩ. Scale by decades for everything else (at 1.59 kHz it's 100 Ω; at 15.9 Hz it's 10 kΩ)."
+    },
+    {
+      q: "In impedance terms, why does a capacitor “block DC and pass AC”?",
+      opts: [
+        "Its dielectric conducts only when the field alternates",
+        "X<sub>C</sub> = 1/(2πfC): infinite ohms at f = 0, shrinking toward zero as f rises",
+        "DC charges it to breakdown, after which it conducts",
+        "AC electrons are able to jump the gap; DC electrons are not"
+      ],
+      answer: 1,
+      expl: "It's the reactance formula, read at its limits: at DC (f = 0) the reactance is infinite — an open circuit — and as frequency rises the reactance falls without bound, toward a piece of wire. No electron ever crosses the gap at any frequency (Module 03); the plates simply exchange charge fast enough that, from outside, high-frequency current appears to flow straight through."
+    },
+    {
+      q: "A 10 kΩ resistor and a 16 nF capacitor make a filter. Where's the corner?",
+      opts: ["About 100 Hz", "About 1 kHz", "About 10 kHz", "About 6.3 kHz"],
+      answer: 1,
+      expl: "f<sub>3dB</sub> = 1/(2πRC) = 1/(2π × 10⁴ × 1.6×10⁻⁸) ≈ 995 Hz ≈ 1 kHz. Fast route from the anchor: 1 kΩ + 1 µF = 159 Hz; R is 10× bigger (÷10 → 15.9 Hz) and C is 62.5× smaller (×62.5) → ≈ 1 kHz. Note 16 nF is a standard value precisely because it pairs with 10 kΩ to land on a round corner."
+    },
+    {
+      q: "At its −3 dB frequency, a filter's output is…",
+      opts: [
+        "70.7% of the input voltage — half the power",
+        "50% of the input voltage — 70.7% of the power",
+        "97% of the input voltage — barely affected",
+        "37% of the input voltage — one time constant's worth"
+      ],
+      answer: 0,
+      expl: "−3 dB is a voltage ratio of 1/√2 ≈ 0.707, and since power goes as V², that's exactly half the power — which is why the corner is also called the half-power point. (Not half the voltage: −6 dB is that. And 37% belongs to the time domain's e⁻¹, a different module entirely.)"
+    },
+    {
+      q: "A schematic shows the signal passing through a series capacitor, then a resistor from the output node down to ground. What is it?",
+      opts: [
+        "A low-pass filter",
+        "A high-pass filter",
+        "A phase shifter with flat gain",
+        "An integrator"
+      ],
+      answer: 1,
+      expl: "Ask where the capacitor is. Cap in <em>series</em> with the signal path → blocks DC and low frequencies → high-pass. Cap <em>shunting to ground</em> → shorts out high frequencies → low-pass. This where's-the-cap reflex reads 90% of the RC filters you'll ever meet, including ones drawn upside down to confuse you."
+    },
+    {
+      q: "How fast does a single RC filter's response fall beyond its corner?",
+      opts: [
+        "20 dB per decade (6 dB per octave)",
+        "40 dB per decade — it's a second-order response",
+        "3 dB per decade",
+        "It depends on the values of R and C"
+      ],
+      answer: 0,
+      expl: "One RC stage gives 20 dB/decade = 6 dB/octave, and nothing about the component values can change it — R and C set <em>where</em> the corner sits, never how steep the skirt is. Far past the corner the gain is simply f<sub>c</sub>/f: 10× the frequency, 1/10 the voltage, −20 dB. Steeper needs more stages (or L, or active filters)."
+    },
+    {
+      q: "What is the phase shift of an RC low-pass exactly at f₃dB?",
+      opts: ["0°", "−90°", "−45°", "−180°"],
+      answer: 2,
+      expl: "At the corner, R equals X<sub>C</sub> and the phase is −atan(f/f<sub>c</sub>) = −atan(1) = −45° — halfway to the −90° asymptote. The full arc: ~0° well below the corner, −45° at it, → −90° far above. (A high-pass mirrors this: +90° → +45° → 0°.) Handy sanity check when probing a filter: 45° at the corner, or your corner isn't where you think."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

@@ -296,6 +296,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var I = state.V / state.R;
     /* map current to px/s on a log-ish scale so both 100 µA and 100 mA read as motion */
     var speed = I <= 0 ? 0 : Math.min(220, 26 * Math.log10(1 + I * 2e4));
+    if (HH.reducedMotion) speed = 0;
     dots.forEach(function (d) {
       d.s = (d.s + speed * dt + loopLen) % loopLen;
       var p = loopPath.getPointAtLength(d.s);
