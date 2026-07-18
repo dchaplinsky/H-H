@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 · FETs: JFETs &amp; MOSFETs — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part II · Module 12</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>FETs: JFETs &amp; MOSFETs</h1>
+  <p class="subtitle">The other transistor — controlled by voltage instead of current, drawing
+  essentially nothing from whatever drives it. Thresholds, square laws, and the gate you must
+  never leave floating. <em>AoE 3rd ed. §3.1–3.2.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Part II has so far been the bipolar transistor's show: a current into the base commands a
+bigger current at the collector. The field-effect transistor plays the same role — a small
+terminal commanding a big current — with one deep difference: <strong>the control input is a
+voltage, and it draws essentially no current at all</strong>. Gate currents are picoamps for a
+JFET and femtoamps-to-nanoamps for a MOSFET, against the microamps a BJT's base demands. That one
+property is why your CPU contains billions of MOSFETs: a gate that draws no static current burns
+no static power, so you can afford billions of them switching only when asked. And at the other
+end of the scale, a power MOSFET will switch tens of amps while its gate sips
+<em>microwatts</em> of drive — the reason a bare microcontroller pin can run a motor, a heater,
+or a string of lamps through a single three-legged part. If Module 08's mantra was "the base is
+a current port," this module's is: <strong>the gate is a capacitor</strong>. Everything good and
+everything dangerous about FETs follows from that.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background — control by field, not by current</span>
+  <p>The MOSFET's name is its cross-section: <strong>M</strong>etal (the gate electrode),
+  <strong>O</strong>xide (a glass insulation layer, mere nanometres thick), and
+  <strong>S</strong>emiconductor (the silicon underneath, between two n-type wells called source
+  and drain). The gate is literally <em>one plate of a capacitor</em>, with the channel region as
+  the other plate. Put positive charge on the gate and its electric field reaches through the
+  oxide and <em>invites electrons</em> to gather at the silicon surface — turning a thin sheet of
+  normally-nonconducting p-type material into an n-type conducting channel from source to drain.
+  No charge crosses the oxide; the field alone does the recruiting. That's the whole trick:
+  <strong>a field, not a current, creates the channel</strong> — hence "field-effect."
+  A device that needs gate voltage to <em>create</em> its channel is called
+  <strong>enhancement mode</strong> (off at zero gate voltage — the overwhelmingly common kind);
+  one built with a channel already present, which gate voltage can enrich or deplete, is
+  <strong>depletion mode</strong> (on at zero — rare in MOSFETs, standard in JFETs).</p>
+  <p>The <strong>JFET</strong> gets the same result with older machinery: its channel is a real,
+  physically doped conducting bar, and the gate is a reverse-biased PN junction alongside it
+  (Module 06's depletion region, repurposed). The channel conducts at zero gate voltage —
+  normally ON. Apply <em>reverse</em> gate voltage and the depletion region fattens, squeezing
+  the channel like a thumb on a hose until, at the pinch-off voltage, it's fully choked. Because
+  the gate junction stays reverse-biased, its "input current" is just diode leakage —
+  picoamps. No oxide, so no oxide fragility; but also no enhancement mode, and the gate must
+  never be driven a diode drop forward or it becomes, well, a diode.</p>
+</div>
+
+<h2>The n-channel enhancement MOSFET — the workhorse</h2>
+<p>One FET flavor dominates practice so thoroughly that we'll learn it first and treat the rest
+as variations: the <strong>n-channel enhancement MOSFET</strong>. Its rules:</p>
+<p><strong>Below threshold: nothing.</strong> With the gate-to-source voltage
+V<sub>GS</sub> below a threshold V<sub>th</sub> — typically 1–4&nbsp;V, set at manufacture —
+there is no channel and no drain current worth mentioning. The device is an open switch.</p>
+<p><strong>Above threshold: a channel forms</strong>, and the drain current grows with the
+<em>overdrive</em> V<sub>GS</sub>&nbsp;−&nbsp;V<sub>th</sub>:</p>
+<div class="formula">
+  I<sub>D</sub> ≈ k (V<sub>GS</sub> − V<sub>th</sub>)²
+  <small>the square law — roughly quadratic in overdrive, unlike the BJT's exponential in V<sub>BE</sub></small>
+</div>
+<p>Note the temperament change: the BJT's exponential meant 60&nbsp;mV per <em>decade</em>; the
+MOSFET's square law is far gentler — doubling the overdrive quadruples the current. That makes
+FETs more forgiving to bias and less spectacular as amplifiers (lower transconductance at the
+same current), a trade we'll revisit below.</p>
+<p><strong>Two regions above threshold.</strong> The name of the game is comparing
+V<sub>DS</sub> with the overdrive:</p>
+<ul>
+  <li><strong>Linear / triode region</strong> (V<sub>DS</sub> &lt; V<sub>GS</sub> − V<sub>th</sub>):
+  the channel exists along its whole length and the device behaves like a
+  <em>voltage-controlled resistor</em> — small V<sub>DS</sub>, current roughly proportional to
+  it. This resistance is the famous <strong>R<sub>DS(on)</sub></strong>, and it's where every
+  switching FET should live when "on."
+  Full model: I<sub>D</sub> = k[2(V<sub>GS</sub>−V<sub>th</sub>)V<sub>DS</sub> − V<sub>DS</sub>²].</li>
+  <li><strong>Saturation region</strong> (V<sub>DS</sub> &gt; V<sub>GS</sub> − V<sub>th</sub>):
+  the drain end of the channel pinches off, current stops caring about V<sub>DS</sub>, and the
+  device behaves like a <em>current source</em> set by the square law. This is amplifier
+  territory — the FET analog of the BJT's active region. (Confusingly, "saturation" means
+  opposite things for BJTs and FETs. Blame history, learn both.)</li>
+</ul>
+<p>The two expressions meet exactly at the boundary V<sub>DS</sub> = V<sub>GS</sub> − V<sub>th</sub>
+— plug it into the triode formula and out falls k(V<sub>GS</sub>−V<sub>th</sub>)², the
+saturation value. One smooth surface, two useful caricatures.</p>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy — the foot on the hose</span>
+  <p>A <strong>MOSFET is a garden hose with your foot resting on it</strong>. Press down and the
+  flow chokes; ease off and it runs free. The crucial part of the picture: <em>no water flows
+  through your foot</em>. Your foot does no flow-work at all — it just imposes a squeeze, exactly
+  as the gate imposes a field without passing any current. A BJT, by contrast, is a valve you
+  must pay a continuous trickle of water to hold open. (For the enhancement MOSFET, invert the
+  default: the hose is squeezed shut until the "foot" — the gate field — <em>opens</em> it.)</p>
+  <p>The <strong>JFET is a hose that runs full-bore until you squeeze it</strong> — normally on,
+  pinched off by effort, which is precisely the depletion region strangling the channel under
+  reverse gate bias.</p>
+  <p>Where the analogy fails: feet don't have thresholds — a real gate does nothing at all until
+  V<sub>th</sub>, then follows a quadratic law no foot has ever obeyed. And the picture hides the
+  gate's one running cost: the gate is a capacitor, and moving it <em>fast</em> means squirting
+  real pulses of charge in and out, nanocoulombs at a time. DC-free is not charge-free — hold
+  that thought for the switching-loss section.</p>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: output characteristics — one family, two regions</div>
+  <div class="widget-hint">The classic FET portrait: drain current versus V<sub>DS</sub>, one
+  curve per gate voltage (model: k&nbsp;=&nbsp;0.5&nbsp;A/V², V<sub>th</sub>&nbsp;=&nbsp;2&nbsp;V).
+  Curves bottom to top: <span style="color:var(--series-1)">■</span> V<sub>GS</sub>&nbsp;=&nbsp;2&nbsp;V
+  (at threshold — flat zero),
+  <span style="color:var(--series-2)">■</span> 3&nbsp;V,
+  <span style="color:var(--series-3)">■</span> 4&nbsp;V,
+  <span style="color:var(--series-4)">■</span> 5&nbsp;V,
+  <span style="color:var(--series-5)">■</span> 6&nbsp;V.
+  The grey dashed parabola is the triode/saturation boundary
+  V<sub>DS</sub>&nbsp;=&nbsp;V<sub>GS</sub>−V<sub>th</sub>: left of it, resistor; right of it,
+  current source. Hover to read all five curves at once; drag the sliders to move the red
+  operating point (its V<sub>GS</sub> interpolates between the drawn curves).</div>
+  <canvas id="oc-plot" class="hh-plot" data-height="340"></canvas>
+  <div class="controls">
+    <div class="control">
+      <label for="vds-slider">Drain voltage V<sub>DS</sub> <span class="val"></span></label>
+      <input type="range" id="vds-slider" min="0" max="10" step="0.05" value="5">
+    </div>
+    <div class="control">
+      <label for="vgs-slider">Gate voltage V<sub>GS</sub> <span class="val"></span></label>
+      <input type="range" id="vgs-slider" min="1" max="6" step="0.05" value="4">
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout"><div class="k">Region</div><div class="v" id="region-read">—</div></div>
+    <div class="readout"><div class="k">Drain current I<sub>D</sub></div><div class="v" id="idq-read">—</div></div>
+    <div class="readout"><div class="k">Small-signal R<sub>DS</sub></div><div class="v" id="rds-read">—</div></div>
+    <div class="readout"><div class="k">Power in the FET</div><div class="v" id="pd-read">—</div></div>
+  </div>
+  <p class="widget-hint" id="oc-note" style="margin-top:10px"></p>
+</div>
+
+<h2>BJT versus FET — an honest scorecard</h2>
+<p>Neither device wins; they split the trophies. Knowing which column matters for your circuit
+is most of the decision:</p>
+<table>
+  <tr><th>Property</th><th>BJT</th><th>FET (MOSFET)</th></tr>
+  <tr><td>Control variable</td><td>Base <strong>current</strong> (I<sub>B</sub>)</td>
+      <td>Gate <strong>voltage</strong> (V<sub>GS</sub>)</td></tr>
+  <tr><td>Input current</td><td>µA to mA, continuously</td>
+      <td>~0 at DC (pA leakage; charge only when switching)</td></tr>
+  <tr><td>On-state voltage</td><td>V<sub>CE(sat)</sub> ≈ 0.2 V — a floor you can't remove</td>
+      <td>R<sub>DS(on)</sub>·I<sub>D</sub>, ohmic — can be <em>lower</em> than the BJT's floor
+      (10 mΩ at 2 A = 20 mV)</td></tr>
+  <tr><td>Transconductance</td><td>Higher at the same current (exponential is steep)</td>
+      <td>Lower (square law is gentle)</td></tr>
+  <tr><td>Matching (pairs, mirrors)</td><td>Better — V<sub>BE</sub> matching to mV is routine</td>
+      <td>Worse — V<sub>th</sub> scatters tens of mV even on one die</td></tr>
+  <tr><td>ESD ruggedness</td><td>Robust — junctions shrug off small zaps</td>
+      <td>Fragile — the nm-thin gate oxide punctures from static; handle with care</td></tr>
+</table>
+<p>Rough sorting rule: <strong>switching and high-impedance inputs → FET; precision analog and
+raw transconductance → BJT.</strong> Module 11's matched pairs and mirrors were bipolar for
+exactly the matching row above.</p>
+
+<h2>Gate care and feeding</h2>
+<p><strong>The gate is a capacitor.</strong> Say it three times, because it has three
+consequences:</p>
+<p><strong>1. Zero DC current, real switching charge.</strong> Holding a power MOSFET on costs
+nothing, but its gate capacitance stores a total charge Q<sub>g</sub> of tens of nanocoulombs.
+To switch in 100&nbsp;ns you must move that charge in 100&nbsp;ns —
+I&nbsp;=&nbsp;Q/t&nbsp;=&nbsp;20&nbsp;nC&nbsp;/&nbsp;100&nbsp;ns&nbsp;=&nbsp;0.2&nbsp;A of gate
+current, <em>briefly</em>. Fast switching needs a driver that can source and sink real current
+pulses; DC-free does not mean effort-free.</p>
+<p><strong>2. A floating gate is a random-number generator.</strong> Disconnect a gate and its
+capacitor holds whatever charge it last had, drifting with leakage and picking up volts from any
+nearby field — your hand, the mains wiring, the drain node itself. The FET wanders between off,
+on, and the smoky in-between. <strong>Always give the gate a DC path</strong>: a 100&nbsp;k
+pull-down (or pull-up, for a p-channel) guarantees the switch is off when the driving pin is
+absent, tri-stated, or still booting.</p>
+<p><strong>3. The oxide is nanometres thick.</strong> A static zap that a BJT wouldn't notice
+punches a permanent hole in a MOSFET gate. Ground yourself before handling bare parts, and
+touch the package tab rather than the pins.</p>
+<p>And one datasheet trap that earns its own widget: <strong>logic-level versus standard
+gates</strong>. V<sub>th</sub> is where the channel <em>barely begins</em> — the datasheet
+defines it at some token current like 250&nbsp;µA. A FET driven just above threshold is not
+"on"; it's a high-value resistor. What you actually need is the gate voltage at which
+R<sub>DS(on)</sub> reaches its rated low value — and that's specified at a <em>test
+condition</em>, traditionally V<sub>GS</sub>&nbsp;=&nbsp;10&nbsp;V, or 4.5&nbsp;V for
+"logic-level" parts. A "5&nbsp;V" gate spec won't turn on properly from 3.3&nbsp;V logic. Check
+<em>both</em> numbers: V<sub>GS(th)</sub> comfortably below your drive, <em>and</em>
+R<sub>DS(on)</sub> specified at (or below) the gate voltage you can actually supply.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: transfer curve &amp; the logic-level trap</div>
+  <div class="widget-hint">Drain current versus gate voltage at a fixed V<sub>DS</sub> = 5 V
+  (saturation square law, k = 0.5 A/V²). The grey dashed line is V<sub>th</sub> — slide it to
+  impersonate different parts (a standard FET might sit at 3 V; a logic-level one nearer 1 V).
+  Then pick your drive rail and see whether it clears threshold <em>with margin</em>, because
+  "barely above V<sub>th</sub>" is a resistor pretending to be a switch.</div>
+  <canvas id="tc-plot" class="hh-plot" data-height="320"></canvas>
+  <div class="controls">
+    <div class="control">
+      <label for="vth-slider">Part's threshold V<sub>th</sub> <span class="val"></span></label>
+      <input type="range" id="vth-slider" min="1" max="3" step="0.05" value="2">
+    </div>
+    <div class="control" style="min-width:220px">
+      <label style="display:block; margin-bottom:6px">Drive rail</label>
+      <button class="btn" id="drive-33">3.3 V logic</button>
+      <button class="btn ghost" id="drive-50">5 V logic</button>
+    </div>
+  </div>
+  <div class="readouts">
+    <div class="readout"><div class="k">I<sub>D</sub> at drive</div><div class="v" id="tc-id-read">—</div></div>
+    <div class="readout"><div class="k">Margin V<sub>GS</sub> − V<sub>th</sub></div><div class="v" id="tc-margin-read">—</div></div>
+    <div class="readout"><div class="k">Verdict</div><div class="v" id="tc-verdict-read">—</div></div>
+  </div>
+  <p class="widget-hint" style="margin-top:10px">The gotcha this widget is really about: the
+  datasheet's beautiful R<sub>DS(on)</sub> figure was measured at a stated V<sub>GS</sub> —
+  usually 10 V or 4.5 V. If your drive rail is lower than the test condition, you are not
+  buying the resistance you read. Match the test condition to your rail, or find the
+  R<sub>DS(on)</sub>-vs-V<sub>GS</sub> curve and read your operating point honestly.</p>
+</div>
+
+<h2>R<sub>DS(on)</sub> and the price of switching</h2>
+<p>A fully-on MOSFET is a resistor, so Module 01's power law is the whole thermal story of a
+FET switch:</p>
+<div class="formula">
+  P<sub>conduction</sub> = I<sub>D</sub>² · R<sub>DS(on)</sub>
+  <small>a 10 mΩ part carrying 5 A dissipates 0.25 W — no heatsink, no drama</small>
+</div>
+<p>This is the FET's great gift to power switching: R<sub>DS(on)</sub> comes in single-digit
+milliohms, so the on-state loss can be made almost arbitrarily small by buying a bigger die —
+no fixed 0.2&nbsp;V floor as with a saturated BJT. The corollary cuts the other way: at
+V<sub>GS</sub> barely above threshold the <em>same part</em> is ohms, not milliohms, and
+I²R does its arithmetic without sympathy.</p>
+<p>One more term joins the bill when you PWM: <strong>switching loss</strong>. During each
+transition the FET briefly sits at half-on — volts across it <em>and</em> amps through it at
+once. Each edge costs a fixed blob of energy, so switching loss grows linearly with frequency:
+slow PWM, negligible; hundreds of kilohertz, it can rival conduction loss. Fast gate drive
+(shorter transitions) is the lever — which is why consequence 1 above insisted on charge
+pulses.</p>
+
+<h2>JFETs — and the rest of the family</h2>
+<p>The JFET inverts the enhancement MOSFET's habits: it is <strong>normally on</strong>, and you
+apply <em>reverse</em> gate voltage (negative V<sub>GS</sub>, for an n-channel) to squeeze the
+channel down, reaching zero at the pinch-off voltage. Its gate is a reverse-biased diode —
+picoamp leakage, but also a hard rule: never drive it a diode drop positive or the gate
+conducts. What JFETs lack in switching glamour they repay in analog virtue: no oxide means no
+oxide traps, so JFETs make superbly <strong>low-noise, high-impedance front ends</strong> —
+condenser-microphone preamps, pH meters, the input stage of many fine op-amps — and their
+resistor-like triode region makes clean small-signal <strong>analog switches</strong>
+(Module 13's subject).</p>
+<p>For completeness: <strong>depletion-mode MOSFETs</strong> exist — a MOSFET built with a
+channel already in place, normally on like a JFET but with an insulated gate. They're rare,
+prized for niche jobs like current limiters and start-up circuits in high-voltage supplies.
+If a schematic symbol seems to say "MOSFET that's on at zero volts," believe it — but expect
+to special-order the part.</p>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>Check V<sub>GS(th)</sub> at YOUR drive voltage</strong> — and check the test
+        condition on the R<sub>DS(on)</sub> spec (10 V? 4.5 V?). If the datasheet measured at a
+        gate voltage you can't supply, its resistance number isn't yours.</li>
+    <li><strong>Never float a gate.</strong> 100 k to the off rail costs nothing and ends a
+        whole category of mystery behavior.</li>
+    <li><strong>Touch the tab, not the pins.</strong> The gate oxide is nanometres of glass;
+        static electricity is its natural predator.</li>
+    <li><strong>P = I²·R<sub>DS(on)</sub></strong>: a 10 mΩ part at 5 A dissipates 0.25 W —
+        fine, bare part. The same part "on" at a gate voltage barely above threshold is a
+        multi-ohm resistor and burns. Full enhancement or nothing.</li>
+    <li>Gate charge, not gate current, sets switching speed: I<sub>gate</sub> = Q<sub>g</sub>/t
+        during the edges. Budget driver current if you PWM fast.</li>
+  </ul>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil, paper, and a datasheet habit or two. Check the box when you've worked each one and
+compared with the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — heater switch from a 3.3 V pin</label>
+  </div>
+  <p>Switch a 2&nbsp;A, 12&nbsp;V heater from a 3.3&nbsp;V microcontroller output (low-side
+  n-channel switch). Write the requirements the FET must meet, choose the supporting resistors,
+  and compute the conduction loss for a part with R<sub>DS(on)</sub>&nbsp;=&nbsp;30&nbsp;mΩ.
+  Does it need a heatsink?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The part:</strong> a logic-level n-channel MOSFET with (1)
+      V<sub>GS(th)</sub>&nbsp;≤&nbsp;1.5&nbsp;V, so 3.3&nbsp;V clears it with ~2&nbsp;V margin
+      (recall the widget's verdict bands); (2) R<sub>DS(on)</sub> <em>specified at</em>
+      V<sub>GS</sub>&nbsp;=&nbsp;2.5&nbsp;V — a spec at 2.5&nbsp;V guarantees full enhancement
+      anywhere at or above it, so your 3.3&nbsp;V rail qualifies. A spec quoted only at
+      4.5&nbsp;V is a gamble, and one only at 10&nbsp;V is a refusal; (3)
+      V<sub>DS</sub> rating ≥ 20–30&nbsp;V (headroom over 12&nbsp;V) and
+      I<sub>D</sub> rating comfortably over 2&nbsp;A.</p>
+      <p><strong>The supporting cast:</strong> ~100&nbsp;Ω in series with the gate — it tames
+      ringing between the pin and the gate capacitance and limits the charging-current spike the
+      microcontroller pin must deliver — plus <strong>100&nbsp;kΩ from gate to ground</strong>,
+      so the heater is guaranteed off while the micro is resetting, rebooting, or unplugged.
+      The pull-down loses the argument with the pin (100&nbsp;k versus 100&nbsp;Ω) whenever the
+      pin actually drives, which is exactly the arrangement you want.</p>
+      <p><strong>The loss:</strong> P = I²·R<sub>DS(on)</sub> = 2² × 0.030 =
+      <strong>0.12&nbsp;W</strong>. A bare SOT-23 or DPAK sheds that with no heatsink and barely
+      a rise in temperature. Compare a BJT doing the same job: 0.2&nbsp;V × 2&nbsp;A =
+      0.4&nbsp;W <em>plus</em> ~20&nbsp;mA of continuous base drive from the pin — more heat and
+      a hundred times the control power.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — why did it die?</label>
+  </div>
+  <p>Two field reports, one part number. <em>Board A:</em> a MOSFET switching a solenoid worked
+  on the bench for an hour, then failed shorted; the schematic shows the solenoid coil straight
+  from +12&nbsp;V to the drain, nothing else. <em>Board B:</em> same FET switching a fan; on
+  some units the fan spins at half speed with the FET too hot to touch — before the
+  microcontroller firmware has even started. The gate trace runs to the micro's pin and to
+  nothing else. Diagnose both.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Board A: inductive kick, no flyback path.</strong> Module 04's iron law: an
+      inductor's current cannot stop instantly. Each turn-off, the solenoid yanks the drain
+      voltage skyward until <em>something</em> conducts — and that something is the FET's own
+      drain-source junction breaking down in avalanche, tens of volts above its rating,
+      swallowing the coil's stored energy every single cycle. Small FETs tolerate occasional
+      avalanche; repetitive energy dumps cook the die until it fails (MOSFETs usually fail
+      <em>shorted</em>, hence the always-on solenoid found in the wreckage). Fix: a flyback
+      diode across the coil — Module 06's bodyguard reflex — or a properly avalanche-rated FET
+      chosen on purpose, with the datasheet's repetitive-energy numbers checked.</p>
+      <p><strong>Board B: a floating gate.</strong> Before firmware boots, the micro's pin is a
+      high-impedance input — the gate is connected to <em>nothing</em>. Its capacitor holds
+      whatever charge assembly and handling left on it; on some units that sits near threshold,
+      and the FET half-turns-on: a few ohms in series with the fan. Half speed, and
+      P&nbsp;=&nbsp;I²R with R in the ohms instead of milliohms — hence the burnt fingers. Fix:
+      the 100&nbsp;k gate pull-down from Task 1. One resistor, and the "random FET behavior
+      before boot" bug class simply ceases to exist.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — the FET source follower</label>
+  </div>
+  <p>By analogy with the BJT emitter follower (Module 09): source follower — drain to the
+  positive rail, load resistor from source to ground, output at the source, so
+  V<sub>out</sub>&nbsp;=&nbsp;V<sub>in</sub>&nbsp;−&nbsp;V<sub>GS</sub>. Is this a good
+  follower? Discuss the offset, and name the applications where a FET follower beats a
+  bipolar one anyway.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The offset is bigger and vaguer than the BJT's.</strong> An emitter follower
+      sits a dependable ~0.6&nbsp;V below its input — the exponential pins V<sub>BE</sub> to
+      within tens of millivolts regardless of current. The FET's V<sub>GS</sub> is
+      V<sub>th</sub> plus the overdrive: with V<sub>th</sub> anywhere from 1 to 4&nbsp;V by
+      type — scattering part-to-part and drifting with temperature — plus a square-law
+      overdrive that <em>moves with load current</em> (the gentle square law means the gate
+      voltage must swing more than a V<sub>BE</sub> would to cover the same current range), the
+      offset is larger, poorly predictable, and signal-dependent. That last part is nonlinearity,
+      not just offset. Verdict: as a precision level-shifter, it's poor; the classic fixes are a
+      current-source load (fixed I<sub>D</sub> → fixed overdrive, Module 11's trick) or feedback
+      around the whole stage.</p>
+      <p><strong>Where it wins anyway: the input impedance is essentially infinite.</strong> The
+      BJT follower's base still draws I<sub>load</sub>/β — µA that will flatten a
+      gigaohm source. The FET's gate draws picoamps or less. So FET followers own the
+      <em>electrometer front ends</em>: pH probes (GΩ source impedance), condenser and electret
+      microphones, photodiodes in photovoltaic mode, ionization chambers — any source so frail
+      that merely being observed by a base current would ruin it. There, a volt or two of vague
+      offset is a bargain, and the follower exists precisely to convert a gigaohm world down to
+      something a BJT stage can meet politely.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="11-diffpairs-mirrors.html"><span class="dir">Previous</span><span class="name">11 · Differential Pairs, Mirrors &amp; Push-Pull</span></a>
+  <a href="13-fet-switches.html"><span class="dir">Next</span><span class="name">13 · FET Switches &amp; Analog Switching</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("12");
+
+  /* ============ shared MOSFET model ============
+     k = 0.5 A/V², Vth = 2 V.
+     Triode  (Vds <  Vov): Id = k(2·Vov·Vds − Vds²)
+     Sat     (Vds >= Vov): Id = k·Vov²
+     Continuity verified: at Vds = Vov the triode expression gives
+     k(2Vov² − Vov²) = k·Vov² — exactly the saturation value.
+     Small-signal triode conductance dId/dVds = 2k(Vov − Vds),
+     so Rds = 1/(2k·Vov) as Vds → 0 (checked numerically). */
+  var K = 0.5, VTH = 2;
+  function drainI(vgs, vds, vth) {
+    var vt = vth == null ? VTH : vth;
+    var vov = vgs - vt;
+    if (vov <= 0) return 0;
+    if (vds < vov) return K * (2 * vov * vds - vds * vds);
+    return K * vov * vov;
+  }
+
+  /* ============ widget 1: output characteristics ============ */
+  var FAMILY = [2, 3, 4, 5, 6];                    /* V_GS per curve */
+  var FAMILY_COLORS = ["--series-1", "--series-2", "--series-3", "--series-4", "--series-5"];
+
+  var oc = { vds: 5, vgs: 4 };
+  var regionRead = document.getElementById("region-read");
+  var idqRead = document.getElementById("idq-read");
+  var rdsRead = document.getElementById("rds-read");
+  var pdRead = document.getElementById("pd-read");
+  var ocNote = document.getElementById("oc-note");
+
+  HH.slider("vds-slider", {
+    format: function (v) { return HH.fmt(v, "V", 2); },
+    onchange: function (v) { oc.vds = v; ocUpdate(); }
+  });
+  HH.slider("vgs-slider", {
+    format: function (v) { return HH.fmt(v, "V", 2); },
+    onchange: function (v) { oc.vgs = v; ocUpdate(); }
+  });
+
+  var ocPlot = HH.plot(document.getElementById("oc-plot"), {
+    xlabel: "Drain–source voltage V_DS (V)",
+    ylabel: "Drain current I_D (A)",
+    xmin: 0, xmax: 10, ymin: 0, ymax: 9,
+    xticks: [0, 2, 4, 6, 8, 10],
+    yticks: [0, 2, 4, 6, 8],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var lines = [{ text: "V_DS = " + x.toFixed(2) + " V" }];
+      FAMILY.forEach(function (vgs, i) {
+        lines.push({
+          color: FAMILY_COLORS[i],
+          text: "V_GS = " + vgs + " V:  I_D = " + HH.fmt(drainI(vgs, x), "A")
+        });
+      });
+      return lines;
+    }
+  });
+
+  function ocUpdate() {
+    var vov = oc.vgs - VTH;
+    var id = drainI(oc.vgs, oc.vds);
+    var p = id * oc.vds;
+
+    idqRead.innerHTML = HH.fmt(id, "A");
+    pdRead.innerHTML = HH.fmt(p, "W");
+
+    if (vov <= 0) {
+      regionRead.innerHTML = "OFF <small>(no channel)</small>";
+      rdsRead.innerHTML = "∞ <small>(open)</small>";
+      ocNote.textContent = "V_GS is at or below the 2 V threshold: no channel exists, no " +
+        "current flows, and the drain terminal is simply an open circuit. The perfect " +
+        "off-switch — this is the state your gate pull-down resistor guarantees.";
+      ocNote.style.color = "var(--muted)";
+    } else if (oc.vds < vov) {
+      /* triode: small-signal r at the operating point; 1/(2k·Vov) at Vds→0 */
+      var g = 2 * K * (vov - oc.vds);
+      var rHere = 1 / g;
+      var r0 = 1 / (2 * K * vov);
+      regionRead.innerHTML = "TRIODE <small>(resistor)</small>";
+      rdsRead.innerHTML = HH.fmt(rHere, "Ω");
+      ocNote.textContent = "Triode region: the FET is a voltage-controlled resistor. " +
+        "Small-signal R_DS here is " + HH.fmt(rHere, "Ω") + " (it would be 1/(2k·Vov) = " +
+        HH.fmt(r0, "Ω") + " at Vds → 0, rising as you approach the boundary). More gate " +
+        "overdrive → lower resistance — the switching sweet spot is deep in this corner.";
+      ocNote.style.color = "var(--muted)";
+    } else {
+      regionRead.innerHTML = "SATURATION <small>(current source)</small>";
+      rdsRead.innerHTML = "→ ∞ <small>(flat curve)</small>";
+      ocNote.textContent = "Saturation: the curve is flat, so I_D ignores V_DS — a current " +
+        "source of k·(Vov)² = " + HH.fmt(id, "A") + ". Amplifier territory. Note the power: " +
+        HH.fmt(p, "W") + " burns in the FET here — a switch should never linger in this region.";
+      ocNote.style.color = p > 5 ? "var(--critical)" : "var(--muted)";
+    }
+
+    /* family curves */
+    var series = FAMILY.map(function (vgs, i) {
+      var pts = [];
+      for (var v = 0; v <= 10.0001; v += 0.05) pts.push([v, drainI(vgs, v)]);
+      return { pts: pts, color: FAMILY_COLORS[i], width: 2 };
+    });
+    /* triode/saturation boundary: the locus Vds = Vov, i.e. Id = k·Vds² */
+    var boundary = [];
+    for (var vb = 0; vb <= 4.35; vb += 0.05) boundary.push([vb, K * vb * vb]);
+    series.push({ pts: boundary, color: "--axis", width: 1.5, dash: [5, 4] });
+
+    ocPlot.draw(series, { markers: [{ x: oc.vds, y: id, color: "--series-8" }] });
+  }
+  ocUpdate();
+
+  /* ============ widget 2: transfer curve & the logic-level trap ============ */
+  var tc = { vth: 2, drive: 3.3 };
+  var tcIdRead = document.getElementById("tc-id-read");
+  var tcMarginRead = document.getElementById("tc-margin-read");
+  var tcVerdictRead = document.getElementById("tc-verdict-read");
+  var btn33 = document.getElementById("drive-33");
+  var btn50 = document.getElementById("drive-50");
+
+  HH.slider("vth-slider", {
+    format: function (v) { return HH.fmt(v, "V", 2); },
+    onchange: function (v) { tc.vth = v; tcUpdate(); }
+  });
+  btn33.addEventListener("click", function () { tc.drive = 3.3; tcUpdate(); });
+  btn50.addEventListener("click", function () { tc.drive = 5; tcUpdate(); });
+
+  /* saturation square law throughout: at Vds = 5 V the device is saturated for
+     any overdrive up to 5 V, which covers this whole window (max Vov = 6−1 = 5). */
+  function transferI(vgs) {
+    var vov = vgs - tc.vth;
+    return vov > 0 ? K * vov * vov : 0;
+  }
+
+  var tcPlot = HH.plot(document.getElementById("tc-plot"), {
+    xlabel: "Gate–source voltage V_GS (V)   —   V_DS fixed at 5 V",
+    ylabel: "Drain current I_D (A)",
+    xmin: 0, xmax: 6, ymin: 0, ymax: 12.5,
+    xticks: [0, 1, 2, 3, 4, 5, 6],
+    yticks: [0, 2.5, 5, 7.5, 10, 12.5],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      return [
+        { text: "V_GS = " + x.toFixed(2) + " V" },
+        { color: "--series-1", text: "I_D = " + HH.fmt(transferI(x), "A") },
+        { color: "--muted", text: "margin over V_th = " + (x - tc.vth).toFixed(2) + " V" }
+      ];
+    }
+  });
+
+  function tcUpdate() {
+    var id = transferI(tc.drive);
+    var margin = tc.drive - tc.vth;
+
+    btn33.classList.toggle("ghost", tc.drive !== 3.3);
+    btn50.classList.toggle("ghost", tc.drive !== 5);
+
+    tcIdRead.innerHTML = HH.fmt(id, "A");
+    tcMarginRead.innerHTML = HH.fmt(margin, "V", 2);
+
+    /* verdict bands: margin > 2 V robust; 0.5–2 V marginal; < 0.5 V off/burning */
+    if (margin > 2) {
+      tcVerdictRead.innerHTML = "robustly on ✓";
+      tcVerdictRead.style.color = "var(--good-text)";
+    } else if (margin >= 0.5) {
+      tcVerdictRead.innerHTML = "marginal ⚠";
+      tcVerdictRead.style.color = "var(--warning)";
+    } else {
+      tcVerdictRead.innerHTML = margin > 0 ? "barely on — burning" : "off ✗";
+      tcVerdictRead.style.color = "var(--critical)";
+    }
+
+    var curve = [];
+    for (var v = 0; v <= 6.0001; v += 0.03) curve.push([v, transferI(v)]);
+    tcPlot.draw(
+      [
+        { pts: curve, color: "--series-1", width: 2.5 },
+        { pts: [[tc.vth, 0], [tc.vth, 12.5]], color: "--muted", width: 1.5, dash: [5, 4] }
+      ],
+      {
+        vline: tc.drive,
+        markers: [{ x: tc.drive, y: Math.min(id, 12.5), color: "--series-8" }]
+      }
+    );
+  }
+  tcUpdate();
+
+  /* ============ quiz ============ */
+  HH.quiz("quiz", [
+    {
+      q: "A power MOSFET has been holding a 10 A load on for an hour. Roughly how much current has its gate drawn from the driver during that hour of steady on-time?",
+      opts: [
+        "About 10 A / β, like a BJT's base",
+        "A few milliamps, to maintain the channel",
+        "Essentially none — the gate is a capacitor, and a charged capacitor holds its voltage without current",
+        "Exactly the drain current, briefly, once per second"
+      ],
+      answer: 2,
+      expl: "The gate sits behind nanometres of insulating oxide: it is one plate of a capacitor. Once charged to the on-voltage, it holds that voltage while drawing only leakage — picoamps to nanoamps. The gate needs real current only <em>during transitions</em>, to move its stored charge quickly. That distinction — zero DC current, real switching charge — is the whole personality of the device."
+    },
+    {
+      q: "What is the fundamental difference in how you command a BJT versus a FET?",
+      opts: [
+        "BJT: collector voltage; FET: drain voltage",
+        "BJT: a current into the base; FET: a voltage on the gate",
+        "BJT: a voltage on the base; FET: a current into the gate",
+        "There is no difference; both are current-controlled"
+      ],
+      answer: 1,
+      expl: "The BJT is current-controlled: base current (µA to mA, continuously) commands collector current. The FET is voltage-controlled: the gate's <em>field</em> creates the channel, and no steady control current flows at all. That's why the F in FET matters — field effect, not current effect — and why FETs win wherever the driving source can't spare any current."
+    },
+    {
+      q: "An enhancement MOSFET with V<sub>th</sub> = 2 V has its gate held at 1.5 V. What flows from drain to source?",
+      opts: [
+        "About half the full-on current",
+        "Essentially nothing — below threshold there is no channel",
+        "A current set by the square law, k(1.5)²",
+        "Whatever the drain supply forces through R_DS(on)"
+      ],
+      answer: 1,
+      expl: "Below threshold the gate field hasn't recruited enough carriers to form a channel: the drain-source path is an open circuit (nanoamps of leakage aside). The square law applies only to the <em>overdrive</em> above threshold — and here the overdrive is negative. This hard OFF state is the enhancement MOSFET's virtue as a switch: no drive, no current, no power."
+    },
+    {
+      q: "A MOSFET has V<sub>GS</sub> = 5 V, V<sub>th</sub> = 2 V. Compare its behavior at V<sub>DS</sub> = 0.2 V versus V<sub>DS</sub> = 8 V.",
+      opts: [
+        "Resistor at 0.2 V (triode); current source at 8 V (saturation)",
+        "Current source at 0.2 V; resistor at 8 V",
+        "Off at 0.2 V; on at 8 V",
+        "Identical — V_DS never matters above threshold"
+      ],
+      answer: 0,
+      expl: "The dividing line is the overdrive, V<sub>GS</sub> − V<sub>th</sub> = 3 V. Below it (V<sub>DS</sub> = 0.2 V) the device is in the triode region: a small voltage-controlled resistance, where a switch should live. Above it (8 V) the channel pinches off at the drain end and current flattens out: a current source, where amplifiers live. Same part, two impersonations — and which one you get is set by the terminal voltages, not the part number."
+    },
+    {
+      q: "Your 3.3 V microcontroller drives a MOSFET whose datasheet says V<sub>GS(th)</sub> = 3 V max, R<sub>DS(on)</sub> = 25 mΩ at V<sub>GS</sub> = 10 V. What happens to your 2 A load?",
+      opts: [
+        "Works fine — 3.3 V is above 3 V, so the FET is on",
+        "The FET may barely conduct: 0.3 V of margin leaves it a resistor of ohms, dropping volts and cooking, nowhere near its 25 mΩ rating",
+        "The FET is damaged by the 3.3 V gate drive",
+        "R_DS(on) will be exactly 25 mΩ since threshold is exceeded"
+      ],
+      answer: 1,
+      expl: "Two traps at once. Threshold is where conduction <em>barely begins</em> (at some token 250 µA), so 0.3 V of margin means almost no channel. And the lovely 25 mΩ figure was measured at V<sub>GS</sub> = 10 V — a gate voltage you cannot supply. With worst-case V<sub>th</sub> and a 3.3 V rail, the load runs slow and the FET runs hot. You need a logic-level part: V<sub>GS(th)</sub> ≤ ~1.5 V, with R<sub>DS(on)</sub> specified at 2.5 V."
+    },
+    {
+      q: "A fully-enhanced MOSFET with R<sub>DS(on)</sub> = 20 mΩ carries 3 A. Its dissipation?",
+      opts: ["60 mW", "180 mW", "1.8 W", "0.6 W — the 0.2 V saturation drop times 3 A"],
+      answer: 1,
+      expl: "A fully-on MOSFET is a resistor, so Module 01 applies: P = I²R = 3² × 0.020 = 180 mW — fine for a bare surface-mount part. The fourth option is the BJT's arithmetic: a saturated bipolar's fixed ~0.2 V floor would burn 600 mW at the same current. The FET's ohmic on-state, with no fixed floor, is exactly why it owns power switching."
+    },
+    {
+      q: "Why does a MOSFET gate need a pull-down (or pull-up) resistor even though it draws no current?",
+      opts: [
+        "To supply the gate's DC bias current",
+        "To set R_DS(on) to its rated value",
+        "Because a disconnected gate is a floating capacitor: it holds stray charge and drifts with any nearby field, leaving the FET randomly off, on, or half-on",
+        "To protect the drain from inductive kick"
+      ],
+      answer: 2,
+      expl: "The gate's near-infinite input resistance cuts both ways: nothing discharges it, either. Disconnected — during reset, before boot, with a connector unplugged — it floats at whatever voltage stray charge and capacitive pickup dictate, and 'half-on' means ohms of R_DS and I²R heat. A 100 k resistor to the off rail costs nothing, defines the state whenever the driver is absent, and loses gracefully to any real driver. Note it does <em>not</em> fix inductive kick — that's the flyback diode's job (Module 04)."
+    }
+  ]);
+});
+</script>
+</body>
+</html>

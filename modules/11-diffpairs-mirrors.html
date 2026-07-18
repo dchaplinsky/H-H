@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11 · Differential Pairs, Mirrors &amp; Push-Pull — The Art of Electronics, interactively</title>
+<meta name="theme-color" content="#2a78d6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part II · Module 11</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Differential Pairs, Mirrors &amp; Push-Pull</h1>
+  <p class="subtitle">Three two-transistor tricks — steering a current, copying a current, and
+  sharing a load between an NPN and a PNP — that turn out to be the entire skeleton of the op-amp.
+  <em>AoE 3rd ed. §2.3–2.4.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Crack open any op-amp — the venerable 741, a modern rail-to-rail part, it doesn't matter — and
+you find the same floor plan: a <strong>differential pair</strong> at the front door, <strong>current
+mirrors</strong> serving as loads and passing bias around the chip, and a <strong>push-pull</strong>
+stage muscling the output. One transistor was an amplifier; <em>two</em> transistors, matched and
+cooperating, are a building block. This module is the parts list for the next five modules' hero:
+when we treat the op-amp as a magic triangle, everything inside the triangle is something you are
+about to build by hand. Learn these three circuits and datasheet phrases like "input offset,"
+"CMRR," and "class-AB output" stop being vocabulary and start being floor plan.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p><strong>Why "differential" at all?</strong> Because the world is noisy in <em>common mode</em>.
+  Run two wires from a sensor across a room and both pick up the same 50/60&nbsp;Hz hum, the same
+  thermocouple drifts, the same ground bounce — the garbage arrives <em>equally on both wires</em>.
+  A circuit that answers only to the <em>difference</em> between its two inputs is deaf to all of
+  it. That's the differential amplifier's contract: amplify V₁&nbsp;−&nbsp;V₂, ignore
+  (V₁&nbsp;+&nbsp;V₂)/2.</p>
+  <p><strong>Why matched pairs?</strong> Module&nbsp;08 taught that V<sub>BE</sub> moves
+  −2&nbsp;mV/°C — a single transistor's operating point wanders with every draft. But put two
+  transistors side by side on one silicon die and they are the same age, the same doping, the same
+  temperature, forever. Their drifts are a <em>common-mode</em> signal — and a differential circuit
+  cancels those too. Matching doesn't remove the transistor's flaws; it arranges for the flaws to
+  arrive equally on both sides, where the circuit subtracts them away. This one idea is why
+  monolithic ICs beat hand-picked discrete parts.</p>
+</div>
+
+<h2>The long-tailed pair — steering a current</h2>
+<p>Take two matched NPNs and tie their emitters together. Feed that shared node from one of
+Module&nbsp;09's current sources — the "long tail" — sinking a fixed I<sub>tail</sub>. The two
+collectors go through equal resistors R<sub>C</sub> to the positive supply, and the two bases are
+the inputs.</p>
+<p>The tail current has nowhere to go except through the two transistors, so
+<strong>I<sub>C1</sub>&nbsp;+&nbsp;I<sub>C2</sub>&nbsp;=&nbsp;I<sub>tail</sub>, always</strong>.
+With equal base voltages the pair is symmetric and the tail splits 50/50. Now nudge one base up by
+a few millivolts: that transistor's V<sub>BE</sub> grows, its twin's shrinks, and — because
+collector current is exponential in V<sub>BE</sub> (Ebers–Moll, Module&nbsp;08) — current
+<em>steers</em> from one side to the other. Nothing is created or destroyed; the input merely
+decides how the fixed total is shared. Work out the two exponentials and their ratio collapses into
+one clean function of the input <em>difference</em> ΔV:</p>
+<div class="formula">
+  I<sub>C1</sub> − I<sub>C2</sub> = I<sub>tail</sub> · tanh(ΔV / 2V<sub>T</sub>)
+  <small>V<sub>T</sub> = 25 mV; each side individually is I<sub>tail</sub>/2 · (1 ± tanh(ΔV/2V<sub>T</sub>))</small>
+</div>
+<p>The tanh is the pair's signature. Near zero it is a straight line — for
+|ΔV|&nbsp;≲&nbsp;25&nbsp;mV the steering is nicely linear (the curve departs from the straight line
+by only ~8% at ±25&nbsp;mV). Beyond that it bends over hard: at ΔV&nbsp;=&nbsp;60&nbsp;mV one
+transistor already hogs 92% of the tail, and by ±100&nbsp;mV the steering is essentially complete
+(98%) — the pair has become a switch, a fact ECL logic exploits on purpose. The slope in the
+middle is the small-signal gain: at balance each transistor runs at I<sub>tail</sub>/2, so each has
+g<sub>m</sub>&nbsp;=&nbsp;(I<sub>tail</sub>/2)/V<sub>T</sub>, and the differential output current
+per volt of ΔV is exactly that g<sub>m</sub>. <strong>The tail current sets everything</strong> —
+gain, input range in current terms, power burned. Want more gain? More tail. It's one knob.</p>
+
+<h2>Differential vs common-mode — and why the tail must be a source</h2>
+<p>Feed the two inputs a pure <em>difference</em> (one up, one down) and current steers: the
+collector voltages swing apart. Differential gain, taking the output between the two collectors:</p>
+<div class="formula">
+  G<sub>diff</sub> = g<sub>m</sub>·R<sub>C</sub> = R<sub>C</sub> / 2r<sub>e</sub>
+  <small>output taken differentially, collector to collector; a single collector gives half of this</small>
+</div>
+<p>Now raise <em>both</em> inputs together — a common-mode signal, the hum on both wires. Both
+V<sub>BE</sub>s try to grow, the shared emitter node simply rises by the same amount, and — if the
+tail really is a current source — the total current cannot change, so the split doesn't change and
+the collectors <em>don't move</em>. Common-mode gain ≈ 0. The ratio of wanted gain to unwanted gain
+is the <strong>common-mode rejection ratio (CMRR)</strong>, and here is the design punchline:
+<strong>a good tail source = high CMRR</strong>. If you cheat and use a plain resistor
+R<sub>tail</sub> instead, a common-mode wiggle changes the voltage across it, hence the total
+current, hence both collector voltages: G<sub>CM</sub>&nbsp;≈&nbsp;R<sub>C</sub>/2R<sub>tail</sub>.
+A resistor big enough to fix that would starve the pair of bias current. A transistor current
+source gives you the DC current of a small resistor with the incremental stiffness of a multi-megohm
+one — Module&nbsp;09's circuit, doing exactly the job it was born for.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: current steering</div>
+  <div class="widget-hint">A 2&nbsp;mA long-tailed pair with 2.7&nbsp;kΩ collector resistors from
+  +12&nbsp;V. Drag ΔV and watch the tail pour from one collector to the other along the tanh
+  curves. Dashed verticals mark the ±25&nbsp;mV linear region. Hover the plot to read both
+  currents at any ΔV.</div>
+
+  <div class="viz-row">
+    <svg id="ltp-sch" class="schematic" viewBox="0 0 390 268" width="390" height="268" role="img"
+         aria-label="Long-tailed pair: two NPN transistors, shared 2 mA tail current source, 2.7 kilohm collector resistors to +12 volts">
+      <!-- +12 V rail -->
+      <path class="wire" d="M 90 30 L 290 30"/>
+      <text x="46" y="35" class="lbl big">+12 V</text>
+      <!-- Rc1 -->
+      <path class="comp" d="M 140 30 L 140 38 l -8 4 l 16 8 l -16 8 l 16 8 l -16 8 l 16 8 l -8 4 l 0 6"/>
+      <text x="96" y="66" class="lbl">2.7 k</text>
+      <path class="wire" d="M 140 92 L 140 112"/>
+      <circle cx="140" cy="98" r="3.2" class="node"/>
+      <text x="148" y="96" class="lbl" id="ltp-vc1">9.3 V</text>
+      <!-- Rc2 -->
+      <path class="comp" d="M 240 30 L 240 38 l -8 4 l 16 8 l -16 8 l 16 8 l -16 8 l 16 8 l -8 4 l 0 6"/>
+      <text x="252" y="66" class="lbl">2.7 k</text>
+      <path class="wire" d="M 240 92 L 240 112"/>
+      <circle cx="240" cy="98" r="3.2" class="node"/>
+      <text x="248" y="118" class="lbl" id="ltp-vc2">9.3 V</text>
+      <!-- Q1 (left): base bar, collector up-right, emitter down-right w/ arrow -->
+      <line x1="118" y1="128" x2="118" y2="156" class="comp" stroke-width="3"/>
+      <path class="wire" d="M 70 142 L 118 142"/>
+      <path class="comp" d="M 140 112 L 118 134"/>
+      <path class="comp" d="M 118 150 L 140 172"/>
+      <path class="comp" d="M 140 172 l -9 -1 m 9 1 l -2 -9"/>
+      <text x="98" y="126" class="lbl">Q1</text>
+      <text x="34" y="146" class="lbl big">V<tspan dy="3" font-size="11">in+</tspan></text>
+      <!-- Q2 (right): mirror image -->
+      <line x1="262" y1="128" x2="262" y2="156" class="comp" stroke-width="3"/>
+      <path class="wire" d="M 310 142 L 262 142"/>
+      <path class="comp" d="M 240 112 L 262 134"/>
+      <path class="comp" d="M 262 150 L 240 172"/>
+      <path class="comp" d="M 240 172 l 9 -1 m -9 1 l 2 -9"/>
+      <text x="268" y="126" class="lbl">Q2</text>
+      <text x="316" y="146" class="lbl big">V<tspan dy="3" font-size="11">in−</tspan></text>
+      <!-- emitters to shared tail -->
+      <path class="wire" d="M 140 172 L 140 186 L 190 186 L 240 186 L 240 172"/>
+      <circle cx="190" cy="186" r="3.2" class="node"/>
+      <path class="wire" d="M 190 186 L 190 196"/>
+      <!-- tail current source -->
+      <circle cx="190" cy="212" r="15" class="comp"/>
+      <path class="comp" d="M 190 204 L 190 220 m 0 0 l -4 -6 m 4 6 l 4 -6"/>
+      <text x="212" y="216" class="lbl big">2 mA</text>
+      <path class="wire" d="M 190 227 L 190 240"/>
+      <path class="gnd" d="M 190 240 L 190 246 M 180 246 L 200 246 M 184 251 L 196 251 M 188 256 L 192 256"/>
+      <!-- dynamic collector-current labels -->
+      <text x="148" y="110" class="lbl" fill="var(--series-1)" id="ltp-ic1">1.00 mA</text>
+      <text x="196" y="110" class="lbl" fill="var(--series-2)" id="ltp-ic2">1.00 mA</text>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="ltp-dv">Input difference ΔV <span class="val"></span></label>
+          <input type="range" id="ltp-dv" min="-150" max="150" step="1" value="0">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">I<sub>C1</sub> (Q1)</div><div class="v" id="ltp-i1">—</div></div>
+        <div class="readout"><div class="k">I<sub>C2</sub> (Q2)</div><div class="v" id="ltp-i2">—</div></div>
+        <div class="readout"><div class="k">I<sub>C1</sub> + I<sub>C2</sub></div><div class="v" id="ltp-sum">—</div></div>
+        <div class="readout"><div class="k">V<sub>out</sub> (diff, ×2.7k)</div><div class="v" id="ltp-vd">—</div></div>
+      </div>
+      <p class="widget-hint" id="ltp-note" style="margin-top:10px"></p>
+    </div>
+  </div>
+  <canvas id="ltp-plot" class="hh-plot" data-height="320"></canvas>
+</div>
+
+<h2>Current mirrors — copying a current</h2>
+<p>Second trick, same ingredient: matching. Take a transistor and short its collector to its base
+("diode-connected"). Push a current I<sub>prog</sub> into it — say through a resistor from the
+supply — and the transistor obligingly develops <em>exactly</em> the V<sub>BE</sub> that makes it
+carry that current. Now wire that V<sub>BE</sub> across the base–emitter of a matched twin. Same
+V<sub>BE</sub>, same die, same temperature, same Ebers–Moll curve → <strong>same collector
+current</strong>. The output transistor <em>mirrors</em> the programmed current, whatever its
+collector voltage happens to be doing — which is precisely the definition of a current source.</p>
+<div class="formula">
+  I<sub>out</sub> ≈ I<sub>prog</sub> = (V<sub>supply</sub> − 0.6 V) / R<sub>prog</sub>
+  <small>one resistor programs the master; every slave copies it — the ratio trick behind IC biasing</small>
+</div>
+<p>Why chips adore mirrors: <strong>bias distribution</strong> — one precision resistor programs one
+master, and dozens of slaves scattered across the die each get a clean copy, no resistor forest
+needed. And the star turn: as an <strong>active load</strong> for the differential pair. Replace
+the two collector resistors with a mirror and the mirror takes Q1's signal current, flips it, and
+delivers it to Q2's collector — the two half-signals that used to appear on separate collectors now
+<em>add on a single node</em>, doubling the gain into a single-ended output (recovering the factor
+of two we lost taking one collector), and the "resistor" it presents is a transistor's collector:
+hundreds of kilohms of incremental resistance without the DC drop of a real one. Diff pair plus
+mirror load is, almost verbatim, the front half of every op-amp schematic you'll ever see.</p>
+<p>The fine print, in one sentence: the copy isn't perfect, because the output transistor's current
+creeps up a few percent as its collector voltage rises — the <strong>Early effect</strong> — which
+is why precision mirrors add emitter resistors or extra transistors (Wilson, cascode) to stiffen
+the copy. And the whole scheme <strong>lives and dies on matching</strong>: two loose 2N3904s from
+the drawer differ by tens of millivolts of V<sub>BE</sub> — enough for a 2:1 current error — and
+drift apart with every degree of temperature difference. Mirrors belong on one die.</p>
+
+<h2>Push-pull — sharing the load</h2>
+<p>Module&nbsp;09's emitter follower had an embarrassing asymmetry: its transistor could
+<em>pull up</em> with muscle, but pulling <em>down</em> was delegated to the emitter resistor —
+a lazy, current-limited pull that either wastes power (small R<sub>E</sub>) or chokes on fast
+negative swings (big R<sub>E</sub>). The fix is to hire a second employee for the other
+direction: an NPN follower on top to source current on positive swings, a PNP follower below to
+sink it on negative swings — <strong>push-pull</strong>. Each transistor idles at (nearly) zero
+current and works only its own half-cycle, so a class-B stage delivers watts to a load while
+dissipating little at rest.</p>
+<p>The catch sits at the handoff. With both bases tied straight to the input, neither transistor
+conducts until the input clears a V<sub>BE</sub>: the NPN needs V<sub>in</sub>&nbsp;&gt;&nbsp;+0.6&nbsp;V,
+the PNP needs V<sub>in</sub>&nbsp;&lt;&nbsp;−0.6&nbsp;V. Every zero crossing drags the signal
+through a <strong>±0.6&nbsp;V dead zone</strong> where the output simply flatlines —
+<strong>crossover distortion</strong>. It's worst exactly where you can't ignore it: at low
+volume, where the dead zone is a large fraction of the whole signal.</p>
+<p>The fix is to bias both transistors <em>slightly on</em>: insert two diode drops between the two
+bases, so the pair idles with roughly a V<sub>BE</sub> apiece already applied and the handoff
+happens with both hands on the rope — <strong>class AB</strong>. Two housekeeping notes from the
+real world: the idle current is thermally treacherous (a hot output transistor's V<sub>BE</sub>
+falls, so it idles harder, gets hotter… — <strong>thermal runaway</strong>), so the bias diodes are
+mounted to share the output transistors' heatsink, and small <strong>emitter ballast
+resistors</strong> (tenths of an ohm) are added so a little extra current costs a little extra
+voltage, stabilizing the idle point.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the crossover handoff</div>
+  <div class="widget-hint">A push-pull follower driving a 1&nbsp;kHz sine. Dashed grey: input.
+  Blue: output. In class B (no bias) the ±0.6&nbsp;V dead zone bites a silence out of every zero
+  crossing; switch to class AB (diode bias) to watch it heal. Shrink the amplitude and notice the
+  distortion getting proportionally <em>worse</em> — the opposite of clipping.</div>
+
+  <div class="viz-row">
+    <svg id="pp-sch" class="schematic" viewBox="0 0 360 244" width="360" height="244" role="img"
+         aria-label="Push-pull output stage: NPN follower to +12 volts, PNP follower to -12 volts, output to a load resistor">
+      <!-- rails -->
+      <path class="wire" d="M 150 26 L 250 26"/>
+      <text x="106" y="31" class="lbl big">+12 V</text>
+      <path class="wire" d="M 150 218 L 250 218"/>
+      <text x="104" y="223" class="lbl big">−12 V</text>
+      <!-- NPN top: base bar, collector to +rail, emitter down-right with outward arrow -->
+      <line x1="170" y1="68" x2="170" y2="96" class="comp" stroke-width="3"/>
+      <path class="wire" d="M 192 26 L 192 52"/>
+      <path class="comp" d="M 192 52 L 170 74"/>
+      <path class="comp" d="M 170 90 L 192 112"/>
+      <path class="comp" d="M 192 112 l -9 -1 m 9 1 l -2 -9"/>
+      <text x="200" y="76" class="lbl">NPN</text>
+      <!-- PNP bottom: emitter up-right with arrow pointing IN (toward base), collector to -rail -->
+      <line x1="170" y1="148" x2="170" y2="176" class="comp" stroke-width="3"/>
+      <path class="comp" d="M 170 154 L 192 132"/>
+      <path class="comp" d="M 176 148 l 9 1 m -9 -1 l 2 9"/>
+      <path class="comp" d="M 170 170 L 192 192"/>
+      <path class="wire" d="M 192 192 L 192 218"/>
+      <text x="200" y="176" class="lbl">PNP</text>
+      <!-- output node -->
+      <path class="wire" d="M 192 112 L 192 132"/>
+      <circle cx="192" cy="122" r="3.2" class="node"/>
+      <path class="wire" d="M 192 122 L 282 122"/>
+      <text x="288" y="112" class="lbl big">V<tspan dy="3" font-size="11">out</tspan></text>
+      <!-- load resistor to ground -->
+      <path class="comp" d="M 282 122 L 282 130 l -8 4 l 16 8 l -16 8 l 16 8 l -16 8 l 16 8 l -8 4 l 0 6"/>
+      <text x="296" y="160" class="lbl">load</text>
+      <path class="wire" d="M 282 184 L 282 196"/>
+      <path class="gnd" d="M 282 196 L 282 202 M 272 202 L 292 202 M 276 207 L 288 207 M 280 212 L 284 212"/>
+      <!-- input -->
+      <path class="wire" d="M 66 122 L 120 122"/>
+      <text x="30" y="126" class="lbl big">V<tspan dy="3" font-size="11">in</tspan></text>
+      <!-- class B: bases tied straight together -->
+      <g id="pp-b-link">
+        <path class="wire" d="M 120 82 L 170 82"/>
+        <path class="wire" d="M 120 162 L 170 162"/>
+        <path class="wire" d="M 120 82 L 120 162"/>
+        <circle cx="120" cy="122" r="3.2" class="node"/>
+      </g>
+      <!-- class AB: two diodes between the bases -->
+      <g id="pp-ab-link" style="display:none">
+        <path class="wire" d="M 120 82 L 170 82"/>
+        <path class="wire" d="M 120 162 L 170 162"/>
+        <path class="wire" d="M 120 82 L 120 90"/>
+        <path class="comp" d="M 113 90 L 127 90 L 120 101 Z"/>
+        <line x1="113" y1="101" x2="127" y2="101" class="comp"/>
+        <path class="wire" d="M 120 101 L 120 122 L 120 143"/>
+        <circle cx="120" cy="122" r="3.2" class="node"/>
+        <path class="comp" d="M 113 143 L 127 143 L 120 154 Z"/>
+        <line x1="113" y1="154" x2="127" y2="154" class="comp"/>
+        <path class="wire" d="M 120 154 L 120 162"/>
+        <text x="82" y="100" class="lbl">bias</text>
+      </g>
+    </svg>
+
+    <div style="flex:1 1 280px">
+      <div style="display:flex; gap:10px; margin:0 0 12px">
+        <button class="btn" id="pp-b-btn">Class B (no bias)</button>
+        <button class="btn ghost" id="pp-ab-btn">Class AB (diode bias)</button>
+      </div>
+      <div class="controls" style="flex-direction:column; gap:12px">
+        <div class="control">
+          <label for="pp-amp">Input amplitude <span class="val"></span></label>
+          <input type="range" id="pp-amp" min="0.2" max="5" step="0.05" value="3">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Dead zone vs amplitude</div><div class="v" id="pp-dz">—</div></div>
+        <div class="readout"><div class="k">% of cycle silent</div><div class="v" id="pp-silent">—</div></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="pp-plot" class="hh-plot" data-height="300"></canvas>
+  <p class="widget-hint" id="pp-caption" style="margin-top:10px"></p>
+</div>
+
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li><strong>A diff pair without emitter degeneration is linear over roughly ±25&nbsp;mV.</strong>
+        More swing than that and the tanh bends; by ±100&nbsp;mV it's a switch. Emitter resistors
+        trade gain for a wider linear window, exactly as in Module&nbsp;10.</li>
+    <li><strong>The tail current sets everything.</strong> Each side idles at I<sub>tail</sub>/2, so
+        each side's g<sub>m</sub> = (I<sub>tail</sub>/2)/25&nbsp;mV — gain, speed, and power all
+        hang off one number.</li>
+    <li><strong>Mirror accuracy lives and dies on matching</strong> — same die, same temperature, or
+        don't bother. A few millivolts of V<sub>BE</sub> mismatch is tens of percent of current
+        error.</li>
+    <li><strong>Push-pull without bias = audibly gritty crossover at low volume.</strong> The dead
+        zone is a fixed ±0.6&nbsp;V, so the quieter the music, the larger the fraction it eats.</li>
+    <li><strong>Two diodes + small emitter ballast resistors = the standard fix.</strong> Diodes
+        pre-bias the pair into class AB; the ballasts (and heatsinking the diodes with the outputs)
+        keep the idle current from running away thermally.</li>
+  </ul>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Balance-scale analogy</span>
+  <ul>
+    <li><strong>The diff pair is a balance scale</strong> — a seesaw with two pans sharing a fixed
+    total of water (the tail current). Tilt it (ΔV) and water pours from one pan into the other,
+    but the <em>total never changes</em>: a small tilt moves water in proportion (the linear
+    region), a big tilt dumps everything into one pan (the tanh saturating). Raise <em>both</em>
+    pans together — common mode — and the balance doesn't care: no tilt, no transfer.</li>
+    <li><strong>The mirror is a master/slave hydraulic pair:</strong> push fluid through the master
+    cylinder and the slave, plumbed to the same pressure, delivers the identical flow at its end —
+    one flow programmed, a faithful copy delivered somewhere more useful.</li>
+    <li><strong>Push-pull is two people hauling a rope hand-over-hand</strong> — one pulls it up,
+    the other pulls it down, each resting during the other's stroke. Crossover distortion is the
+    fumble at the handoff: for an instant neither has a grip, and the rope goes slack.</li>
+  </ul>
+  <p>Where each fails: a real balance scale has friction and arm-length mismatch — and so does the
+  pair (V<sub>BE</sub> offset appears as a false tilt: input offset voltage). The hydraulic slave
+  leaks a little more as its outlet pressure rises — that's the Early effect. And the rope team's
+  handoff can be over-fixed: grip too hard simultaneously (too much idle bias) and they fight each
+  other and overheat — thermal runaway.</p>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Pencil and paper, plus Module&nbsp;09's current-source recipe and the 25&nbsp;mV reflex. Check
+the box when you've done it and verified against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — a diff-pair front end</label>
+  </div>
+  <p>Single 12&nbsp;V supply. Build a differential pair with a 2&nbsp;mA tail using Module&nbsp;09's
+  current-source recipe (pick V<sub>B</sub> and R<sub>E</sub>), then choose R<sub>C</sub> so each
+  collector sits about 3&nbsp;V below the supply at balance. Finally, compute the differential
+  gain.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>The tail.</strong> Module 09's recipe: hold the base at V<sub>B</sub>, and the
+      emitter resistor programs I&nbsp;=&nbsp;(V<sub>B</sub>&nbsp;−&nbsp;0.6)/R<sub>E</sub>. Pick
+      V<sub>B</sub>&nbsp;=&nbsp;1.6&nbsp;V (a stiff divider from 12&nbsp;V), putting the emitter at
+      1.0&nbsp;V; then R<sub>E</sub>&nbsp;=&nbsp;1.0&nbsp;V&nbsp;/&nbsp;2&nbsp;mA&nbsp;=&nbsp;500&nbsp;Ω
+      → <strong>510&nbsp;Ω</strong> standard (1.96&nbsp;mA — close enough).</p>
+      <p><strong>The collectors.</strong> At balance each side carries 1&nbsp;mA. For a ~3&nbsp;V
+      drop: R<sub>C</sub>&nbsp;=&nbsp;3&nbsp;V&nbsp;/&nbsp;1&nbsp;mA&nbsp;=&nbsp;3&nbsp;kΩ; take the
+      standard <strong>2.7&nbsp;kΩ</strong> and verify: 1&nbsp;mA&nbsp;×&nbsp;2.7&nbsp;k&nbsp;=&nbsp;2.7&nbsp;V
+      drop, collectors resting at 9.3&nbsp;V ✓ — plenty of headroom for swings both ways.</p>
+      <p><strong>The gain.</strong> Each side idles at 1&nbsp;mA, so
+      g<sub>m</sub>&nbsp;=&nbsp;1&nbsp;mA&nbsp;/&nbsp;25&nbsp;mV&nbsp;=&nbsp;<strong>40&nbsp;mS</strong>
+      (r<sub>e</sub>&nbsp;=&nbsp;25&nbsp;Ω). Taken differentially between the collectors,
+      G&nbsp;=&nbsp;g<sub>m</sub>R<sub>C</sub>&nbsp;=&nbsp;40&nbsp;mS&nbsp;×&nbsp;2.7&nbsp;k&nbsp;≈&nbsp;<strong>108</strong>;
+      off a single collector you get half, ≈&nbsp;54 — which is exactly the factor of two a mirror
+      active load wins back. Sanity check against Module&nbsp;10's habit: R<sub>C</sub>/2r<sub>e</sub>
+      = 2700/50 = 54 per collector ✓.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — a 1 mA mirror</label>
+  </div>
+  <p>From a 12&nbsp;V supply, program a PNP current mirror to deliver 1&nbsp;mA: choose the
+  programming resistor (then the nearest standard value). Then the physics question: if the output
+  transistor runs hotter than the diode-connected master, what happens to the output current, and
+  roughly how fast?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Programming resistor.</strong> The master eats one V<sub>BE</sub>, the resistor
+      gets the rest: R&nbsp;=&nbsp;(12&nbsp;−&nbsp;0.6)&nbsp;V&nbsp;/&nbsp;1&nbsp;mA&nbsp;=&nbsp;11.4&nbsp;kΩ
+      → <strong>11&nbsp;kΩ</strong> standard, giving 1.04&nbsp;mA. Every matched slave now copies
+      ~1&nbsp;mA anywhere on the die.</p>
+      <p><strong>Heat.</strong> V<sub>BE</sub> falls ~2&nbsp;mV/°C at constant current — so a hotter
+      slave, fed the master's <em>unchanged</em> V<sub>BE</sub>, carries <em>more</em> current: the
+      copy rises by e<sup>2mV/25mV</sup>&nbsp;≈&nbsp;<strong>×1.08 per °C</strong> — about +8% per
+      degree, and a factor of two for only ~9&nbsp;°C of mismatch. That's why "matched" means
+      thermally coupled, not just electrically similar: on one die the pair drifts together and the
+      error cancels; across two discrete packages it doesn't.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — an audio output stage</label>
+  </div>
+  <p>±12&nbsp;V rails, push-pull follower, 8&nbsp;Ω speaker, 1&nbsp;W of clean sine. Find the
+  required peak output voltage and peak current. Then explain why a plain class-B version of this
+  stage sounds fine loud but buzzes at whisper volume, and specify the standard fix.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p><strong>Peaks.</strong> P&nbsp;=&nbsp;V<sub>rms</sub>²/R, and V<sub>pk</sub>&nbsp;=&nbsp;√2·V<sub>rms</sub>,
+      so V<sub>pk</sub>&nbsp;=&nbsp;√(2PR)&nbsp;=&nbsp;√(2·1·8)&nbsp;=&nbsp;<strong>4&nbsp;V</strong>
+      and I<sub>pk</sub>&nbsp;=&nbsp;4&nbsp;V/8&nbsp;Ω&nbsp;=&nbsp;<strong>0.5&nbsp;A</strong>.
+      ±12&nbsp;V rails have room to spare (a follower loses no gain, just a V<sub>BE</sub> of
+      headroom per side) — but note 0.5&nbsp;A is real transistor territory, not a small-signal
+      part.</p>
+      <p><strong>The whisper problem.</strong> The class-B dead zone is a fixed ±0.6&nbsp;V. At full
+      1&nbsp;W (4&nbsp;V peak) it's 15% of the amplitude and the ear mostly forgives it; turn down
+      to a 0.7&nbsp;V-peak whisper and the dead zone is nearly <em>the whole signal</em> — the
+      output spends most of each cycle silent, and what survives is gritty harmonic hash. Crossover
+      distortion is the rare defect that gets <em>worse</em> as you turn it down.</p>
+      <p><strong>The fix.</strong> Class AB: two diodes between the bases pre-bias both transistors
+      just into conduction, plus <strong>~0.5&nbsp;Ω emitter ballast resistors</strong> and the
+      diodes thermally mounted with the output pair, so the idle current stays a few tens of
+      milliamps instead of running away as the stage warms up.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="10-common-emitter.html"><span class="dir">Previous</span><span class="name">10 · The Common-Emitter Amplifier</span></a>
+  <a href="12-fets.html"><span class="dir">Next</span><span class="name">12 · FETs: JFETs &amp; MOSFETs</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("11");
+
+  /* ================= Widget 1: current steering =================
+     Ic1,2 = Itail/2 · (1 ± tanh(ΔV/2VT)), VT = 25 mV.
+     Verified numerically: sum ≡ Itail; slope of (Ic1−Ic2) at 0 is
+     Itail/2VT = 40 mS for 2 mA; at ΔV = 25 mV split is 1.462/0.538 mA. */
+
+  var VT = 0.025, ITAIL = 2e-3, RC = 2700, VCC = 12;
+
+  function steer(dv) { // dv in volts → [Ic1, Ic2] in amps
+    var t = Math.tanh(dv / (2 * VT));
+    return [ITAIL / 2 * (1 + t), ITAIL / 2 * (1 - t)];
+  }
+
+  var ltp = { dv: 0 }; // volts
+
+  var ltpI1 = document.getElementById("ltp-i1");
+  var ltpI2 = document.getElementById("ltp-i2");
+  var ltpSum = document.getElementById("ltp-sum");
+  var ltpVd = document.getElementById("ltp-vd");
+  var ltpNote = document.getElementById("ltp-note");
+  var ltpIc1Lbl = document.getElementById("ltp-ic1");
+  var ltpIc2Lbl = document.getElementById("ltp-ic2");
+  var ltpVc1Lbl = document.getElementById("ltp-vc1");
+  var ltpVc2Lbl = document.getElementById("ltp-vc2");
+
+  var ltpPlot = HH.plot(document.getElementById("ltp-plot"), {
+    xlabel: "input difference ΔV (mV)",
+    ylabel: "collector current (mA)",
+    xmin: -150, xmax: 150, ymin: 0, ymax: 2.2,
+    xticks: [-150, -100, -50, -25, 0, 25, 50, 100, 150],
+    yticks: [0, 0.5, 1, 1.5, 2],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) { // x in mV
+      var ic = steer(x / 1000);
+      return [
+        { text: "ΔV = " + x.toFixed(0) + " mV" },
+        { color: "--series-1", text: "Ic1 = " + (ic[0] * 1e3).toFixed(3) + " mA" },
+        { color: "--series-2", text: "Ic2 = " + (ic[1] * 1e3).toFixed(3) + " mA" },
+        { text: "Vout(diff) = " + ((ic[0] - ic[1]) * RC).toFixed(2) + " V" }
+      ];
+    }
+  });
+
+  function drawLtp() {
+    var pts1 = [], pts2 = [];
+    for (var mv = -150; mv <= 150.001; mv += 1.5) {
+      var ic = steer(mv / 1000);
+      pts1.push([mv, ic[0] * 1e3]);
+      pts2.push([mv, ic[1] * 1e3]);
+    }
+    var here = steer(ltp.dv);
+    ltpPlot.draw(
+      [
+        /* dashed verticals bracketing the ±25 mV linear region */
+        { pts: [[-25, 0], [-25, 2.2]], color: "--muted", width: 1.2, dash: [5, 4] },
+        { pts: [[25, 0], [25, 2.2]], color: "--muted", width: 1.2, dash: [5, 4] },
+        { pts: pts1, color: "--series-1", width: 2.5 },
+        { pts: pts2, color: "--series-2", width: 2.5 }
+      ],
+      {
+        markers: [
+          { x: ltp.dv * 1e3, y: here[0] * 1e3, color: "--series-1" },
+          { x: ltp.dv * 1e3, y: here[1] * 1e3, color: "--series-2" }
+        ]
+      }
+    );
+
+    ltpI1.innerHTML = (here[0] * 1e3).toFixed(3) + "<small> mA</small>";
+    ltpI2.innerHTML = (here[1] * 1e3).toFixed(3) + "<small> mA</small>";
+    ltpSum.innerHTML = ((here[0] + here[1]) * 1e3).toFixed(3) + "<small> mA</small>";
+    ltpVd.innerHTML = ((here[0] - here[1]) * RC).toFixed(2) + "<small> V</small>";
+
+    ltpIc1Lbl.textContent = (here[0] * 1e3).toFixed(2) + " mA";
+    ltpIc2Lbl.textContent = (here[1] * 1e3).toFixed(2) + " mA";
+    ltpVc1Lbl.textContent = (VCC - here[0] * RC).toFixed(1) + " V";
+    ltpVc2Lbl.textContent = (VCC - here[1] * RC).toFixed(1) + " V";
+
+    var admv = Math.abs(ltp.dv * 1e3);
+    var note;
+    if (admv === 0) {
+      note = "Perfect balance: the 2 mA tail splits exactly 50/50. Note the sum readout — it will " +
+        "not move no matter what you do. The input only decides how the total is shared.";
+    } else if (admv <= 25) {
+      note = "Inside the linear region: current steers in proportion to ΔV at the full " +
+        "gm = 40 mS. This is where the pair amplifies faithfully.";
+    } else if (admv < 100) {
+      note = "Past the ±25 mV knee: the tanh is bending, gain is falling, and the pair is " +
+        "distorting — one transistor already carries " +
+        (Math.max(here[0], here[1]) / ITAIL * 100).toFixed(0) + "% of the tail.";
+    } else {
+      note = "Fully steered: essentially the entire tail flows through one transistor. The pair " +
+        "is now a switch, not an amplifier — which is exactly how ECL logic uses it.";
+    }
+    ltpNote.textContent = note;
+  }
+
+  HH.slider("ltp-dv", {
+    format: function (v) { return (v >= 0 ? "+" : "") + v.toFixed(0) + " mV"; },
+    onchange: function (v) { ltp.dv = v / 1000; drawLtp(); }
+  });
+
+  drawLtp();
+
+  /* ================= Widget 2: crossover handoff =================
+     Class B dead-zone model: vout = vin ∓ 0.6 outside ±0.6 V, else 0.
+     Fraction of cycle silent = (2/π)·asin(min(1, 0.6/A)) — the measure of
+     |A·sinθ| < 0.6 over a full cycle; verified against numeric integration. */
+
+  var VBE = 0.6, F_SIG = 1000, PP_WIN = 0.002; // 2 ms = 2 cycles at 1 kHz
+
+  var pp = { A: 3, mode: "b" };
+
+  var ppDz = document.getElementById("pp-dz");
+  var ppSilent = document.getElementById("pp-silent");
+  var ppCaption = document.getElementById("pp-caption");
+  var ppBBtn = document.getElementById("pp-b-btn");
+  var ppAbBtn = document.getElementById("pp-ab-btn");
+  var ppBLink = document.getElementById("pp-b-link");
+  var ppAbLink = document.getElementById("pp-ab-link");
+
+  function ppIn(t) { return pp.A * Math.sin(2 * Math.PI * F_SIG * t); }
+  function ppOut(t) {
+    var v = ppIn(t);
+    if (pp.mode === "ab") return v; // diode bias cancels the VBE drops (to first order)
+    if (v > VBE) return v - VBE;
+    if (v < -VBE) return v + VBE;
+    return 0;
+  }
+  function deadFraction() {
+    if (pp.mode === "ab") return 0;
+    return (2 / Math.PI) * Math.asin(Math.min(1, VBE / pp.A));
+  }
+
+  var ppPlot = HH.plot(document.getElementById("pp-plot"), {
+    xlabel: "time (ms)",
+    ylabel: "voltage (V)",
+    xmin: 0, xmax: 2, ymin: -5.5, ymax: 5.5,
+    xticks: [0, 0.5, 1, 1.5, 2],
+    yticks: [-5, -2.5, 0, 2.5, 5],
+    xfmt: function (v) { return String(v); },
+    yfmt: function (v) { return String(v); },
+    hover: function (x) {
+      var t = x / 1000;
+      return [
+        { text: "t = " + x.toFixed(2) + " ms" },
+        { color: "--muted", text: "Vin = " + ppIn(t).toFixed(2) + " V" },
+        { color: "--series-1", text: "Vout = " + ppOut(t).toFixed(2) + " V" }
+      ];
+    }
+  });
+
+  function drawPp() {
+    var N = 800, inPts = [], outPts = [];
+    for (var i = 0; i <= N; i++) {
+      var t = (i / N) * PP_WIN;
+      inPts.push([t * 1000, ppIn(t)]);
+      outPts.push([t * 1000, ppOut(t)]);
+    }
+    ppPlot.draw([
+      { pts: inPts, color: "--muted", width: 1.2, dash: [4, 4] },
+      { pts: outPts, color: "--series-1", width: 2.4 }
+    ]);
+
+    var frac = deadFraction();
+    var dzPct = Math.min(100, (VBE / pp.A) * 100);
+
+    if (pp.mode === "b") {
+      ppDz.innerHTML = "±0.6 V<small> = " + dzPct.toFixed(0) + "% of " + pp.A.toFixed(1) + " V pk</small>";
+      ppSilent.innerHTML = (frac * 100).toFixed(1) + "<small> %</small>";
+    } else {
+      ppDz.innerHTML = "≈ 0<small> (pre-biased)</small>";
+      ppSilent.innerHTML = "0<small> %</small>";
+    }
+
+    var cap, critical = false;
+    if (pp.mode === "ab") {
+      cap = "Class AB: the two diode drops hold both transistors just into conduction, so the " +
+        "handoff is seamless and the output tracks the input. (A small residual kink survives in " +
+        "real stages — the two transistors' gains don't match perfectly through the handoff — " +
+        "but it's tenths of a percent, not tens.)";
+    } else if (pp.A <= VBE) {
+      cap = "The entire signal fits inside the ±0.6 V dead zone: the output is silent for 100% of " +
+        "the cycle. At whisper level, class B delivers literally nothing.";
+      critical = true;
+    } else if (pp.A < 1.5) {
+      cap = "Distortion dominates: the dead zone is " + dzPct.toFixed(0) + "% of the amplitude and " +
+        "the output is silent " + (frac * 100).toFixed(0) + "% of the time. This is the gritty, " +
+        "buzzy sound of unbiased class B at low volume — the defect that gets worse as you turn down.";
+      critical = true;
+    } else {
+      cap = "At " + pp.A.toFixed(1) + " V peak the flat spots eat " + (frac * 100).toFixed(1) +
+        "% of each cycle (dead zone = " + dzPct.toFixed(0) + "% of the swing). Tolerable-looking " +
+        "at high level — now drag the amplitude down and watch the same fixed ±0.6 V bite grow.";
+    }
+    ppCaption.textContent = cap;
+    ppCaption.style.color = critical ? "var(--critical)" : "var(--muted)";
+  }
+
+  function setPpMode(mode) {
+    pp.mode = mode;
+    ppBBtn.className = mode === "b" ? "btn" : "btn ghost";
+    ppAbBtn.className = mode === "ab" ? "btn" : "btn ghost";
+    ppBLink.style.display = mode === "b" ? "" : "none";
+    ppAbLink.style.display = mode === "ab" ? "" : "none";
+    drawPp();
+  }
+  ppBBtn.addEventListener("click", function () { setPpMode("b"); });
+  ppAbBtn.addEventListener("click", function () { setPpMode("ab"); });
+
+  HH.slider("pp-amp", {
+    format: function (v) { return v.toFixed(2) + " V pk"; },
+    onchange: function (v) { pp.A = v; drawPp(); }
+  });
+
+  drawPp();
+
+  /* ================= Quiz ================= */
+
+  HH.quiz("quiz", [
+    {
+      q: "What does replacing the diff pair's tail resistor with a proper current source buy you?",
+      opts: [
+        "Higher differential gain",
+        "High common-mode rejection — the total current can't respond to both inputs moving together",
+        "A wider linear input range",
+        "Lower input offset voltage"
+      ],
+      answer: 1,
+      expl: "With a stiff tail source, raising both inputs together just lifts the emitter node — the total current, and therefore the split, can't change, so the collectors don't move: common-mode gain ≈ 0 and CMRR soars. A tail <em>resistor</em> lets common-mode wiggles modulate the total (G<sub>CM</sub> ≈ R<sub>C</sub>/2R<sub>tail</sub>). Differential gain, linear range, and offset are set elsewhere (tail current, degeneration, matching)."
+    },
+    {
+      q: "Roughly how much input difference can an undegenerated bipolar diff pair handle before it stops being linear?",
+      opts: ["±0.6 V", "±25 mV", "±2.5 V", "±1 mV"],
+      answer: 1,
+      expl: "The tanh(ΔV/2V<sub>T</sub>) steering curve is straight only near the origin — out to roughly ±V<sub>T</sub> = ±25 mV (about 8% bend at the edges). By ±100 mV the steering is ~98% complete and the pair is a switch. Emitter degeneration resistors widen the window at the cost of gain. (±0.6 V is a diode drop — the wrong reflex here.)"
+    },
+    {
+      q: "A pair runs from a 2 mA tail with its two bases at exactly equal voltages. Each collector carries…",
+      opts: ["2 mA", "0 mA", "1 mA", "Whatever the collector resistors decide"],
+      answer: 2,
+      expl: "Symmetry: matched transistors with equal V<sub>BE</sub>s split the tail 50/50, so 1 mA each. The collector resistors set the collector <em>voltages</em>, not the currents — the tail owns the currents, always summing to 2 mA. That constant-sum constraint is the whole circuit."
+    },
+    {
+      q: "What does a current mirror copy, and what does it require to copy it accurately?",
+      opts: [
+        "It copies a voltage; it requires equal collector resistors",
+        "It copies a current; it requires matched transistors at the same temperature",
+        "It copies a current; it requires a large programming resistor",
+        "It copies power; it requires heatsinking"
+      ],
+      answer: 1,
+      expl: "The diode-connected master converts its current into precisely the V<sub>BE</sub> that produces it; the twin, given that same V<sub>BE</sub>, reproduces the current — but only if it has the same Ebers–Moll curve, which means matched devices at the same temperature (in practice: the same die). A few mV of V<sub>BE</sub> mismatch, or a few °C, is tens of percent of error."
+    },
+    {
+      q: "Why does the push-pull stage exist at all — what problem of the emitter follower does it solve?",
+      opts: [
+        "The follower has no voltage gain",
+        "The follower can only pull one way with authority — the emitter resistor's pull-down is weak and wasteful",
+        "The follower inverts the signal",
+        "The follower can't handle AC signals"
+      ],
+      answer: 1,
+      expl: "A single NPN follower sources current forcefully but sinks it only through R<sub>E</sub> — small R<sub>E</sub> wastes power at idle, large R<sub>E</sub> chokes fast negative swings. Push-pull hires a PNP to pull down with the same authority the NPN pulls up, and both idle near zero current. (No voltage gain is true of followers but isn't a problem — current gain is the follower's job.)"
+    },
+    {
+      q: "Where is crossover distortion most objectionable?",
+      opts: [
+        "At maximum volume, where the transistors clip",
+        "At low volume, where the fixed ±0.6 V dead zone is a large fraction of the signal",
+        "Only above 10 kHz",
+        "Only into low-impedance loads"
+      ],
+      answer: 1,
+      expl: "The dead zone is a fixed ±0.6 V regardless of signal size, so its <em>relative</em> bite grows as the signal shrinks — a 4 V peak barely notices it, a 0.7 V whisper is mostly silence and grit. That's backwards from clipping, which punishes loud passages; crossover punishes quiet ones, which is exactly where the ear is listening for detail."
+    },
+    {
+      q: "How does class AB biasing eliminate the crossover dead zone?",
+      opts: [
+        "It adds negative feedback around the stage",
+        "It uses bigger transistors that turn on faster",
+        "It pre-biases both transistors slightly on, using about two diode drops between the bases",
+        "It AC-couples the output so the DC dead zone is blocked"
+      ],
+      answer: 2,
+      expl: "Two diode drops between the bases hold the NPN and PNP each about one V<sub>BE</sub> into conduction at idle, so there is no input region where both are off — the handoff happens with both devices active. The housekeeping: heatsink-couple the bias diodes to the outputs and add small emitter ballast resistors, or the idle current thermally runs away. (Feedback <em>also</em> helps in real amps, but the bias is the fix.)"
+    }
+  ]);
+});
+</script>
+</body>
+</html>
