@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · Voltage, Current &amp; Ohm's Law — The Art of Electronics, interactively</title>
+<link rel="stylesheet" href="../shared/hh.css">
+<script src="../shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <a class="crumb" href="../index.html">← Curriculum</a>
+  <span class="spacer"></span>
+  <span class="module-tag">Part I · Module 01</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Voltage, Current &amp; Ohm's Law</h1>
+  <p class="subtitle">The three quantities every schematic is silently talking about — and the
+  one-line law that connects them. <em>AoE 3rd ed. §1.1–1.2.</em></p>
+</header>
+
+<h2>Why this matters</h2>
+<p>Every circuit you will ever read or design is a story about <strong>voltage</strong> pushing
+<strong>current</strong> through things that <strong>resist</strong> it. Horowitz &amp; Hill open the
+book with exactly this trio because the rest of electronics — transistors, op-amps, digital logic —
+is built from clever arrangements of the same three ideas. If you can glance at a schematic and
+estimate the currents and voltages at each node, you can read almost anything.</p>
+
+<div class="panel physics">
+  <span class="panel-label">Physics background</span>
+  <p>Metals are full of electrons that are free to wander between the fixed atoms of the lattice.
+  Normally they wander randomly and no net charge moves. Apply an electric field — by connecting a
+  battery — and the whole electron cloud starts drifting. Surprisingly slowly, too: in a typical
+  copper wire the <em>drift velocity</em> is well under a millimetre per second. The reason your
+  lamp lights instantly is that the electromagnetic push propagates near the speed of light; the
+  electrons everywhere in the loop start moving essentially at once, like water in an
+  already-full hose.</p>
+  <p><strong>Charge</strong> is measured in coulombs (C); one electron carries
+  −1.6×10<sup>−19</sup> C. <strong>Current</strong> is the rate of charge flow:
+  1&nbsp;ampere = 1 coulomb/second. <strong>Voltage</strong> is energy per charge:
+  1&nbsp;volt = 1 joule/coulomb — how much work the field does moving each coulomb between two
+  points.</p>
+</div>
+
+<h2>The three players</h2>
+
+<h3>Voltage — the push</h3>
+<p><strong>Voltage is always <em>between two points</em>.</strong> It is the work needed to move a
+unit of charge from one point to the other. Saying "the voltage at this node" is shorthand for
+"the voltage between this node and ground" — the reference point we agree to call 0&nbsp;V.
+Symbol <code>V</code> (sometimes <code>E</code>), unit volts (V).</p>
+
+<h3>Current — the flow</h3>
+<p><strong>Current flows <em>through</em> things.</strong> It is the rate at which charge streams
+past a point. Symbol <code>I</code>, unit amperes (A). By convention, current flows from + to −
+(even though the electrons physically drift the other way — a historical accident of Franklin's
+that harms nothing as long as you are consistent).</p>
+
+<h3>Resistance — the friction</h3>
+<p>Real materials oppose current. For a huge and useful class of materials ("ohmic" ones —
+carbon, metal films) the opposition is constant: double the push, get double the flow. That
+constant is <strong>resistance</strong>: symbol <code>R</code>, unit ohms (Ω).</p>
+
+<div class="formula">
+  V = I × R &nbsp;&nbsp;&nbsp; I = V / R &nbsp;&nbsp;&nbsp; R = V / I
+  <small>Ohm's law — memorize all three rearrangements until they're reflexes</small>
+</div>
+
+<div class="panel analogy">
+  <span class="panel-label">Plumbing analogy</span>
+  <p>Think of a closed loop of water pipe with a pump:</p>
+  <ul>
+    <li><strong>Voltage ↔ pressure difference</strong> between two points in the pipe. The pump
+    (battery) creates it. Pressure at a single point means nothing until you compare it with
+    somewhere else — just like voltage.</li>
+    <li><strong>Current ↔ flow rate</strong> — litres per second passing any cross-section.
+    In a single loop it's the same everywhere, because water doesn't pile up. Neither does
+    charge: what flows out of one end of a resistor flows in at the other.</li>
+    <li><strong>Resistance ↔ a narrow section of pipe.</strong> Same pressure, thinner pipe →
+    less flow. And forcing flow through the narrow bit dissipates energy as heat and turbulence
+    — exactly what a resistor does.</li>
+  </ul>
+  <p>Where the analogy fails (all analogies do): the wire is always "full of water" — you never
+  wait for charge to arrive — and there's no gravity pulling charge "down".</p>
+</div>
+
+<h2>Power — where the energy goes</h2>
+<p>Pushing current through a resistance converts electrical energy into heat, at a rate</p>
+<div class="formula">
+  P = V × I = I²R = V²/R
+  <small>watts = volts × amps; the I²R and V²/R forms follow by substituting Ohm's law</small>
+</div>
+<p>This matters practically: every real resistor has a power rating (¼&nbsp;W is the common small
+part). Exceed it and the part cooks. Estimating <code>P</code> is a habit that H&amp;H drill from
+page one — do it for every resistor you place.</p>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the Ohm's-law lab</div>
+  <div class="widget-hint">Drag the sliders. Watch the current dots speed up with more voltage and
+  slow down with more resistance — and watch the resistor heat up as power rises.</div>
+
+  <div class="viz-row">
+    <svg id="circuit" class="schematic" viewBox="0 0 356 220" width="356" height="220" role="img"
+         aria-label="Simple circuit: battery driving a resistor">
+      <!-- wires (loop) -->
+      <path id="loop-path" class="wire"
+            d="M 60 160 L 60 60 L 280 60 L 280 160 L 60 160" fill="none"/>
+      <!-- battery: erase a bit of the left wire and draw plates -->
+      <rect x="45" y="95" width="30" height="30" fill="var(--surface)" stroke="none"/>
+      <line x1="48" y1="103" x2="72" y2="103" class="comp"/>
+      <line x1="56" y1="112" x2="64" y2="112" class="comp" stroke-width="3"/>
+      <text x="34" y="100" class="lbl vplus">+</text>
+      <text x="36" y="122" class="lbl">−</text>
+      <text x="14" y="112" class="lbl big" id="battery-lbl">9 V</text>
+      <!-- resistor (zigzag) on right wire -->
+      <rect x="262" y="80" width="36" height="60" fill="var(--surface)" stroke="none"/>
+      <g id="resistor-body">
+        <path class="comp" d="M 280 80 L 280 86 L 270 90 L 290 98 L 270 106 L 290 114 L 270 122 L 290 130 L 280 134 L 280 140"/>
+      </g>
+      <text x="298" y="108" class="lbl big" id="resistor-lbl">1 kΩ</text>
+      <text x="298" y="126" class="lbl" id="power-lbl">81 mW</text>
+      <!-- current arrow -->
+      <path class="comp" d="M 160 48 l 14 0 m 0 0 l -6 -5 m 6 5 l -6 5" stroke="var(--series-2)"/>
+      <text x="140" y="44" class="lbl" fill="var(--series-2)" id="current-lbl">9 mA</text>
+      <!-- moving charge dots drawn by JS -->
+      <g id="dots"></g>
+    </svg>
+
+    <div style="flex:1 1 260px">
+      <div class="controls" style="flex-direction:column; gap:14px">
+        <div class="control">
+          <label for="v-slider">Voltage V <span class="val"></span></label>
+          <input type="range" id="v-slider" min="0" max="24" step="0.5" value="9">
+        </div>
+        <div class="control">
+          <label for="r-slider">Resistance R <span class="val"></span></label>
+          <!-- log scale: 10^1 .. 10^5  (10 Ω .. 100 kΩ) -->
+          <input type="range" id="r-slider" min="1" max="5" step="0.01" value="3">
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="readout"><div class="k">Current I = V/R</div><div class="v" id="i-read">—</div></div>
+        <div class="readout"><div class="k">Power P = V·I</div><div class="v" id="p-read">—</div></div>
+      </div>
+      <p class="widget-hint" id="power-warning" style="margin-top:10px"></p>
+    </div>
+  </div>
+</div>
+
+<div class="widget">
+  <div class="widget-title">Interactive: the I–V line</div>
+  <div class="widget-hint">A resistor's "signature" is a straight line through the origin with
+  slope 1/R. The dot is the operating point set by the sliders above. Hover the plot to read
+  values.</div>
+  <canvas id="iv-plot" class="hh-plot" data-height="300"></canvas>
+</div>
+
+<h2>Series and parallel — first contact</h2>
+<p>Two resistors in <strong>series</strong> carry the same current, so their voltages add — total
+resistance is the sum. Two in <strong>parallel</strong> see the same voltage, so their currents
+add — total resistance shrinks:</p>
+<div class="formula">
+  R<sub>series</sub> = R₁ + R₂ &nbsp;&nbsp;&nbsp;&nbsp;
+  R<sub>parallel</sub> = R₁R₂ / (R₁ + R₂)
+  <small>parallel is always smaller than the smallest member; equal pairs halve</small>
+</div>
+<div class="panel rule">
+  <span class="panel-label">H&amp;H rules of thumb</span>
+  <ul>
+    <li>A large resistor in <em>series</em> with a small one ≈ the large one.
+        In <em>parallel</em> ≈ the small one.</li>
+    <li>Shortcut for parallel pairs: two equal resistors halve; 10k ∥ 10k = 5k.</li>
+    <li>To beat down a resistance by ~10%, parallel it with ten times its value.</li>
+    <li>Always ask "roughly what current flows here, and what power does that make?" —
+        estimation beats calculation for reading schematics.</li>
+  </ul>
+</div>
+
+<h2>Check yourself</h2>
+<div id="quiz"></div>
+
+<h2>Design bench</h2>
+<p>Real tasks, pencil-and-paper (or head) only. Check the box when you've done it and verified
+against the solution.</p>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t1" id="t1"><label for="t1">Task 1 — LED current-limiting resistor</label>
+  </div>
+  <p>You want to run an LED from a 5&nbsp;V supply. The LED drops 2.0&nbsp;V when lit and wants
+  10&nbsp;mA. Choose a resistor value and its minimum power rating, then pick the nearest standard
+  value.</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>The resistor sees whatever the LED doesn't: 5 − 2 = 3&nbsp;V. For 10&nbsp;mA:
+      R = 3&nbsp;V / 10&nbsp;mA = <strong>300&nbsp;Ω</strong>. Nearest standard (E24) value: 300&nbsp;Ω
+      exactly exists; 330&nbsp;Ω is the more common drawer value and gives 9.1&nbsp;mA — fine.</p>
+      <p>Power: P = I²R = (0.01)² × 300 = 30&nbsp;mW. A ¼&nbsp;W (250&nbsp;mW) part has >8× margin.
+      Habit to build: compute P even when you're sure it's tiny.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t2" id="t2"><label for="t2">Task 2 — will it survive?</label>
+  </div>
+  <p>A 100&nbsp;Ω, ¼&nbsp;W resistor is connected straight across a 9&nbsp;V battery. Is it happy?
+  What's the largest supply voltage this part tolerates continuously?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>P = V²/R = 81/100 = <strong>0.81&nbsp;W</strong> — more than three times its ¼&nbsp;W rating.
+      It will get scorching hot and eventually fail (often drifting high in value first).</p>
+      <p>Maximum voltage: V = √(P·R) = √(0.25 × 100) = <strong>5&nbsp;V</strong>. In practice you'd
+      derate — H&amp;H suggest staying below ~50–70% of rated power for longevity.</p>
+    </div>
+  </details>
+</div>
+
+<div class="taskcard">
+  <div class="task-head">
+    <input type="checkbox" data-task="t3" id="t3"><label for="t3">Task 3 — read the schematic</label>
+  </div>
+  <p>Sketch this from the description, then analyze: a 12&nbsp;V source feeds two resistors in
+  series, 1&nbsp;kΩ then 2&nbsp;kΩ, returning to the source. Find the current, the voltage across
+  each resistor, and the power delivered by the source. Then answer: which single fact made the
+  whole analysis possible?</p>
+  <details><summary>Show solution</summary>
+    <div class="solution">
+      <p>Series total: 3&nbsp;kΩ. Current: 12&nbsp;V / 3&nbsp;kΩ = <strong>4&nbsp;mA</strong>
+      everywhere in the loop. Voltages: 4&nbsp;mA × 1&nbsp;kΩ = <strong>4&nbsp;V</strong> and
+      4&nbsp;mA × 2&nbsp;kΩ = <strong>8&nbsp;V</strong> (note they sum to 12 — Kirchhoff's voltage
+      law, coming up in Module 02). Source power: 12&nbsp;V × 4&nbsp;mA = <strong>48&nbsp;mW</strong>.</p>
+      <p>The enabling fact: <em>series elements carry the same current</em>. Spotting the
+      same-current path is the first move in reading any schematic.</p>
+    </div>
+  </details>
+</div>
+
+<nav class="hh-footnav">
+  <a href="../index.html"><span class="dir">Hub</span><span class="name">Curriculum</span></a>
+  <a href="02-dividers-thevenin.html"><span class="dir">Next</span><span class="name">02 · Voltage Dividers &amp; Thévenin</span></a>
+</nav>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  HH.initModule("01");
+
+  /* ---------- Ohm's law lab ---------- */
+  var iRead = document.getElementById("i-read");
+  var pRead = document.getElementById("p-read");
+  var batteryLbl = document.getElementById("battery-lbl");
+  var resistorLbl = document.getElementById("resistor-lbl");
+  var powerLbl = document.getElementById("power-lbl");
+  var currentLbl = document.getElementById("current-lbl");
+  var powerWarning = document.getElementById("power-warning");
+  var resistorBody = document.querySelector("#resistor-body path");
+
+  var state = { V: 9, R: 1000 };
+
+  var vSlider = HH.slider("v-slider", {
+    format: function (v) { return HH.fmt(v, "V", 1); },
+    onchange: function (v) { state.V = v; update(); }
+  });
+  var rSlider = HH.slider("r-slider", {
+    log: true,
+    format: function (r) { return HH.fmt(r, "Ω"); },
+    onchange: function (r) { state.R = r; update(); }
+  });
+
+  /* moving charge dots along the loop */
+  var loopPath = document.getElementById("loop-path");
+  var loopLen = loopPath.getTotalLength();
+  var dotsG = document.getElementById("dots");
+  var N_DOTS = 14;
+  var dots = [];
+  for (var i = 0; i < N_DOTS; i++) {
+    var c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("r", "3.2");
+    c.setAttribute("fill", "var(--series-2)");
+    dotsG.appendChild(c);
+    dots.push({ el: c, s: (i / N_DOTS) * loopLen });
+  }
+  var lastT = null;
+  function tick(t) {
+    if (lastT == null) lastT = t;
+    var dt = Math.min(0.05, (t - lastT) / 1000);
+    lastT = t;
+    var I = state.V / state.R;
+    /* map current to px/s on a log-ish scale so both 100 µA and 100 mA read as motion */
+    var speed = I <= 0 ? 0 : Math.min(220, 26 * Math.log10(1 + I * 2e4));
+    dots.forEach(function (d) {
+      d.s = (d.s + speed * dt + loopLen) % loopLen;
+      var p = loopPath.getPointAtLength(d.s);
+      d.el.setAttribute("cx", p.x);
+      d.el.setAttribute("cy", p.y);
+      d.el.setAttribute("opacity", speed === 0 ? 0.25 : 1);
+    });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  /* ---------- I–V plot ---------- */
+  var plot = HH.plot(document.getElementById("iv-plot"), {
+    xlabel: "Voltage across resistor (V)",
+    ylabel: "Current (mA)",
+    xmin: 0, xmax: 24, ymin: 0, ymax: 50,
+    xticks: [0, 4, 8, 12, 16, 20, 24],
+    yticks: [0, 10, 20, 30, 40, 50],
+    xfmt: function (v) { return v + ""; },
+    yfmt: function (v) { return v + ""; },
+    hover: function (x) {
+      var iMa = (x / state.R) * 1000;
+      return [
+        { text: "V = " + x.toFixed(1) + " V" },
+        { color: "--series-1", text: "I = " + HH.fmt(x / state.R, "A") + " through " + HH.fmt(state.R, "Ω") }
+      ];
+    }
+  });
+
+  function update() {
+    var I = state.V / state.R;
+    var P = state.V * I;
+    iRead.innerHTML = HH.fmt(I, "A");
+    pRead.innerHTML = HH.fmt(P, "W");
+    batteryLbl.textContent = HH.fmt(state.V, "V", 1);
+    resistorLbl.textContent = HH.fmt(state.R, "Ω");
+    powerLbl.textContent = HH.fmt(P, "W");
+    currentLbl.textContent = HH.fmt(I, "A");
+
+    /* resistor "glow": tint toward orange/red as power passes 0.25 W */
+    var heat = Math.min(1, P / 1.0);
+    resistorBody.style.stroke = heat > 0.02
+      ? "color-mix(in srgb, var(--ink) " + Math.round((1 - heat) * 100) + "%, var(--series-8))"
+      : "";
+    if (P > 0.25) {
+      powerWarning.innerHTML = "⚠️ " + HH.fmt(P, "W") +
+        " would cook a standard ¼ W resistor — you'd need a " +
+        (P > 2 ? "power resistor with a heatsink." : P > 1 ? "3 W part." : P > 0.5 ? "1–2 W part." : "½ W part.");
+      powerWarning.style.color = "var(--critical)";
+    } else {
+      powerWarning.textContent = "A standard ¼ W resistor handles this comfortably.";
+      powerWarning.style.color = "var(--muted)";
+    }
+
+    var pts = [];
+    for (var v = 0; v <= 24.001; v += 0.5) pts.push([v, (v / state.R) * 1000]);
+    plot.draw(
+      [{ pts: pts, color: "--series-1", width: 2 }],
+      { markers: [{ x: state.V, y: (state.V / state.R) * 1000, color: "--series-1" }] }
+    );
+  }
+  update();
+
+  /* ---------- quiz ---------- */
+  HH.quiz("quiz", [
+    {
+      q: "A friend says “the voltage at the collector is 7 V.” What do they actually mean?",
+      opts: [
+        "7 V is stored inside the collector terminal",
+        "The potential difference between the collector and ground is 7 V",
+        "7 V of current flows out of the collector",
+        "The collector consumes 7 V of energy"
+      ],
+      answer: 1,
+      expl: "Voltage is always between two points. Naming one point implies the other is the agreed reference — ground. Currents flow <em>through</em>, voltages appear <em>across</em>."
+    },
+    {
+      q: "In a simple loop of battery → resistor → back to battery, how does the current at the battery's + terminal compare to the current entering the − terminal?",
+      opts: [
+        "It's larger at + because the resistor uses some up",
+        "It's smaller at + because electrons flow the other way",
+        "Identical — charge doesn't accumulate anywhere in a series loop",
+        "It depends on the resistor value"
+      ],
+      answer: 2,
+      expl: "Charge is conserved and doesn't pile up: in the plumbing picture, water flowing round a full loop passes every cross-section at the same rate. The resistor dissipates <em>energy</em>, not current."
+    },
+    {
+      q: "A 2.2 kΩ resistor has 11 V across it. What current flows?",
+      opts: ["5 mA", "24.2 mA", "200 µA", "5 A"],
+      answer: 0,
+      expl: "I = V/R = 11 / 2200 = 5 mA. Handy habit: volts across kilohms gives milliamps directly (11/2.2 = 5)."
+    },
+    {
+      q: "That same resistor (2.2 kΩ, 11 V, 5 mA) — how much power does it dissipate, and is a ¼ W part okay?",
+      opts: [
+        "55 mW — ¼ W part is fine",
+        "550 mW — needs at least a 1 W part",
+        "55 W — needs a heatsink",
+        "5.5 mW — fine"
+      ],
+      answer: 0,
+      expl: "P = V·I = 11 × 0.005 = 55 mW, about 22% of a ¼ W rating — comfortable. Or P = V²/R = 121/2200 = 55 mW; same answer, as it must be."
+    },
+    {
+      q: "10 kΩ in parallel with 10 kΩ, all in series with 5 kΩ. Total resistance?",
+      opts: ["25 kΩ", "10 kΩ", "6.7 kΩ", "3.3 kΩ"],
+      answer: 1,
+      expl: "Equal parallel pair halves: 10k ∥ 10k = 5k. Then 5k + 5k in series = 10 kΩ."
+    },
+    {
+      q: "You parallel a 1 kΩ resistor with a 1 MΩ resistor. Roughly what's the combination?",
+      opts: [
+        "About 1 MΩ",
+        "About 500 kΩ",
+        "About 1 kΩ (just a hair less)",
+        "About 2 kΩ"
+      ],
+      answer: 2,
+      expl: "A parallel combination is dominated by the <em>smaller</em> resistor — the big one adds a second, much thinner pipe that barely helps. Exactly: 999 Ω. The H&H shortcut: parallel with 1000× the value changes things by ~0.1%."
+    },
+    {
+      q: "Halving the resistance across a fixed voltage source does what to the power dissipated?",
+      opts: ["Halves it", "Doubles it", "Quadruples it", "No change"],
+      answer: 1,
+      expl: "P = V²/R with V fixed: halving R doubles P. (If instead the <em>current</em> were fixed, P = I²R would halve. Which variable is held constant matters — a recurring theme.)"
+    }
+  ]);
+});
+</script>
+</body>
+</html>

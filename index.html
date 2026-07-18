@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Art of Electronics — Interactive Learning Framework</title>
+<link rel="stylesheet" href="shared/hh.css">
+<script src="shared/hh.js" defer></script>
+</head>
+<body>
+
+<nav class="hh-topbar">
+  <span class="crumb">The Art of Electronics · Horowitz &amp; Hill</span>
+  <span class="spacer"></span>
+  <span class="module-tag">Interactive Curriculum</span>
+</nav>
+
+<main>
+<header class="hh-hero">
+  <h1>Master <em>The Art of Electronics</em>, one bite at a time</h1>
+  <p class="subtitle">A self-paced companion to Horowitz &amp; Hill. Each module is a
+  self-contained app: physics background → intuition &amp; analogies → interactive labs →
+  quiz → schematic design tasks. No build step, no server — just open a file.
+  Progress is saved in your browser.</p>
+</header>
+
+<div class="progress-summary">
+  <span>Your progress</span>
+  <div class="bar"><i id="progress-fill" style="width:0%"></i></div>
+  <span class="pct" id="progress-pct">0%</span>
+</div>
+
+<div id="curriculum"></div>
+
+<div class="panel">
+  <span class="panel-label">How to use this</span>
+  <ul>
+    <li><strong>Go in order</strong> within a part — modules build on each other, exactly as
+    the book's chapters do. Parts II onward assume Part I is solid.</li>
+    <li><strong>Play with every interactive</strong> until the behaviour stops surprising you.
+    The goal is intuition you can apply while reading a schematic, not memorized formulas.</li>
+    <li><strong>Do the design bench tasks on paper first</strong>, then check the solution.
+    Designing (even badly) beats reading about designing.</li>
+    <li>Pair each module with the corresponding book sections listed in its header —
+    the modules distill; the book has the depth.</li>
+  </ul>
+</div>
+
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var PARTS = [
+    {
+      title: "Part I — Foundations",
+      desc: "AoE Chapter 1. The passive world: the quantities, the components, and the habits of estimation everything else stands on.",
+      modules: [
+        { id: "01", file: "modules/01-voltage-current-resistance.html", name: "Voltage, Current & Ohm's Law", desc: "The three quantities, power, series/parallel — with an animated circuit lab." },
+        { id: "02", file: "modules/02-dividers-thevenin.html", name: "Voltage Dividers, Kirchhoff & Thévenin", desc: "The most common subcircuit in electronics, and the trick that collapses any network to two parts." },
+        { id: "03", file: "modules/03-capacitors-rc.html", name: "Capacitors & RC Circuits", desc: "Charge storage, the time constant, and why τ = RC runs half the world's timing." },
+        { id: "04", name: "Inductors & Transformers", desc: "Magnetic storage, di/dt, and moving power across an isolation barrier." },
+        { id: "05", name: "Impedance, Reactance & Passive Filters", desc: "The frequency domain: phasors, RC filters, Bode plots, −3 dB points." },
+        { id: "06", name: "Diodes & Diode Circuits", desc: "The first nonlinear part: rectifiers, clamps, and the 0.6 V drop." },
+        { id: "07", name: "Reading & Drawing Schematics", desc: "Conventions, style, and how professionals make circuits legible." }
+      ]
+    },
+    {
+      title: "Part II — Transistors",
+      desc: "AoE Chapters 2–3. The component that made electronics active: switching, amplifying, and steering current.",
+      modules: [
+        { id: "08", name: "The BJT as a Switch", desc: "Base current controls collector current; driving loads, saturation." },
+        { id: "09", name: "Emitter Followers & Current Sources", desc: "Impedance transformation and the art of stiff current." },
+        { id: "10", name: "The Common-Emitter Amplifier", desc: "Voltage gain at last: biasing, gain, distortion, and the emitter-degeneration fix." },
+        { id: "11", name: "Differential Pairs, Mirrors & Push-Pull", desc: "The building blocks hiding inside every op-amp." },
+        { id: "12", name: "FETs: JFETs & MOSFETs", desc: "Voltage-controlled current: the other transistor family." },
+        { id: "13", name: "FET Switches & Analog Switching", desc: "Power switching, logic-level gates, and analog signal routing." }
+      ]
+    },
+    {
+      title: "Part III — Op-Amps & Precision",
+      desc: "AoE Chapters 4–6. Feedback tames messy transistors into nearly ideal blocks — then we learn where 'nearly' bites.",
+      modules: [
+        { id: "14", name: "Op-Amp Golden Rules", desc: "Two rules, infinite circuits: inverting and non-inverting amplifiers." },
+        { id: "15", name: "The Op-Amp Toolbox", desc: "Summers, integrators, differentiators, precision rectifiers." },
+        { id: "16", name: "Comparators & Schmitt Triggers", desc: "Decisions with hysteresis: turning analog into clean edges." },
+        { id: "17", name: "Active Filters", desc: "Sallen-Key and friends: filters without inductors." },
+        { id: "18", name: "Op-Amp Imperfections & Precision Design", desc: "Offset, bias current, bandwidth, slew rate — and designing around them." }
+      ]
+    },
+    {
+      title: "Part IV — Signals & Power",
+      desc: "AoE Chapters 7 & 9. Making signals from scratch, and delivering clean power to everything.",
+      modules: [
+        { id: "19", name: "Oscillators & Timers", desc: "Relaxation oscillators, the immortal 555, and crystals." },
+        { id: "20", name: "Linear Voltage Regulators", desc: "From zener + follower to three-terminal regulators and LDOs." },
+        { id: "21", name: "Switching Converters", desc: "Buck, boost, and why inductors beat resistors for efficiency." },
+        { id: "22", name: "Power Circuits & Heat", desc: "Thermal design, heatsinks, mains safety, real-world power." }
+      ]
+    },
+    {
+      title: "Part V — Digital Electronics",
+      desc: "AoE Chapters 10–13. Two voltage levels, infinite possibility — and the bridges back to the analog world.",
+      modules: [
+        { id: "23", name: "Logic Gates & Boolean Algebra", desc: "Gates, truth tables, De Morgan's escape hatches." },
+        { id: "24", name: "Combinational Logic Design", desc: "Multiplexers, decoders, arithmetic — logic without memory." },
+        { id: "25", name: "Flip-Flops & Sequential Logic", desc: "The circuit that remembers: latches, flip-flops, registers." },
+        { id: "26", name: "Counters & State Machines", desc: "Designing circuits that step through time." },
+        { id: "27", name: "Logic Families & Interfacing", desc: "CMOS vs TTL, logic levels, driving real loads from logic pins." },
+        { id: "28", name: "Digital Meets Analog: ADCs & DACs", desc: "Sampling, quantization, and converter architectures." }
+      ]
+    },
+    {
+      title: "Part VI — The Real World",
+      desc: "AoE Chapters 8, 12, 15. Where ideal circuits meet noise, interference, and microcontrollers.",
+      modules: [
+        { id: "29", name: "Noise & Low-Noise Design", desc: "Johnson, shot, and 1/f noise — and designing quiet circuits." },
+        { id: "30", name: "Grounding, Shielding & EMI", desc: "Ground loops, star grounds, and keeping interference out." },
+        { id: "31", name: "Microcontrollers & the Modern Bench", desc: "Where discrete design meets firmware, and how to keep going." }
+      ]
+    }
+  ];
+
+  var container = document.getElementById("curriculum");
+  var progress = HH.progress.all();
+  var available = 0, completed = 0;
+
+  PARTS.forEach(function (part) {
+    var block = document.createElement("section");
+    block.className = "part-block";
+    var h = document.createElement("h2");
+    h.textContent = part.title;
+    var pd = document.createElement("p");
+    pd.className = "part-desc";
+    pd.textContent = part.desc;
+    block.appendChild(h);
+    block.appendChild(pd);
+
+    var list = document.createElement("div");
+    list.className = "module-list";
+
+    part.modules.forEach(function (m) {
+      var card = document.createElement(m.file ? "a" : "div");
+      card.className = "module-card" + (m.file ? "" : " planned");
+      if (m.file) card.href = m.file;
+
+      var p = progress[m.id] || {};
+      var statusHtml;
+      if (!m.file) {
+        statusHtml = "planned";
+      } else {
+        available++;
+        var bits = [];
+        if (p.quizBest != null) {
+          bits.push('<span class="' + (p.quizBest >= 75 ? "done" : "") + '">quiz ' + p.quizBest + "%</span>");
+        }
+        var tasks = p.tasks || {};
+        var tdone = Object.keys(tasks).filter(function (k) { return tasks[k]; }).length;
+        if (tdone > 0) bits.push('<span class="done">' + tdone + " task" + (tdone > 1 ? "s" : "") + "</span>");
+        if (p.quizBest >= 75 && tdone >= 3) { completed++; bits = ['<span class="done">✓ complete</span>']; }
+        else if (!bits.length && p.visited) bits.push("in progress");
+        statusHtml = bits.join("<br>") || "not started";
+      }
+
+      card.innerHTML =
+        '<span class="num">' + m.id + "</span>" +
+        '<span class="info"><span class="name">' + m.name + '</span><br><span class="desc">' + m.desc + "</span></span>" +
+        '<span class="status">' + statusHtml + "</span>";
+      list.appendChild(card);
+    });
+
+    block.appendChild(list);
+    container.appendChild(block);
+  });
+
+  var pct = available ? Math.round((100 * completed) / available) : 0;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-pct").textContent =
+    pct + "% · " + completed + "/" + available + " built modules complete";
+});
+</script>
+</body>
+</html>
