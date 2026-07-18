@@ -1,7 +1,7 @@
 /* Service worker: precache the whole app so it runs fully offline once visited.
    Bump CACHE_VERSION whenever any file changes; add new modules to FILES. */
 
-const CACHE_VERSION = "hh-v1";
+const CACHE_VERSION = "hh-v2";
 
 const FILES = [
   "./",
@@ -13,6 +13,10 @@ const FILES = [
   "./modules/01-voltage-current-resistance.html",
   "./modules/02-dividers-thevenin.html",
   "./modules/03-capacitors-rc.html",
+  "./modules/04-inductors-transformers.html",
+  "./modules/05-impedance-filters.html",
+  "./modules/06-diodes.html",
+  "./modules/07-reading-schematics.html",
 ];
 
 self.addEventListener("install", (event) => {

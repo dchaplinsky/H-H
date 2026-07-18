@@ -25,6 +25,9 @@ Dark mode follows your OS preference automatically.
 - **Installable PWA** — when hosted over HTTP(S) (GitHub Pages works great),
   a service worker precaches the entire app on first visit: add it to your
   phone's home screen and every module keeps working with no connection.
+  A deploy workflow ships in `.github/workflows/pages.yml`; it publishes on
+  every push to `main` once Pages is enabled (repo Settings → Pages →
+  Source: "GitHub Actions" — one-time click).
 - **Mobile-friendly** — responsive layout down to small phones, big touch
   targets, and touch-scrubbing on the interactive plots (drag a finger across
   a graph to read values).
@@ -32,7 +35,7 @@ Dark mode follows your OS preference automatically.
 ## What's here
 
 - `index.html` — curriculum hub with a progress dashboard
-- `modules/` — the learning modules (Part I under construction, 3 of 31 built)
+- `modules/` — the learning modules (Part I complete: 7 of 31 built)
 - `shared/` — the tiny framework every module uses (design tokens, quiz engine,
   plot helpers, progress store)
 - `CURRICULUM.md` — the full 31-module curriculum map, design principles, and

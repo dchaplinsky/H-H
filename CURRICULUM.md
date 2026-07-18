@@ -72,10 +72,10 @@ Status: ✅ built · 🔜 planned
 | 01 | Voltage, Current & Ohm's Law | §1.1–1.2 | ✅ |
 | 02 | Voltage Dividers, Kirchhoff & Thévenin | §1.2.3–1.2.6 | ✅ |
 | 03 | Capacitors & RC Circuits | §1.4 | ✅ |
-| 04 | Inductors & Transformers | §1.5 | 🔜 |
-| 05 | Impedance, Reactance & Passive Filters | §1.7 | 🔜 |
-| 06 | Diodes & Diode Circuits | §1.6 | 🔜 |
-| 07 | Reading & Drawing Schematics | App. B + practice | 🔜 |
+| 04 | Inductors & Transformers | §1.5 | ✅ |
+| 05 | Impedance, Reactance & Passive Filters | §1.7 | ✅ |
+| 06 | Diodes & Diode Circuits | §1.6 | ✅ |
+| 07 | Reading & Drawing Schematics | App. B + practice | ✅ |
 
 ### Part II — Transistors (AoE Ch. 2–3)
 
